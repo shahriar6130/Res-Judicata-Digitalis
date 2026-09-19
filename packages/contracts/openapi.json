@@ -1,0 +1,1008 @@
+{
+  "components": {
+    "schemas": {
+      "CaseSummary": {
+        "properties": {
+          "case_type": {
+            "title": "Case Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "sensitivity": {
+            "title": "Sensitivity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "case_type",
+          "opened_at",
+          "sensitivity"
+        ],
+        "title": "CaseSummary",
+        "type": "object"
+      },
+      "CommitmentRead": {
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "due_window_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Window End"
+          },
+          "due_window_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Window Start"
+          },
+          "expected_event": {
+            "title": "Expected Event",
+            "type": "string"
+          },
+          "freshness_window_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness Window Hours"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "responsible_actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible Actor Id"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "case_id",
+          "stage",
+          "expected_event",
+          "responsible_actor_id",
+          "due_window_start",
+          "due_window_end",
+          "freshness_window_hours",
+          "created_at"
+        ],
+        "title": "CommitmentRead",
+        "type": "object"
+      },
+      "EvidenceState": {
+        "enum": [
+          "PENDING",
+          "REPORTED",
+          "CORROBORATED",
+          "VERIFIED",
+          "DISPUTED",
+          "MISSING",
+          "STALE",
+          "VERIFIED_WITH_RESOLVED_CONFLICT"
+        ],
+        "title": "EvidenceState",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthReadiness": {
+        "properties": {
+          "application": {
+            "title": "Application",
+            "type": "string"
+          },
+          "database": {
+            "title": "Database",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application",
+          "database"
+        ],
+        "title": "HealthReadiness",
+        "type": "object"
+      },
+      "MilestoneStateRead": {
+        "properties": {
+          "commitment_id": {
+            "format": "uuid",
+            "title": "Commitment Id",
+            "type": "string"
+          },
+          "current_state": {
+            "$ref": "#/components/schemas/EvidenceState"
+          },
+          "current_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Value"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_evaluated_at": {
+            "format": "date-time",
+            "title": "Last Evaluated At",
+            "type": "string"
+          },
+          "resolution_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Id"
+          }
+        },
+        "required": [
+          "id",
+          "commitment_id",
+          "field",
+          "current_state",
+          "current_value",
+          "last_evaluated_at",
+          "resolution_id"
+        ],
+        "title": "MilestoneStateRead",
+        "type": "object"
+      },
+      "ObservationCreate": {
+        "properties": {
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "commitment_id": {
+            "format": "uuid",
+            "title": "Commitment Id",
+            "type": "string"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "field": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "raw_ref": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Ref"
+          },
+          "source_actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Actor Id"
+          },
+          "source_channel": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Source Channel",
+            "type": "string"
+          },
+          "source_organisation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Organisation Id"
+          },
+          "source_type": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Source Type",
+            "type": "string"
+          },
+          "supersedes_observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Observation Id"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "commitment_id",
+          "field",
+          "value",
+          "source_type",
+          "source_channel",
+          "observed_at",
+          "captured_at"
+        ],
+        "title": "ObservationCreate",
+        "type": "object"
+      },
+      "ObservationRead": {
+        "properties": {
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "commitment_id": {
+            "format": "uuid",
+            "title": "Commitment Id",
+            "type": "string"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "raw_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Ref"
+          },
+          "source_actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Actor Id"
+          },
+          "source_channel": {
+            "title": "Source Channel",
+            "type": "string"
+          },
+          "source_organisation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Organisation Id"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "supersedes_observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Observation Id"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "commitment_id",
+          "field",
+          "value",
+          "source_type",
+          "source_actor_id",
+          "source_organisation_id",
+          "source_channel",
+          "confidence",
+          "observed_at",
+          "captured_at",
+          "raw_ref",
+          "supersedes_observation_id",
+          "created_at"
+        ],
+        "title": "ObservationRead",
+        "type": "object"
+      },
+      "ObservationResult": {
+        "properties": {
+          "contributing_observation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Contributing Observation Ids",
+            "type": "array"
+          },
+          "milestone_state": {
+            "$ref": "#/components/schemas/MilestoneStateRead"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/ObservationRead"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation",
+          "milestone_state",
+          "reason_code",
+          "contributing_observation_ids"
+        ],
+        "title": "ObservationResult",
+        "type": "object"
+      },
+      "QueueItem": {
+        "properties": {
+          "age_seconds": {
+            "title": "Age Seconds",
+            "type": "integer"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "case_reference": {
+            "title": "Case Reference",
+            "type": "string"
+          },
+          "case_type": {
+            "title": "Case Type",
+            "type": "string"
+          },
+          "commitment_id": {
+            "format": "uuid",
+            "title": "Commitment Id",
+            "type": "string"
+          },
+          "condition_since": {
+            "format": "date-time",
+            "title": "Condition Since",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EvidenceState"
+          }
+        },
+        "required": [
+          "case_id",
+          "case_reference",
+          "case_type",
+          "commitment_id",
+          "field",
+          "state",
+          "condition_since",
+          "age_seconds"
+        ],
+        "title": "QueueItem",
+        "type": "object"
+      },
+      "ResolutionRead": {
+        "properties": {
+          "authority_basis": {
+            "title": "Authority Basis",
+            "type": "string"
+          },
+          "chosen_value": {
+            "title": "Chosen Value"
+          },
+          "commitment_id": {
+            "format": "uuid",
+            "title": "Commitment Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Observation Ids",
+            "type": "array"
+          },
+          "officer_id": {
+            "format": "uuid",
+            "title": "Officer Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "resolved_at": {
+            "format": "date-time",
+            "title": "Resolved At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "commitment_id",
+          "field",
+          "chosen_value",
+          "officer_id",
+          "authority_basis",
+          "reason",
+          "resolved_at",
+          "created_at",
+          "observation_ids"
+        ],
+        "title": "ResolutionRead",
+        "type": "object"
+      },
+      "SupersessionRead": {
+        "properties": {
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "supersedes_observation_id": {
+            "format": "uuid",
+            "title": "Supersedes Observation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "supersedes_observation_id"
+        ],
+        "title": "SupersessionRead",
+        "type": "object"
+      },
+      "TimelineResponse": {
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/CaseSummary"
+          },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/CommitmentRead"
+            },
+            "title": "Commitments",
+            "type": "array"
+          },
+          "milestone_states": {
+            "items": {
+              "$ref": "#/components/schemas/MilestoneStateRead"
+            },
+            "title": "Milestone States",
+            "type": "array"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/ObservationRead"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "resolutions": {
+            "items": {
+              "$ref": "#/components/schemas/ResolutionRead"
+            },
+            "title": "Resolutions",
+            "type": "array"
+          },
+          "supersessions": {
+            "items": {
+              "$ref": "#/components/schemas/SupersessionRead"
+            },
+            "title": "Supersessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case",
+          "commitments",
+          "observations",
+          "milestone_states",
+          "resolutions",
+          "supersessions"
+        ],
+        "title": "TimelineResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Evidence-grounded operational layer for Bangladesh legal aid services.",
+    "title": "Shakkho API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/cases/{case_id}/observations": {
+      "post": {
+        "operationId": "create_observation_cases__case_id__observations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Observation",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/timeline": {
+      "get": {
+        "operationId": "timeline_cases__case_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Timeline",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/claim-packets/{packet_id}/submit": {
+      "post": {
+        "operationId": "submit_claim_packet_claim_packets__packet_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "packet_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Packet Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Submit Claim Packet",
+        "tags": [
+          "phase-2"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReadiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/milestones/{milestone_id}/resolutions": {
+      "post": {
+        "operationId": "create_resolution_milestones__milestone_id__resolutions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Resolution",
+        "tags": [
+          "phase-2"
+        ]
+      }
+    },
+    "/officer/queue": {
+      "get": {
+        "operationId": "officer_queue_officer_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EvidenceState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "case_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueItem"
+                  },
+                  "title": "Response Officer Queue Officer Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Officer Queue",
+        "tags": [
+          "officer"
+        ]
+      }
+    }
+  }
+}

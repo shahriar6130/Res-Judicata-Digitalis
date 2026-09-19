@@ -1,0 +1,1 @@
+"""Shakkho API application."""

@@ -1,0 +1,14 @@
+{
+  "case": {
+    "id": "10000000-0000-0000-0000-000000000001",
+    "reference": "SHK-DEMO-007",
+    "case_type": "CIVIL",
+    "opened_at": "2026-09-13T04:00:00Z",
+    "sensitivity": "STANDARD"
+  },
+  "commitments": [],
+  "observations": [],
+  "milestone_states": [],
+  "resolutions": [],
+  "supersessions": []
+}

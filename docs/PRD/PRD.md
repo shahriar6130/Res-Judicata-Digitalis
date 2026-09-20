@@ -4,7 +4,7 @@
 
 **Repository:** Res-Judicata-Digitalis
 
-**Document owner:** Shahriar
+**Document owner:** Team Res Judicata Digitalis
 
 **Status:** Prototype build baseline
 

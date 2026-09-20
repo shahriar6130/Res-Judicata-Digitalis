@@ -58,6 +58,11 @@
 | **Office staff** | Maintains records, enters phone updates, handles contact-repair tasks |
 | **Admin** | Configures thresholds, manages users, views metrics |
 
+Everyone signs in from their own portal with a **mobile number and password**. Each sign-in portal
+splits into a black pane with a subtle grayscale law-mark image under a white hairline grid and an
+off-white pane with the login form (§8 of the PRD describes the role-specific screens). See §12 for
+the acceptance check.
+
 ---
 
 ## 4. Screens
@@ -70,7 +75,7 @@
 6. **Admin panel** — grace period, overdue-report count, adjournment count, users.
 7. **SMS simulator + clock control** — send/receive fake SMS, force a failure, advance time.
 
-UI copy: always show the reason; show "rule-based, not yet calibrated" near any numeric index; label simulated messaging.
+UI copy: always show the reason; show "rule-based, not yet calibrated" near any numeric index; label simulated messaging. Every screen ships in complete Bangla (default) and complete English, switched by the text-only language toggle — no per-line mixing.
 
 ---
 
@@ -120,6 +125,7 @@ Write a test for every line.
 - [ ] The system works end-to-end with the LLM disabled.
 - [ ] Simulated messaging and clock are visibly labelled.
 - [ ] Every endpoint enforces role-based access.
+- [ ] Every role signs in from its own portal with a mobile number and password; both fields are validated.
 
 ---
 

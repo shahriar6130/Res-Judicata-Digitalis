@@ -1,4 +1,4 @@
-# JurisFlow — Architecture
+# Architecture
 
 > Technical design for the **prototype**. Built to be demonstrated live to judges: every external dependency is simulated, and the presenter controls time, messages and court data from one panel.
 > Scope, roles and acceptance tests: [`spec.md`](./spec.md). Visual design: [`design.md`](./design.md).

@@ -247,7 +247,7 @@ for pilot-readiness work.
 | FR-12 | Track notification lifecycle separately from case truth | P1 | UI never claims delivery before provider confirmation |
 | FR-13 | Assemble a payment-readiness packet | P1 | Packet names every satisfied and missing policy requirement |
 | FR-14 | Provide sourceable manager measures | P1 | Aggregate view drills down only within authorised scope |
-| FR-15 | Support Bangla-first labels, responsive low-bandwidth use, keyboard navigation, and accessible status cues | P1 | Usability and accessibility checks pass |
+| FR-15 | Support Bangla-first labels, a whole-interface English toggle, responsive low-bandwidth use, keyboard navigation, and accessible status cues | P1 | Usability and accessibility checks pass |
 | FR-16 | Support offline-safe client identifiers and conflict-aware synchronisation | P2 | Retried offline writes do not duplicate evidence |
 | FR-17 | Integrate with official systems only through authorised, versioned adapters | P2 | Failure does not corrupt evidence state |
 
@@ -326,7 +326,7 @@ The end-to-end product and demonstration must still work with AI disabled.
 | Performance | Queue and timeline remain usable on low-end devices and constrained connections; set measurable budgets during frontend integration |
 | Availability | Graceful external-service failure, manual fallback, and no dependency on AI for core operation |
 | Accessibility | Keyboard operation, visible focus, labelled controls, sufficient contrast, non-colour status cues, and screen-reader semantics |
-| Localisation | Bangla-first user-facing content; timezone-aware timestamps displayed in Asia/Dhaka; English administrative terms where required |
+| Localisation | Bangla-first user-facing content with a whole-interface English toggle; timezone-aware timestamps displayed in Asia/Dhaka; English administrative terms where required |
 | Interoperability | Versioned OpenAPI/export formats, provider-neutral AI boundary, and adapters that do not assume unconfirmed official APIs |
 | Auditability | Every derived state and decision links to rule, evidence, actor, and time; corrections preserve earlier records |
 | Configurability | Evidence rules, due windows, freshness, templates, and required claim items are versioned policy rather than hidden UI logic |
@@ -392,7 +392,8 @@ PostgreSQL were unavailable on the Phase 1 workstation.
 Phase 2 starts only after this PRD and `SECURITY.md` are accepted. Its vertical slice is:
 
 1. add a minimal principal, role, office membership, and sensitivity-access model;
-2. authenticate seeded prototype users through a standard library/provider-compatible boundary;
+2. authenticate seeded prototype users through a standard library/provider-compatible boundary
+   (mobile number + password);
 3. apply central default-deny authorization to every protected route;
 4. implement `POST /milestones/{id}/resolutions` with officer authority, case scope, cited active
    observations, authority basis, reason, and concurrency safety;

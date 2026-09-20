@@ -43,6 +43,24 @@ Reference: the Harvey marketing site: off-white canvas, a large serif headline, 
   /* Layout */
   --page-max: 1280px;
   --page-pad: 48px;      /* 16px on mobile */
+
+  /* On-black (login left pane) */
+  --on-black: var(--white);
+  --on-black-muted: #BFBFBF;   /* muted text on black; passes 4.5:1 */
+  --line-on-black: #4D4D4D;
+
+  /* Law-mark image (login left pane) */
+  --lawmark-opacity: .24;
+  --grid-line: rgba(255, 255, 255, .06);
+  --grid-size: 54px;
+
+  /* Icon */
+  --icon: 28px;
+
+  /* Gavel emblem (flat-facet 3D look on black) */
+  --gavel-head: #B9B9B9;  --gavel-top: #FFFFFF;
+  --gavel-band: #6E6E6E;  --gavel-shadow: #4D4D4D;
+  --gavel-handle: #8C8C8C;
 }
 
 body {
@@ -168,6 +186,22 @@ One family: **Playfair Display** (with the Bangla fallback above).
 - **Top bar:** none. Page title and primary action sit in the content header.
 - **Simulator + clock** live in the sidebar as a separate section labelled **Simulated**.
 
+### Sign-in portals (all roles)
+
+Login pages split into two full-height panes:
+
+- **Left pane — black.** A subtle **law-mark image** (currently
+  `assets/justice-stands-strong-stockcake.jpg`) fills the pane: grayscale, low opacity
+  (`--lawmark-opacity`), radially faded into the black, with a **white hairline grid** overlay
+  (`--grid-line`, `--grid-size`) that also fades at the edges. The wordmark (white, muted tagline)
+  sits top-left and the language toggle (on-dark variant) top-right.
+- **Right pane — off-white.** The centred login column: eyebrow role label, serif H1, gray
+  supporting line, white mobile-number + password fields, black primary button, and the "Other
+  sign-in portals" text row, with the prototype footer beneath.
+
+Below 1024px the two panes stack: the sculpture becomes a 224–280px black banner and the login
+column follows with standard page padding.
+
 ### Lawyer and citizen views
 Mobile-first, single column, no sidebar. A simple top wordmark and 2–3 text links. Large tap targets (44px minimum). Officer/admin views are desktop-first and remain usable on tablet.
 
@@ -187,9 +221,13 @@ One primary button per view. No pill shapes. Disabled: gray text on `--line` bac
 
 ### Inputs and forms
 White background, 1px `--line` border, 4px radius, 12px 14px padding, label above in 13px gray-to-black. **Focus: 1px black border** plus a 2px black outline offset for keyboard visibility. Errors: red 1px border and a red message below. 24px between fields. No floating labels.
+**Sign-in:** every role portal signs in with a **mobile number and a password** (password input, `current-password` autofill). Validation requires both fields before the primary action; errors show below the form per the rule above.
 
 ### Navigation
 Text-only, plenty of spacing, hairline separators. No dropdown stacks, no icon rows. Current page is indicated by a black underline (top nav) or the ink row (sidebar).
+
+### Language toggle
+All interface copy exists in two **whole-page languages**: Bangla (default) and English. A text-only toggle in the content header switches the entire interface — never a per-line mix. The toggle is two 13px text items (`বাংলা · English`) separated by a hairline; the active language is semibold black on off-white, the inactive one is gray. Bangla renders in Noto Serif Bengali at equal size, weight and line-height (see §4 and §10); the choice persists across sessions. Bangla is the default for citizen and lawyer views; English stays one tap away for officers and admins.
 
 ### Cards (use sparingly)
 Only where they separate genuinely distinct information, such as an alert detail summary. White on off-white, 1px `--line` border, 6px radius, 24px padding, no shadow, never nested. Lists and queues use **hairline rows, not cards**.
@@ -229,7 +267,7 @@ A bordered box: the draft text, a gray line "Drafted with AI · needs officer ap
 - **Error:** red text with a plain explanation and a retry text link.
 
 ### Icons
-Almost none. Allowed only for functional meaning (close, chevron, external link). Black, one consistent 1.5px stroke set (Lucide). No decorative icons in cards, headings or nav.
+Almost none. Allowed only for functional meaning (close, chevron, external link). Black, one consistent 1.5px stroke set (Lucide). No decorative icons in cards, headings or nav. The lone exception is the **law-mark image** on sign-in portals — a grayscale, low-opacity photo under a white hairline grid — see §5.
 
 ---
 
@@ -237,6 +275,7 @@ Almost none. Allowed only for functional meaning (close, chevron, external link)
 
 | Screen | Layout notes |
 |---|---|
+| **Sign-in portal** (per role) | Black left pane: grayscale law-mark image at low opacity with white grid overlay + white wordmark + language toggle. Right pane: eyebrow role, H1 "Sign in", supporting line, mobile number + password, primary button, portal links |
 | **Officer queue** | H1 "Action queue", gray supporting line with counts, table as in section 6, filters as plain text toggles (All · Escalated · Needs action · Watch) |
 | **Case timeline** | H1 is the case reference. Left column: timeline. Right column (320px): case facts, assigned lawyer, next expected event. Hairline dividers only |
 | **Alert detail** | Reason as H2. Below: supporting timestamps, rule id + version in gray, action buttons, state control, interventions log |
@@ -275,7 +314,9 @@ Subtle and functional only: 150–200ms opacity and background transitions on ho
 
 ## 11. Copy tone
 
-Plain, calm, neutral. State facts and the next step; never accuse.
+Plain, calm, neutral. State facts and the next step; never accuse. Every screen ships in both
+Bangla (default) and English as complete, whole-interface translations selected by the language
+toggle (§6) — translated sentences must not be mixed line-by-line within one screen.
 
 - ✅ "Hearing report not received after 48 hours. Attendance unknown."
 - ❌ "Lawyer failed to appear."
@@ -291,6 +332,8 @@ Sentence case everywhere. Use the "Simulated" tag wherever content is not real.
 Before finishing any screen, confirm:
 
 - [ ] Only Playfair Display (with Bengali fallback); lining tabular numerals on.
+- [ ] Every screen renders fully in Bangla or fully in English; the language toggle switches everything, with Bangla the default.
+- [ ] Sign-in portals split black (subtle grayscale law-mark image + grid overlay) and off-white (login) panes; nothing else decorative was added.
 - [ ] Mostly black, white, off-white; accents limited to priority dots, failures, warnings.
 - [ ] No gradients, shadows, glass, or radii above 8px; no pill buttons.
 - [ ] Lists use hairline rows, not stacked cards; no cards inside cards.

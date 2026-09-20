@@ -1,4 +1,4 @@
-# JurisFlow — Spec
+# Spec
 
 > What to build, for whom, and how to know it works. For the technical design (components, flows, data model), see [`architecture.md`](./architecture.md).
 

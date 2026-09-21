@@ -21,6 +21,7 @@ const NAV_ITEMS: Record<
     { href: "/dashboard/citizen#cases", label: "navMyCases", key: "my-cases" },
     { href: "/dashboard/citizen#messages", label: "navMessages", key: "messages" },
     { href: "/dashboard/citizen#profile", label: "navProfile", key: "profile" },
+    { href: "/dashboard/citizen#complaint", label: "navFileComplaint", key: "file-complaint" },
   ],
   dlo: [
     { href: "/dashboard/dlo", label: "navActionQueue", key: "queue" },
@@ -56,17 +57,31 @@ export function Sidebar({ role, open = false, onNavigate }: SidebarProps) {
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
         <ul className={styles.list}>
-          {items.map((item) => (
-            <li key={item.key} className={styles.listItem}>
-              <Link
-                href={item.href}
-                className={`${styles.link} ${pathname === item.href ? styles.active : ""}`}
-                onClick={onNavigate}
+          {items.map((item) => {
+            const isComplaint = item.key === "file-complaint";
+            // Active match must split the path from the hash so hash-only
+            // links (e.g. /dashboard/citizen#complaint) light up correctly
+            // on the citizen route.
+            const [itemPath, itemHash = ""] = item.href.split("#");
+            const [currentPath, currentHash = ""] = pathname.split("#");
+            const isActive =
+              currentPath === itemPath &&
+              (itemHash === "" || itemHash === currentHash);
+            return (
+              <li
+                key={item.key}
+                className={`${styles.listItem} ${isComplaint ? styles.listItemComplaint : ""}`}
               >
-                {t(item.label)}
-              </Link>
-            </li>
-          ))}
+                <Link
+                  href={item.href}
+                  className={`${styles.link} ${isActive ? styles.active : ""} ${isComplaint ? styles.complaintLink : ""}`}
+                  onClick={onNavigate}
+                >
+                  {t(item.label)}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
       <div className={styles.simulatedSection}>

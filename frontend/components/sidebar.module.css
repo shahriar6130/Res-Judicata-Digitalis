@@ -1,19 +1,22 @@
 .sidebar {
   width: var(--sidebar-width);
   min-height: 100dvh;
-  background: var(--black);
-  color: var(--white);
+  /* Off-white canvas — same surface as the main content.
+     Easier to read on cheap screens than pure black on gray text. */
+  background: var(--off-white);
+  color: var(--black);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 10;
   flex-shrink: 0;
+  border-right: 1px solid var(--line);
 }
 
 .header {
   padding: var(--s-8) var(--s-6);
-  border-bottom: 1px solid var(--line-on-black);
+  border-bottom: 1px solid var(--line);
 }
 
 .nav {
@@ -38,7 +41,7 @@
 .link {
   display: block;
   padding: var(--s-3) var(--s-4);
-  color: var(--on-black-muted);
+  color: var(--ink);
   text-decoration: none;
   font-size: var(--t-body);
   line-height: var(--leading-body);
@@ -47,18 +50,64 @@
 }
 
 .link:hover {
-  background: var(--line-on-black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 .active {
-  background: var(--ink);
-  color: var(--white);
-  font-weight: var(--weight-medium);
+  /* WordPress-style "you are here" pill: black text on a soft gray fill,
+     not a fully-inverted black block. Calm and scannable. */
+  background: var(--line);
+  color: var(--black);
+  font-weight: var(--weight-semibold);
+}
+
+.active:hover {
+  background: var(--line);
+  color: var(--black);
+}
+
+/* Complaint / out-of-band action: visually separated from the main nav
+   with a hairline divider and a small red dot. Citizen-facing only. */
+.listItemComplaint {
+  margin-top: var(--s-2);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.complaintLink {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  color: var(--red);
+}
+
+.complaintLink::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  flex: 0 0 auto;
+}
+
+.complaintLink:hover {
+  background: rgba(229, 57, 53, 0.08);
+  color: var(--red);
+}
+
+.complaintLink.active {
+  background: var(--line);
+  color: var(--black);
+}
+
+.complaintLink.active::before {
+  background: var(--red);
 }
 
 .simulatedSection {
-  border-top: 1px solid var(--line-on-black);
+  border-top: 1px solid var(--line);
   padding: var(--s-6) var(--s-4);
   margin-top: auto;
 }
@@ -68,7 +117,7 @@
   line-height: var(--leading-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--on-black-muted);
+  color: var(--gray);
   margin: 0 0 var(--s-4);
 }
 
@@ -84,7 +133,7 @@
 .simulatedLink {
   display: block;
   padding: var(--s-2) var(--s-3);
-  color: var(--on-black-muted);
+  color: var(--gray);
   text-decoration: none;
   font-size: var(--t-small);
   line-height: var(--leading-small);
@@ -93,8 +142,8 @@
 }
 
 .simulatedLink:hover {
-  background: var(--line-on-black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 @media (max-width: 1024px) {
@@ -106,6 +155,9 @@
     transform: translateX(-100%);
     transition: transform var(--motion-base) var(--ease);
     z-index: 50;
+    /* On mobile the sidebar opens over content — keep the soft surface
+       but add a touch of contrast so it reads as a layer. */
+    box-shadow: 0 0 0 1px var(--line);
   }
 
   .sidebar.open {

@@ -16,7 +16,7 @@ const bengali = Noto_Serif_Bengali({
 });
 
 export const metadata: Metadata = {
-  title: "Shakkho · Verified Legal Aid Operations",
+  title: "সাক্ষ্য · Verified Legal Aid Operations",
   description:
     "An evidence-grounded operational layer for Bangladesh legal aid services.",
 };

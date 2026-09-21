@@ -52,6 +52,14 @@ export type MessageKey =
   | "navActionQueue"
   | "navCases"
   | "navAlerts"
+  | "roleHelpline"
+  | "roleHelplineSub"
+  | "roleDlo"
+  | "roleDloSub"
+  | "roleLawyer"
+  | "roleLawyerSub"
+  | "roleAdmin"
+  | "roleAdminSub"
   | "navAssignments"
   | "navTimeline"
   | "navAssignedCases"
@@ -473,7 +481,196 @@ export type MessageKey =
   | "udcContactPostalTitle"
   | "udcContactPostalBody"
   | "udcContactPostalAddress"
-  | "udcViewOnMap";
+  | "udcViewOnMap"
+  /* --- helpline workspace (Phase 1) --- */
+  | "helplineSkipLink"
+  | "helplineMainHeading"
+  | "helplineMainIntro"
+  | "helplineNavDashboard"
+  | "helplineNavNewCall"
+  | "helplineNavContinueIntake"
+  | "helplineNavSearchRecord"
+  | "helplineNavHandoffs"
+  | "helplineNavDlaoTasks"
+  | "helplineNavHistory"
+  | "helplineNavAccessibility"
+  | "helplineKpiWaitingCalls"
+  | "helplineKpiActiveIntakes"
+  | "helplineKpiHandoffs"
+  | "helplineKpiCallbacks"
+  | "helplineDashboardEyebrow"
+  | "helplineDashboardHeadline"
+  | "helplineDashboardIntro"
+  | "helplineQueuesHeading"
+  | "helplineQueueWaiting"
+  | "helplineQueueActive"
+  | "helplineQueueHandoff"
+  | "helplineQueueCallback"
+  | "helplineNewCallTitle"
+  | "helplineNewCallBody"
+  | "helplineNewCallBtn"
+  | "helplineNewIntakeTitle"
+  | "helplineNewIntakeBody"
+  | "helplineNewIntakeBtn"
+  | "helplineConnectSimBtn"
+  | "helplineDisconnectBtn"
+  | "helplineResumeBtn"
+  | "helplineMuteBtn"
+  | "helplineHoldBtn"
+  | "helplineTransferBtn"
+  | "helplineHangupBtn"
+  | "helplineSendSmsBtn"
+  | "helplineHandoffToDlaoBtn"
+  | "helplineReadAloudBtn"
+  | "helplineReducedMotionBtn"
+  | "helplineCallPanelTitle"
+  | "helplineCallBanner"
+  | "helplineCallDialHint"
+  | "helplineTranscriptHeading"
+  | "helplineTranscriptEmpty"
+  | "helplineRecordHeading"
+  | "helplineRecordProvenance"
+  | "helplineRecordAudit"
+  | "helplineRecordSafeContact"
+  | "helplineRevealAddressBtn"
+  | "helplineSafeContactBlocked"
+  | "helplineIntakeTitle"
+  | "helplineIntakeReadback"
+  | "helplineIntakeConfirmBtn"
+  | "helplineIntakeHandoffBtn"
+  | "helplineSearchTitle"
+  | "helplineSearchPlaceholder"
+  | "helplineSearchBtn"
+  | "helplineSearchEmpty"
+  | "helplineRecordNotFound"
+  | "helplineHandoffsTitle"
+  | "helplineHandoffsAllTab"
+  | "helplineHandoffsDlaoTab"
+  | "helplineHandoffsHumanTab"
+  | "helplineHandoffsEmpty"
+  | "helplineHandoffsCompleteBtn"
+  | "helplineCallbacksTitle"
+  | "helplineCallbacksMarkBtn"
+  | "helplineCallbacksEmpty"
+  | "helplineHistoryTitle"
+  | "helplineHistoryEmpty"
+  | "helplineAccessibilityTitle"
+  | "helplineAccessibilityNonVisualTitle"
+  | "helplineAccessibilityNonVisualBody"
+  | "helplineAccessibilityIvrWelcome"
+  | "helplineAccessibilityIvrMenu"
+  | "helplineAccessibilityReducedMotion"
+  | "helplineAccessibilityReadAloud"
+  | "helplineAccessibilityTimer"
+  | "helplineDlaoApplicantContactTitle"
+  | "helplineDlaoApplicantContactBody"
+  | "helplineDlaoSimOutboundBtn"
+  | "helplineDlaoSimUnsafeBtn"
+  | "helplineSmsReceipt"
+  | "helplineSmsHandoff"
+  | "helplineSmsCallback"
+  | "helplineIvrDisconnect"
+  | "helplineErrSafeContactBlocked"
+  | "helplineErrVerifyFailed"
+  | "helplineErrRepOutOfScope"
+  | "helplineErrSimUnavailable"
+  | "helplineErrUncertain"
+  | "helplineJuryTitle"
+  | "helplineJuryOpenBtn"
+  | "helplineJuryResetBtn"
+  | "helplineJuryA1Title"
+  | "helplineJuryA1Body"
+  | "helplineJuryA2Title"
+  | "helplineJuryA2Body"
+  | "helplineJuryB3Title"
+  | "helplineJuryB3Body"
+  | "helplineJuryT5Title"
+  | "helplineJuryT5Body"
+  | "helplineJuryG1Title"
+  | "helplineJuryG1Body"
+  | "helplineJuryG2Title"
+  | "helplineJuryG2Body"
+  | "helplineJuryG3Title"
+  | "helplineJuryG3Body"
+  | "helplineJuryG4Title"
+  | "helplineJuryG4Body"
+  | "helplineJuryG5Title"
+  | "helplineJuryG5Body"
+  | "helplineJuryG7Title"
+  | "helplineJuryG7Body"
+  | "helplineJuryG9Title"
+  | "helplineJuryG9Body"
+  | "helplineJuryG10Title"
+  | "helplineJuryG10Body"
+  | "helplineSlotApplicant"
+  | "helplineSlotCategory"
+  | "helplineSlotOffice"
+  | "helplineSlotIncidentDate"
+  | "helplineSlotUrgency"
+  | "helplineSlotContactTime"
+  | "helplineSlotConsent"
+  | "helplineSimulationTagVoice"
+  | "helplineSimulationTagSms"
+  | "helplineSimulationTagIvr"
+  | "helplineSimulationTagOfficerLookup"
+  | "helplineT5Greeting"
+  | "helplineT5AskFor"
+  | "helplineT5AskCategory"
+  | "helplineT5AskDate"
+  | "helplineT5AskOffice"
+  | "helplineT5AskSafeContact"
+  | "helplineT5AskVerify"
+  | "helplineT5Readback"
+  | "helplineT5Uncertain"
+  | "helplineCallerTurnRep"
+  | "helplineCallerTurnSelf"
+  | "helplineHandoffReasonVoiceFailure"
+  | "helplineHandoffReasonUnsafeAnswer"
+  | "helplineHandoffReasonRepOutOfScope"
+  | "helplineHandoffReasonUncertain"
+  | "helplineHandoffReasonIdentityMismatch"
+  | "helplineSimulationPausedNote"
+  | "helplineVerificationQuestion1"
+  | "helplineVerificationQuestion2"
+  | "helplineVerificationPassBtn"
+  | "helplineVerificationFailBtn"
+  | "helplineVerifiedBadge"
+  | "helplineUnverifiedBadge"
+  | "helplineDlaoTaskTitle"
+  | "helplineDlaoTaskBody"
+  | "helplineDlaoTaskStatus"
+  | "helplineScenarioDetailHeading"
+  | "helplineScenarioDetailIntro"
+  | "helplineScenarioDetailRecord"
+  | "helplineScenarioDetailSlots"
+  | "helplineScenarioDetailTurns"
+  | "helplineScenarioDetailProvenance"
+  | "helplineScenarioDetailAudit"
+  | "helplineScenarioDetailNext"
+  | "helplineScenarioDetailReset"
+  | "helplineScenarioDetailBack"
+  | "helplineScenarioA1CallerRelation"
+  | "helplineScenarioA1T51"
+  | "helplineScenarioA1C1"
+  | "helplineScenarioA1T52"
+  | "helplineScenarioA1C2"
+  | "helplineScenarioA1T53"
+  | "helplineScenarioA1C3"
+  | "helplineScenarioA1T54"
+  | "helplineScenarioA1C4"
+  | "helplineScenarioA1T55"
+  | "helplineScenarioA1C5"
+  | "helplineScenarioA1T56"
+  | "helplineScenarioA1C6"
+  | "helplineScenarioA1T57"
+  | "helplineScenarioA1C7"
+  | "helplineScenarioA1T58"
+  | "helplineScenarioA1Uncertain"
+  | "helplineScenarioA1UncertainCaller"
+  | "helplineScenarioA1T59"
+  | "helplineScenarioA1Readback"
+  | "helplineScenarioA1NextRepOutOfScope"
+  | "helplineScenarioA1NextRepConfirm";
 
 type Messages = Record<Lang, Record<MessageKey, string>>;
 
@@ -513,6 +710,14 @@ export const messages: Messages = {
     navActionQueue: "কার্যক্রম সারি",
     navCases: "মামলা",
     navAlerts: "সতর্কতা",
+    roleHelpline: "হেল্পলাইন",
+    roleHelplineSub: "১৬৬৯৯ · সহায়তা",
+    roleDlo: "ডিএলও",
+    roleDloSub: "জেলা আইনি কর্মকর্তা",
+    roleLawyer: "আইনজীবী",
+    roleLawyerSub: "প্যানেল আইনজীবী",
+    roleAdmin: "প্রশাসন",
+    roleAdminSub: "সিস্টেম প্রশাসন",
     navAssignments: "নিয়োগ",
     navTimeline: "সময়রেখা",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
@@ -982,6 +1187,205 @@ export const messages: Messages = {
     udcContactPostalAddress:
       "জেলা আইনি সহায়তা অফিস, পুরাতন কোর্ট ভবন, জয়পুরহাট-৫৯০০",
     udcViewOnMap: "মানচিত্রে দেখুন",
+
+    /* helpline workspace — bn */
+    helplineSkipLink: "হেল্পলাইন কর্মক্ষেত্রে এড়িয়ে যান",
+    helplineMainHeading: "১৬৬৯৯ নিরাপদ ও অ্যাক্সেসযোগ্য গ্রহণ কেন্দ্র",
+    helplineMainIntro:
+      "প্রতিনিধিত্ব, নিরাপদ যোগাযোগ, অ-দৃশ্যভিত্তিক যাচাই ও মানব হস্তান্তর—একই ক্যানোনিক্যাল রেকর্ডে।",
+    helplineNavDashboard: "ড্যাশবোর্ড",
+    helplineNavNewCall: "নতুন কল শুরু করুন",
+    helplineNavContinueIntake: "আগের আবেদন চালিয়ে নিন",
+    helplineNavSearchRecord: "রেকর্ড অনুসন্ধান",
+    helplineNavHandoffs: "হস্তান্তর তালিকা",
+    helplineNavDlaoTasks: "ডিএলএও যোগাযোগ",
+    helplineNavHistory: "যোগাযোগের ইতিহাস",
+    helplineNavAccessibility: "অ্যাক্সেসিবিলিটি ডেমো",
+    helplineKpiWaitingCalls: "অপেক্ষমাণ কল",
+    helplineKpiActiveIntakes: "চলমান গ্রহণ",
+    helplineKpiHandoffs: "হস্তান্তর নির্দেশ",
+    helplineKpiCallbacks: "প্রতিশ্রুত কলব্যাক",
+    helplineDashboardEyebrow: "হেল্পলাইন কার্যক্ষেত্র",
+    helplineDashboardHeadline: "আজকের কল ও আবেদন",
+    helplineDashboardIntro:
+      "অপেক্ষমাণ কল, চলমান গ্রহণ, হস্তান্তর ও প্রতিশ্রুত কলব্যাক—সব এক নজরে।",
+    helplineQueuesHeading: "কিউ সারি",
+    helplineQueueWaiting: "অপেক্ষমাণ",
+    helplineQueueActive: "চলমান",
+    helplineQueueHandoff: "হস্তান্তর",
+    helplineQueueCallback: "কলব্যাক",
+    helplineNewCallTitle: "নতুন আগত কল সিমুলেট করুন",
+    helplineNewCallBody:
+      "প্রতিনিধি বা স্ব-আবেদনকারী—একটি টেমপ্লেট বেছে নিয়ে টি-৫ বাংলা গ্রহণ শুরু করুন।",
+    helplineNewCallBtn: "কল সংযুক্ত করুন (সিমুলেটেড)",
+    helplineNewIntakeTitle: "আগের আবেদন চালিয়ে নিন",
+    helplineNewIntakeBody:
+      "বাধাপ্রাপ্ত বা অসম্পূর্ণ গ্রহণ—আগের প্রবেন্যান্স ও অনিশ্চয়তা অক্ষুণ্ণ থাকবে।",
+    helplineNewIntakeBtn: "আবেদন বেছে নিন",
+    helplineConnectSimBtn: "সংযুক্ত করুন (সিমুলেটেড)",
+    helplineDisconnectBtn: "সংযোগ বিচ্ছিন্ন",
+    helplineResumeBtn: "পুনরায় শুরু করুন",
+    helplineMuteBtn: "নীরব",
+    helplineHoldBtn: "ধরে রাখুন",
+    helplineTransferBtn: "হস্তান্তর",
+    helplineHangupBtn: "কল শেষ",
+    helplineSendSmsBtn: "এসএমএস পাঠান (সিমুলেটেড)",
+    helplineHandoffToDlaoBtn: "ডিএলএও-তে হস্তান্তর",
+    helplineReadAloudBtn: "উচ্চারণ করুন",
+    helplineReducedMotionBtn: "ন্যূনতম চলাচল",
+    helplineCallPanelTitle: "কল নিয়ন্ত্রণ",
+    helplineCallBanner: "কল সংযুক্ত (সিমুলেটেড)",
+    helplineCallDialHint: "ডায়াল প্যাড থেকে কী চাপুন",
+    helplineTranscriptHeading: "কথোপকথন",
+    helplineTranscriptEmpty: "এখনো কোনো বার্তা নেই।",
+    helplineRecordHeading: "ভাগ করা রেকর্ড",
+    helplineRecordProvenance: "উৎস ও নিশ্চয়তা",
+    helplineRecordAudit: "নিবন্ধন ইতিহাস",
+    helplineRecordSafeContact: "নিরাপদ যোগাযোগ মূল্যায়ন",
+    helplineRevealAddressBtn: "ঠিকানা দেখান",
+    helplineSafeContactBlocked: "নিরাপদ যোগাযোগ মূল্যায়ন অনুমোদন দেয়নি",
+    helplineIntakeTitle: "আবেদনের চূড়ান্ত পর্যালোচনা",
+    helplineIntakeReadback: "পড়ে শোনানো সারসংক্ষেপ",
+    helplineIntakeConfirmBtn: "আবেদন নিশ্চিত করুন",
+    helplineIntakeHandoffBtn: "মানব হস্তান্তর",
+    helplineSearchTitle: "রেকর্ড অনুসন্ধান",
+    helplineSearchPlaceholder: "APP / DLAS / TEMP আইডি বা জাতীয় আইডি অংশ",
+    helplineSearchBtn: "খুঁজুন",
+    helplineSearchEmpty: "কোনো মিল পাওয়া যায়নি।",
+    helplineRecordNotFound: "এই রেকর্ড খোলা যায়নি।",
+    helplineHandoffsTitle: "হস্তান্তর ও ডিএলএও কাজ",
+    helplineHandoffsAllTab: "সব",
+    helplineHandoffsDlaoTab: "ডিএলএও যোগাযোগ",
+    helplineHandoffsHumanTab: "মানব হস্তান্তর",
+    helplineHandoffsEmpty: "কোনো হস্তান্তর নেই।",
+    helplineHandoffsCompleteBtn: "সম্পন্ন",
+    helplineCallbacksTitle: "প্রতিশ্রুত কলব্যাক",
+    helplineCallbacksMarkBtn: "যোগাযোগ সম্পন্ন",
+    helplineCallbacksEmpty: "এখনো কোনো কলব্যাক নেই।",
+    helplineHistoryTitle: "যোগাযোগের ইতিহাস",
+    helplineHistoryEmpty: "কোনো ঘটনা নেই।",
+    helplineAccessibilityTitle: "অ্যাক্সেসিবিলিটি ডেমো",
+    helplineAccessibilityNonVisualTitle: "অ-দৃশ্য যাচাই",
+    helplineAccessibilityNonVisualBody:
+      "স্ক্রিন-পাঠক ও টিটি�য়াই বান্ধব প্রশ্নের ধারা।",
+    helplineAccessibilityIvrWelcome: "আইভিআরে স্বাগত (সিমুলেটেড)",
+    helplineAccessibilityIvrMenu: "১ — কল শুরু · ২ — কলব্যাক · ৩ — এসএমএস",
+    helplineAccessibilityReducedMotion: "ন্যূনতম চলাচল",
+    helplineAccessibilityReadAloud: "উচ্চারণ",
+    helplineAccessibilityTimer: "আইভিআর সময়সীমা",
+    helplineDlaoApplicantContactTitle: "ডিএলএও আবেদনকারী যোগাযোগ (সিমুলেটেড)",
+    helplineDlaoApplicantContactBody:
+      "ডিএলএও বহির্গামী কল অনুকরণ করুন—নিরাপদ বা অনিরাপদ উত্তর দৃশ্যমান।",
+    helplineDlaoSimOutboundBtn: "বহির্গামী কল শুরু",
+    helplineDlaoSimUnsafeBtn: "অনিরাপদ উত্তর সিমুলেট করুন",
+    helplineSmsReceipt: "আপনার অস্থায়ী রসিদ: %s",
+    helplineSmsHandoff: "আপনার আবেদন ডিএলএও-র কাছে হস্তান্তরিত হয়েছে।",
+    helplineSmsCallback: "আপনার নির্বাচিত সময়ে কলব্যাক করা হবে।",
+    helplineIvrDisconnect: "সংযোগ বিচ্ছিন্ন হয়েছে।",
+    helplineErrSafeContactBlocked: "নিরাপদ যোগাযোগ মূল্যায়ন অনুমোদন দেয়নি—প্রকাশ বন্ধ।",
+    helplineErrVerifyFailed: "কলার যাচাই ব্যর্থ—মানব হস্তান্তর প্রয়োজন।",
+    helplineErrRepOutOfScope: "প্রতিনিধি প্রতিবেদন প্রত্যয়ন নয়—আবেদনকারীর সম্মতি আলাদা।",
+    helplineErrSimUnavailable: "সিমুলেটেড পরিষেবা এখন নেই—টেক্সট বিকল্প ব্যবহার করুন।",
+    helplineErrUncertain: "টি-৫ এই ক্ষেত্রে অনিশ্চিত—স্পষ্টীকরণ বা হস্তান্তর প্রয়োজন।",
+    helplineJuryTitle: "জুরি মোড — পরিস্থিতি ও রিসেট",
+    helplineJuryOpenBtn: "খুলুন",
+    helplineJuryResetBtn: "রিসেট",
+    helplineJuryA1Title: "এ১ — ময়ূরী: প্রতিনিধি ও নিরাপদ বাক্য",
+    helplineJuryA1Body: "রিপন প্রতিনিধি হিসেবে ফোন করছেন।",
+    helplineJuryA2Title: "এ২ — রিপন: নিজের জন্য সোজা গ্রহণ",
+    helplineJuryA2Body: "একজন সচেতন নাগরিক নিজের জন্য আবেদন করছেন।",
+    helplineJuryB3Title: "বি৩ — ১৬৬৯৯ এজেন্ট ওয়ার্কস্পেস",
+    helplineJuryB3Body: "এজেন্ট স্ক্রিনে কল, রেকর্ড, হস্তান্তর।",
+    helplineJuryT5Title: "টি-৫ — কথোপকথনমূলক বাংলা গ্রহণ",
+    helplineJuryT5Body: "নির্ধারিত স্ক্রিপ্টেড বাংলা সংলাপ।",
+    helplineJuryG1Title: "জি১ — ন্যূনতম তথ্যের প্যাকেজ",
+    helplineJuryG1Body: "পরিচয়, এখতিয়ার, উৎস নথি।",
+    helplineJuryG2Title: "জি২ — প্রতিনিধিত্ব মডেল",
+    helplineJuryG2Body: "প্রতিনিধি ও আবেদনকারী পৃথক।",
+    helplineJuryG3Title: "জি৩ — নিরাপদ যোগাযোগ গেট",
+    helplineJuryG3Body: "প্রকাশের আগে মূল্যায়ন।",
+    helplineJuryG4Title: "জি৪ — অ-দৃশ্য যাচাই",
+    helplineJuryG4Body: "জ্ঞান-ভিত্তিক প্রশ্ন।",
+    helplineJuryG5Title: "জি৫ — ভাগ করা আবেদন আইডি",
+    helplineJuryG5Body: "একই APP-XXXXX সব ভূমিকায়।",
+    helplineJuryG7Title: "জি৭ — স্ক্রিনবিহীন প্রবেশ",
+    helplineJuryG7Body: "আইভিআর, টিটিওয়াই, হ্যাপটিক।",
+    helplineJuryG9Title: "জি৯ — মানব হস্তান্তর",
+    helplineJuryG9Body: "কারণ + নতুন মালিক।",
+    helplineJuryG10Title: "জি১০ — সিমুলেশন ব্যাজ",
+    helplineJuryG10Body: "বাহ্যিক পরিষেবা স্পষ্টভাবে চিহ্নিত।",
+    helplineSlotApplicant: "আবেদনকারী",
+    helplineSlotCategory: "বিরোধের ধরন",
+    helplineSlotOffice: "কার্যালয়",
+    helplineSlotIncidentDate: "ঘটনার তারিখ",
+    helplineSlotUrgency: "জরুরিতা সংকেত",
+    helplineSlotContactTime: "নিরাপদ যোগাযোগের সময়",
+    helplineSlotConsent: "সম্মতি",
+    helplineSimulationTagVoice: "ভয়েস সিমুলেশন",
+    helplineSimulationTagSms: "এসএমএস সিমুলেশন",
+    helplineSimulationTagIvr: "আইভিআর সিমুলেশন",
+    helplineSimulationTagOfficerLookup: "কর্মকর্তা অনুসন্ধান সিমুলেশন",
+    helplineT5Greeting: "আসসালামু আলাইকুম, আমি টি-৫। আমি কীভাবে সাহায্য করতে পারি?",
+    helplineT5AskFor: "আপনি কি নিজের জন্য, নাকি অন্যের জন্য ফোন করছেন?",
+    helplineT5AskCategory: "আপনার সমস্যাটি কোন ধরনের?",
+    helplineT5AskDate: "ঘটনাটি কখন ঘটেছে?",
+    helplineT5AskOffice: "আপনার নিকটস্থ কার্যালয় কোনটি?",
+    helplineT5AskSafeContact: "কখন নিরাপদে কথা বলতে পারবেন?",
+    helplineT5AskVerify: "পরিচয় যাচাই করতে দুটি প্রশ্ন করব।",
+    helplineT5Readback: "এই সারসংক্ষেপটি ঠিক আছে কি?",
+    helplineT5Uncertain: "এই তথ্যে আমি নিশ্চিত নই—স্পষ্ট করা দরকার।",
+    helplineCallerTurnRep: "আমি অন্যের জন্য ফোন করছি।",
+    helplineCallerTurnSelf: "আমি নিজের জন্য ফোন করছি।",
+    helplineHandoffReasonVoiceFailure: "ভয়েস যাচাই ব্যর্থ",
+    helplineHandoffReasonUnsafeAnswer: "অনিরাপদ উত্তর",
+    helplineHandoffReasonRepOutOfScope: "প্রতিনিধি প্রত্যয়ন বহির্ভূত",
+    helplineHandoffReasonUncertain: "টি-৫ অনিশ্চিত",
+    helplineHandoffReasonIdentityMismatch: "কলার ≠ আবেদনকারী",
+    helplineSimulationPausedNote: "[ভয়েস সিমুলেশন স্থগিত]",
+    helplineVerificationQuestion1: "আপনার জাতীয় পরিচয়পত্রের শেষ ৪ সংখ্যা?",
+    helplineVerificationQuestion2: "গত সপ্তাহে কোন দিন প্রথম যোগাযোগ হয়েছিল?",
+    helplineVerificationPassBtn: "যাচাই পাস",
+    helplineVerificationFailBtn: "যাচাই ব্যর্থ",
+    helplineVerifiedBadge: "যাচাইকৃত",
+    helplineUnverifiedBadge: "অযাচাইকৃত",
+    helplineDlaoTaskTitle: "ডিএলএও বহির্গামী যোগাযোগ",
+    helplineDlaoTaskBody: "আবেদনকারীর সাথে সরাসরি যোগাযোগ করুন।",
+    helplineDlaoTaskStatus: "অপেক্ষমাণ",
+    helplineScenarioDetailHeading: "পরিস্থিতির বিস্তারিত — নমুনা তথ্য",
+    helplineScenarioDetailIntro:
+      "এই পৃষ্ঠাটি জুরোরদের জন্য নির্ধারিত: এখানে নির্দিষ্ট পরিস্থিতির সম্পূর্ণ ডেটা দেখানো হয়েছে — প্রতিনিধি, টি-৫ সংলাপ, নিরাপদ যোগাযোগ, অডিট ট্রেইল।",
+    helplineScenarioDetailRecord: "আবেদনের রেকর্ড",
+    helplineScenarioDetailSlots: "স্লট মান",
+    helplineScenarioDetailTurns: "টি-৫ সংলাপ",
+    helplineScenarioDetailProvenance: "উৎস ও আত্মবিশ্বাস",
+    helplineScenarioDetailAudit: "অডিট ট্রেইল",
+    helplineScenarioDetailNext: "পরবর্তী পদক্ষেপ",
+    helplineScenarioDetailReset: "এই পরিস্থিতি রিসেট করুন",
+    helplineScenarioDetailBack: "← ড্যাশবোর্ডে ফিরে যান",
+    helplineScenarioA1CallerRelation: "আমি প্রতিবেশী হিসেবে ফোন করছি — ময়ূরী বেগম নিজে ফোন করতে পারছেন না।",
+    helplineScenarioA1T51: "আসসালামু আলাইকুম। আমি টি-৫, ১৬৬৯৯ সহায়তা। আপনি কি নিজের জন্য, নাকি অন্যের জন্য ফোন করছেন?",
+    helplineScenarioA1C1: "প্রতিবেশী রিপন বলছি — ময়ূরী বেগমের জন্য।",
+    helplineScenarioA1T52: "ধন্যবাদ। প্রতিনিধি হিসেবে আপনার নাম ও সম্পর্ক বলবেন? আবেদনকারীর নাম?",
+    helplineScenarioA1C2: "রিপন আলম, প্রতিবেশী। আবেদনকারী ময়ূরী বেগম।",
+    helplineScenarioA1T53: "বিষয়টি কোন ধরনের — পারিবারিক, ফৌজদারি, জমি, শ্রম, অন্যান্য?",
+    helplineScenarioA1C3: "পারিবারিক বিষয় — যৌতুক নির্যাতন।",
+    helplineScenarioA1T54: "ঘটনার তারিখ কবে?",
+    helplineScenarioA1C4: "গত ২৮ সেপ্টেম্বর, ২০২৫।",
+    helplineScenarioA1T55: "কোন জেলা আইনি সহায়তা কেন্দ্রে আবেদন করতে চান?",
+    helplineScenarioA1C5: "জয়পুরহাট।",
+    helplineScenarioA1T56: "ময়ূরীর সাথে নিরাপদে কথা বলার সময় কখন?",
+    helplineScenarioA1C6: "সকাল ১০টায়, যখন স্বামী বাইরে থাকেন।",
+    helplineScenarioA1T57: "যাচাইয়ের জন্য দুটি প্রশ্ন করব।",
+    helplineScenarioA1C7: "আচ্ছা, প্রশ্ন করুন।",
+    helplineScenarioA1T58: "জাতীয় পরিচয়পত্রের শেষ ৪ সংখ্যা?",
+    helplineScenarioA1Uncertain: "আমি এই স্লটে নিশ্চিত নই — আরেকবার বলবেন?",
+    helplineScenarioA1UncertainCaller: "হ্যাঁ — সকাল ১০টা, বাইরে থাকলে।",
+    helplineScenarioA1T59: "যাচাই সম্পন্ন। আপনার অস্থায়ী রসিদ: TEMP-MOY-01। DLAO কর্মকর্তা আপনাকে ফিরত কল করবেন নিরাপদ সময়ে।",
+    helplineScenarioA1Readback: "পড়ে শোনাতে চাইলে বলুন — পুরো সারসংক্ষেপ পড়া হবে।",
+    helplineScenarioA1NextRepOutOfScope:
+      "রিপন প্রতিনিধি হিসেবে রিপোর্ট করেছেন — নিশ্চিতকরণ প্রয়োজন। 'Submit anyway' ক্লিক করলে RepresentationOutOfScopeError হবে।",
+    helplineScenarioA1NextRepConfirm:
+      "পরবর্তী ধাপ: DLAO নিরাপদ সময়ে যোগাযোগ করবেন, প্রতিনিধির নিশ্চিতকরণ নেওয়া হবে।",
   },
   en: {
     tagline: "Verified legal aid operations",
@@ -1018,6 +1422,14 @@ export const messages: Messages = {
     navActionQueue: "Action Queue",
     navCases: "Cases",
     navAlerts: "Alerts",
+    roleHelpline: "Helpline",
+    roleHelplineSub: "16699 · Operations",
+    roleDlo: "DLO",
+    roleDloSub: "District Legal Officer",
+    roleLawyer: "Lawyer",
+    roleLawyerSub: "Panel Lawyer",
+    roleAdmin: "Admin",
+    roleAdminSub: "System Admin",
     navAssignments: "Assignments",
     navTimeline: "Timeline",
     navAssignedCases: "Assigned Cases",
@@ -1489,6 +1901,217 @@ export const messages: Messages = {
     udcContactPostalAddress:
       "Office of the District Legal Aid Officer, Old Court Building, Joypurhat-5900",
     udcViewOnMap: "View on map",
+
+    /* helpline workspace — en */
+    helplineSkipLink: "Skip to helpline workspace",
+    helplineMainHeading: "16699 Safe & Accessible Intake Centre",
+    helplineMainIntro:
+      "Representation, safe contact, non-visual verification and human handoff—on one canonical record.",
+    helplineNavDashboard: "Dashboard",
+    helplineNavNewCall: "Start new call",
+    helplineNavContinueIntake: "Continue intake",
+    helplineNavSearchRecord: "Search record",
+    helplineNavHandoffs: "Handoff queue",
+    helplineNavDlaoTasks: "DLAO contact",
+    helplineNavHistory: "History",
+    helplineNavAccessibility: "Accessibility demo",
+    helplineKpiWaitingCalls: "Waiting calls",
+    helplineKpiActiveIntakes: "Active intakes",
+    helplineKpiHandoffs: "Handoffs",
+    helplineKpiCallbacks: "Promised callbacks",
+    helplineDashboardEyebrow: "Helpline workspace",
+    helplineDashboardHeadline: "Today’s calls and intakes",
+    helplineDashboardIntro:
+      "Waiting calls, active intakes, handoffs and promised callbacks—at one glance.",
+    helplineQueuesHeading: "Queues",
+    helplineQueueWaiting: "Waiting",
+    helplineQueueActive: "Active",
+    helplineQueueHandoff: "Handoff",
+    helplineQueueCallback: "Callback",
+    helplineNewCallTitle: "Simulate an incoming call",
+    helplineNewCallBody:
+      "Pick a representative or self-applicant template to start the Bangla intake.",
+    helplineNewCallBtn: "Connect call (simulated)",
+    helplineNewIntakeTitle: "Continue an existing intake",
+    helplineNewIntakeBody:
+      "Interrupted or incomplete intake—prior provenance and uncertainty remain intact.",
+    helplineNewIntakeBtn: "Pick an intake",
+    helplineConnectSimBtn: "Connect (simulated)",
+    helplineDisconnectBtn: "Disconnect",
+    helplineResumeBtn: "Resume",
+    helplineMuteBtn: "Mute",
+    helplineHoldBtn: "Hold",
+    helplineTransferBtn: "Transfer",
+    helplineHangupBtn: "Hang up",
+    helplineSendSmsBtn: "Send SMS (simulated)",
+    helplineHandoffToDlaoBtn: "Handoff to DLAO",
+    helplineReadAloudBtn: "Read aloud",
+    helplineReducedMotionBtn: "Reduced motion",
+    helplineCallPanelTitle: "Call control",
+    helplineCallBanner: "Call connected (simulated)",
+    helplineCallDialHint: "Press a key on the dial pad",
+    helplineTranscriptHeading: "Transcript",
+    helplineTranscriptEmpty: "No transcript yet.",
+    helplineRecordHeading: "Shared record",
+    helplineRecordProvenance: "Provenance & confidence",
+    helplineRecordAudit: "Audit trail",
+    helplineRecordSafeContact: "Safe-contact evaluation",
+    helplineRevealAddressBtn: "Reveal address",
+    helplineSafeContactBlocked: "Safe-contact evaluation blocked",
+    helplineIntakeTitle: "Final intake review",
+    helplineIntakeReadback: "Read-aloud summary",
+    helplineIntakeConfirmBtn: "Confirm intake",
+    helplineIntakeHandoffBtn: "Human handoff",
+    helplineSearchTitle: "Search records",
+    helplineSearchPlaceholder: "APP / DLAS / TEMP id or national-ID fragment",
+    helplineSearchBtn: "Search",
+    helplineSearchEmpty: "No matches.",
+    helplineRecordNotFound: "Could not open this record.",
+    helplineHandoffsTitle: "Handoffs and DLAO tasks",
+    helplineHandoffsAllTab: "All",
+    helplineHandoffsDlaoTab: "DLAO contact",
+    helplineHandoffsHumanTab: "Human handoff",
+    helplineHandoffsEmpty: "No handoffs.",
+    helplineHandoffsCompleteBtn: "Complete",
+    helplineCallbacksTitle: "Promised callbacks",
+    helplineCallbacksMarkBtn: "Mark contacted",
+    helplineCallbacksEmpty: "No callbacks yet.",
+    helplineHistoryTitle: "Communication history",
+    helplineHistoryEmpty: "No events yet.",
+    helplineAccessibilityTitle: "Accessibility demo",
+    helplineAccessibilityNonVisualTitle: "Non-visual verification",
+    helplineAccessibilityNonVisualBody:
+      "A question flow compatible with screen readers and TTY.",
+    helplineAccessibilityIvrWelcome: "IVR welcome (simulated)",
+    helplineAccessibilityIvrMenu: "1 — start call · 2 — callback · 3 — SMS",
+    helplineAccessibilityReducedMotion: "Reduced motion",
+    helplineAccessibilityReadAloud: "Read aloud",
+    helplineAccessibilityTimer: "IVR timeout",
+    helplineDlaoApplicantContactTitle: "DLAO applicant contact (simulated)",
+    helplineDlaoApplicantContactBody:
+      "Simulate DLAO outbound call—safe or unsafe answers are recorded.",
+    helplineDlaoSimOutboundBtn: "Start outbound call",
+    helplineDlaoSimUnsafeBtn: "Simulate unsafe answer",
+    helplineSmsReceipt: "Your temporary receipt: %s",
+    helplineSmsHandoff: "Your intake has been handed to the DLAO.",
+    helplineSmsCallback: "We will call you back at your chosen time.",
+    helplineIvrDisconnect: "Disconnected.",
+    helplineErrSafeContactBlocked:
+      "Safe-contact evaluation did not clear—disclosure blocked.",
+    helplineErrVerifyFailed: "Caller verification failed—human handoff required.",
+    helplineErrRepOutOfScope:
+      "Representative report is not applicant consent—separate confirmation needed.",
+    helplineErrSimUnavailable:
+      "Simulated service unavailable—fall back to text.",
+    helplineErrUncertain:
+      "T5 is uncertain on this slot—clarification or handoff required.",
+    helplineJuryTitle: "Juror mode — scenarios and reset",
+    helplineJuryOpenBtn: "Open",
+    helplineJuryResetBtn: "Reset",
+    helplineJuryA1Title: "A1 — Moyuri: representative and safe phrase",
+    helplineJuryA1Body: "Ripon is calling as a representative.",
+    helplineJuryA2Title: "A2 — Ripon: straightforward self-intake",
+    helplineJuryA2Body: "A aware citizen files for themselves.",
+    helplineJuryB3Title: "B3 — 16699 agent workspace",
+    helplineJuryB3Body: "Agent screen shows call, record and handoffs.",
+    helplineJuryT5Title: "T5 — Conversational Bangla intake",
+    helplineJuryT5Body: "Deterministic scripted Bangla dialogue.",
+    helplineJuryG1Title: "G1 — Minimum information package",
+    helplineJuryG1Body: "Identity, jurisdiction, source documents.",
+    helplineJuryG2Title: "G2 — Representation model",
+    helplineJuryG2Body: "Representative and applicant are separate.",
+    helplineJuryG3Title: "G3 — Safe-contact gate",
+    helplineJuryG3Body: "Evaluate before any disclosure.",
+    helplineJuryG4Title: "G4 — Non-visual verification",
+    helplineJuryG4Body: "Knowledge-based questions.",
+    helplineJuryG5Title: "G5 — Shared application id",
+    helplineJuryG5Body: "Same APP-XXXXX across roles.",
+    helplineJuryG7Title: "G7 — Screenless access",
+    helplineJuryG7Body: "IVR, TTY, haptic support.",
+    helplineJuryG9Title: "G9 — Human handoff",
+    helplineJuryG9Body: "Reason + new owner.",
+    helplineJuryG10Title: "G10 — Simulation badges",
+    helplineJuryG10Body: "External services clearly labelled.",
+    helplineSlotApplicant: "Applicant",
+    helplineSlotCategory: "Matter category",
+    helplineSlotOffice: "Office",
+    helplineSlotIncidentDate: "Incident date",
+    helplineSlotUrgency: "Urgency signals",
+    helplineSlotContactTime: "Safe contact time",
+    helplineSlotConsent: "Consent",
+    helplineSimulationTagVoice: "Voice simulation",
+    helplineSimulationTagSms: "SMS simulation",
+    helplineSimulationTagIvr: "IVR simulation",
+    helplineSimulationTagOfficerLookup: "Officer-lookup simulation",
+    helplineT5Greeting: "Assalamu Alaikum, I am T5. How can I help?",
+    helplineT5AskFor: "Are you calling for yourself or for someone else?",
+    helplineT5AskCategory: "What type of matter is it?",
+    helplineT5AskDate: "When did the incident happen?",
+    helplineT5AskOffice: "Which office is closest to you?",
+    helplineT5AskSafeContact: "When is it safe to talk?",
+    helplineT5AskVerify: "I will ask two questions to verify your identity.",
+    helplineT5Readback: "Is this read-back correct?",
+    helplineT5Uncertain: "I am not sure on this slot — clarification needed.",
+    helplineCallerTurnRep: "I am calling for someone else.",
+    helplineCallerTurnSelf: "I am calling for myself.",
+    helplineHandoffReasonVoiceFailure: "Voice verification failed",
+    helplineHandoffReasonUnsafeAnswer: "Unsafe answer",
+    helplineHandoffReasonRepOutOfScope: "Representative confirmation out of scope",
+    helplineHandoffReasonUncertain: "T5 uncertain",
+    helplineHandoffReasonIdentityMismatch: "Caller ≠ applicant",
+    helplineSimulationPausedNote: "[voice simulation paused]",
+    helplineVerificationQuestion1: "Last 4 digits of your national ID?",
+    helplineVerificationQuestion2: "What day last week did we first contact you?",
+    helplineVerificationPassBtn: "Verify pass",
+    helplineVerificationFailBtn: "Verify fail",
+    helplineVerifiedBadge: "Verified",
+    helplineUnverifiedBadge: "Unverified",
+    helplineDlaoTaskTitle: "DLAO outbound contact",
+    helplineDlaoTaskBody: "Contact the applicant directly.",
+    helplineDlaoTaskStatus: "Queued",
+    helplineScenarioDetailHeading: "Scenario detail — populated dummy data",
+    helplineScenarioDetailIntro:
+      "Juror-facing view: a fully populated walk-through for this scenario — representation state, T5 turns, safe-contact evaluation, audit trail.",
+    helplineScenarioDetailRecord: "Application record",
+    helplineScenarioDetailSlots: "Slot values",
+    helplineScenarioDetailTurns: "T5 transcript",
+    helplineScenarioDetailProvenance: "Provenance & confidence",
+    helplineScenarioDetailAudit: "Audit trail",
+    helplineScenarioDetailNext: "Next step",
+    helplineScenarioDetailReset: "Reset this scenario",
+    helplineScenarioDetailBack: "← Back to dashboard",
+    helplineScenarioA1CallerRelation:
+      "I'm calling as a neighbour — Moyuri Begum cannot phone herself.",
+    helplineScenarioA1T51:
+      "Assalamu Alaikum. I'm T5, the 16699 assistant. Are you calling for yourself, or on behalf of someone else?",
+    helplineScenarioA1C1: "Neighbour Ripon speaking — on behalf of Moyuri Begum.",
+    helplineScenarioA1T52:
+      "Thank you. As representative, please share your name, your relation, and the applicant's name.",
+    helplineScenarioA1C2: "Ripon Alam, neighbour. Applicant: Moyuri Begum.",
+    helplineScenarioA1T53:
+      "What kind of matter — family, criminal, land, labour, other?",
+    helplineScenarioA1C3: "Family matter — dowry violence.",
+    helplineScenarioA1T54: "When did the incident occur?",
+    helplineScenarioA1C4: "On 28 September 2025.",
+    helplineScenarioA1T55: "Which district legal aid office should receive the application?",
+    helplineScenarioA1C5: "Joypurhat.",
+    helplineScenarioA1T56:
+      "When is a safe time for Moyuri to speak?",
+    helplineScenarioA1C6: "At 10 am, when her husband is away.",
+    helplineScenarioA1T57: "Two short verification questions next.",
+    helplineScenarioA1C7: "Go ahead, please.",
+    helplineScenarioA1T58: "Last 4 digits of the national ID?",
+    helplineScenarioA1Uncertain:
+      "I'm not certain on this slot — could you repeat?",
+    helplineScenarioA1UncertainCaller: "Yes — 10 am, when he is away.",
+    helplineScenarioA1T59:
+      "Verification complete. Your temporary receipt: TEMP-MOY-01. The DLAO officer will call you back at the safe time.",
+    helplineScenarioA1Readback:
+      "Say 'read aloud' and I'll read the full summary.",
+    helplineScenarioA1NextRepOutOfScope:
+      "Ripon reported as representative — explicit confirmation required. Clicking 'Submit anyway' now raises RepresentationOutOfScopeError; state stays 'reported', never auto-confirmed.",
+    helplineScenarioA1NextRepConfirm:
+      "Next: DLAO will call at the safe time; representative confirmation is taken with the applicant directly.",
   },
 };
 

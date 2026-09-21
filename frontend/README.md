@@ -1,6 +1,6 @@
-# Shakkho — Frontend
+# সাক্ষ্য — Frontend
 
-Next.js (App Router, TypeScript) frontend for Shakkho, an evidence-grounded operational layer for
+Next.js (App Router, TypeScript) frontend for সাক্ষ্য, an evidence-grounded operational layer for
 Bangladesh legal aid services. Visual system: `docs/design/design.md`.
 
 The current four dashboards are migration-era surfaces, not the final route contract. Build toward

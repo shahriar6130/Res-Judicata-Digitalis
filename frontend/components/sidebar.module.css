@@ -461,7 +461,9 @@
 }
 
 .legacy .legacyLink {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
   position: relative;
   width: 100%;
   padding: var(--s-4) var(--s-4);
@@ -477,6 +479,24 @@
   cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
   font-weight: var(--weight-medium);
+}
+
+.legacy .legacyIcon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: inherit;
+}
+
+.legacy .legacyLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .legacy .legacyLink:hover {
@@ -500,6 +520,186 @@
   width: 3px;
   background: var(--sidebar-accent);
   border-radius: 2px;
+}
+
+/* Legacy profile panel — pinned to the bottom of the dark sidebar so
+   the operator always sees who they are signed in as. Sits after the
+   `.nav` block (which has `flex: 1`) so it anchors without needing
+   sticky positioning. */
+.legacy .legacyProfilePanel {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-4);
+  border-top: 1px solid var(--sidebar-border);
+  background: var(--sidebar-bg);
+  /* Slightly tighter than the citizen dark variant so the compact
+     legacy list above has more room. */
+  min-height: 64px;
+}
+
+.legacy .legacyProfileAvatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sidebar-fg);
+  color: var(--sidebar-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-bold);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.legacy .legacyProfileText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legacy .legacyProfileName {
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  color: var(--sidebar-fg);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legacy .legacyProfileRole {
+  font-size: 11px;
+  color: var(--sidebar-muted);
+  line-height: 1.2;
+  /* Avoid layout jump on long Bangla role titles — keep them on one
+     line in the compact legacy column. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legacy .legacyProfileStatus {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 4px 8px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* Inline "Logged in" row inside the profile text block — sits under
+   the role label so the panel stays compact and the kebab sits on
+   the right edge. */
+.legacy .legacyProfileStatusInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.legacy .legacyProfileStatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  /* The "online" indicator — green is the only signal colour allowed
+     here per design.md. */
+}
+
+.legacy .legacyProfileStatusLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sidebar-muted);
+  line-height: 1;
+}
+
+/* Optional kebab / settings menu — mirrors the citizen sidebar
+   pattern so the panel feels uniform across roles. */
+.legacy .legacyKebab {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.legacy .legacyKebabBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-2);
+  color: var(--sidebar-muted);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.legacy .legacyKebabBtn:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-fg);
+}
+
+.legacy .legacyKebabBtn:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.legacy .legacyKebabMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 200px;
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: var(--s-1);
+  z-index: 60;
+}
+
+.legacy .legacyKebabItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: var(--s-3) var(--s-4);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+
+.legacy .legacyKebabItem:hover {
+  background: var(--off-white);
+}
+
+.legacy .legacyKebabItem:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: -2px;
+}
+
+.legacy .legacyComingSoonTag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  background: var(--off-white);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-2);
+  padding: 2px 6px;
+  margin-left: var(--s-2);
 }
 
 /* Mobile drawer (shared) --------------------------------------------- */
@@ -541,6 +741,14 @@
   letter-spacing: 0;
 }
 
+/* In Bangla the legacy profile text keeps the serif Bengali stack.
+   Already covered by the global `.sidebar *` rule above, but pinned
+   here so future refactors don't lose it. */
+.sidebar:lang(bn) .legacyProfileName,
+.sidebar:lang(bn) .legacyProfileRole {
+  font-family: var(--font-bengali), Georgia, serif;
+}
+
 .sidebar:lang(en) .name,
 .sidebar:lang(en) .channelNumber,
 .sidebar:lang(en) .profileRole,
@@ -548,6 +756,7 @@
 .sidebar:lang(en) .badge,
 .sidebar:lang(en) .sectionLabel,
 .sidebar:lang(en) .subSectionLabel,
-.sidebar:lang(en) .comingSoonTag {
+.sidebar:lang(en) .comingSoonTag,
+.sidebar:lang(en) .legacyProfileStatusLabel {
   letter-spacing: 0.04em;
 }

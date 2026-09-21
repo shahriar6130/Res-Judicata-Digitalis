@@ -1,0 +1,148 @@
+/* ------------------------------------------------------------------ *
+ *  Case-support extensions for Phase 5.
+ *
+ *  Reuses the existing CSS tokens. No new colours.
+ * ------------------------------------------------------------------ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: var(--s-8) var(--page-pad) var(--s-12);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-6);
+}
+
+.pageEyebrow {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
+.pageTitle {
+  font-size: var(--t-title);
+  line-height: var(--leading-title);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: var(--s-2) 0 0;
+  max-width: 760px;
+}
+
+.pageIntro {
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+  max-width: 760px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--black);
+  padding-bottom: var(--s-2);
+}
+
+.sectionHead h2 {
+  font-size: var(--t-section);
+  line-height: var(--leading-section);
+  margin: 0;
+}
+
+.queueList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+
+.queueRow {
+  display: grid;
+  grid-template-columns: 160px 1fr 160px 120px;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+  font: inherit;
+}
+
+.queueRow:last-child { border-bottom: 0; }
+.queueRow strong { font-weight: var(--weight-semibold); }
+.queueRow small { color: var(--gray); font-size: var(--t-label); }
+
+.provenanceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.provenanceList li {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-small);
+}
+
+.provenanceList li:last-child { border-bottom: 0; }
+.provenanceList li span:first-child { color: var(--gray); }
+
+.bannerInfo {
+  border: 1px solid var(--line);
+  background: var(--off-white);
+  padding: var(--s-4);
+  font-size: var(--t-small);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statusPillConflict {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.statusPillSynced {
+  border-color: var(--black);
+  color: var(--black);
+}
+
+.statusPillOffline {
+  border-color: var(--gray);
+  color: var(--gray);
+}
+
+@media (max-width: 1024px) {
+  .queueRow { grid-template-columns: 1fr; }
+  .queueRow > * { grid-column: 1; }
+  .provenanceList li { grid-template-columns: 1fr; }
+}

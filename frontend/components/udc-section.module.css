@@ -70,7 +70,7 @@
 }
 
 .tab:focus-visible {
-  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline: var(--focus-width) solid var(--sidebar-accent);
   outline-offset: 2px;
 }
 
@@ -250,7 +250,7 @@
 .previewCta {
   font-size: var(--t-small);
   font-weight: var(--weight-semibold);
-  color: var(--sidebar-dark-accent);
+  color: var(--sidebar-accent);
   border-bottom: 1px solid currentColor;
   align-self: flex-start;
   padding-bottom: 2px;
@@ -343,8 +343,8 @@
 }
 
 .link:hover {
-  color: var(--sidebar-dark-accent);
-  border-color: var(--sidebar-dark-accent);
+  color: var(--sidebar-accent);
+  border-color: var(--sidebar-accent);
 }
 
 .hoursTable {
@@ -444,7 +444,7 @@
   height: 72px;
   border-radius: 50%;
   background: var(--ink);
-  color: var(--sidebar-dark-accent);
+  color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -602,7 +602,7 @@
   height: 44px;
   border-radius: var(--r-2);
   background: var(--ink);
-  color: var(--sidebar-dark-accent);
+  color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -643,8 +643,8 @@
 }
 
 .contactAction:hover {
-  color: var(--sidebar-dark-accent);
-  border-color: var(--sidebar-dark-accent);
+  color: var(--sidebar-accent);
+  border-color: var(--sidebar-accent);
 }
 
 /* ------------------------------------------------------------------ *

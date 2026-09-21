@@ -7,11 +7,60 @@ import { Button } from "@/components/button";
 import { Field } from "@/components/field";
 import { LanguageToggle } from "@/components/language-toggle";
 import { LawMark } from "@/components/law-mark";
-import { PortalLinks } from "@/components/portal-links";
 import { Wordmark } from "@/components/wordmark";
 import { useI18n } from "@/lib/i18n";
 import { PORTAL_ART } from "@/lib/portal-art";
 import type { Role } from "@/lib/roles";
+
+/* ------------------------------------------------------------------ *
+ *  Rotated vertical role label that sits near the bottom-right of the
+ *  left image panel. One short word per portal — the same word that
+ *  used to live in the black "CITIZEN" badge above the Sign in heading
+ *  now reads as a quiet editorial caption on the photograph.
+ *
+ *  The word is rendered as a single span (not character-stacked) and
+ *  rotated -90deg, so visually the letters read from top to bottom as
+ *  the reverse of the source word:
+ *
+ *      CITIZEN → N E Z I T I C
+ *      DLO     → O L D
+ *      LAWYER  → R E Y W A L
+ *
+ *  This matches the brief: do not stack the letters, just rotate the
+ *  word as one element.
+ * ------------------------------------------------------------------ */
+function rotatedLabelFor(roleId: Role["id"]): { en: string; bn: string } {
+  switch (roleId) {
+    case "citizen":
+      return { en: "CITIZEN", bn: "নাগরিক" };
+    case "dlo":
+      return { en: "DLO", bn: "ডিএলও" };
+    case "mediator":
+      return { en: "LALO", bn: "এলএএলও" };
+    case "udc":
+      return { en: "UDC", bn: "ইউডিসি" };
+    case "lawyer":
+      return { en: "LAWYER", bn: "আইনজীবী" };
+    case "helpline":
+      return { en: "16699", bn: "১৬৬৯৯" };
+    case "receiving-authority":
+      return { en: "AUTHORITY", bn: "কর্তৃপক্ষ" };
+    case "case-support":
+      return { en: "CASE SUPPORT", bn: "মামলা সহায়তা" };
+    case "supervisor":
+      return { en: "SUPERVISOR", bn: "তত্ত্বাবধায়ক" };
+    case "finance":
+      return { en: "FINANCE", bn: "অর্থ" };
+    case "appeal":
+      return { en: "APPEAL", bn: "আপিল" };
+    case "committee":
+      return { en: "COMMITTEE", bn: "কমিটি" };
+    case "auditor":
+      return { en: "AUDITOR", bn: "নিরীক্ষক" };
+    case "admin":
+      return { en: "ADMIN", bn: "প্রশাসক" };
+  }
+}
 
 type SignInPortalProps = {
   role: Role;
@@ -67,19 +116,12 @@ export function SignInPortal({ role }: SignInPortalProps) {
           <LanguageToggle onDark />
         </div>
         <LawMark image={art.image} />
+        <RotatedRoleLabel role={role} lang={lang} />
       </div>
 
       <section className={styles.panel}>
         <div className={styles.shell}>
           <div className={styles.header}>
-            <p className={styles.roleChip}>
-              <span
-                className={styles.eyebrowDot}
-                style={{ background: art.accent }}
-                aria-hidden="true"
-              />
-              {role.name[lang]}
-            </p>
             <h1 className={styles.title}>{t("signInTitle")}</h1>
             <p className={styles.supporting}>{role.description[lang]}</p>
           </div>
@@ -90,53 +132,6 @@ export function SignInPortal({ role }: SignInPortalProps) {
             action={role.home}
             method="GET"
           >
-            {role.id === "citizen" ? (
-              <div className={styles.quickFillBox}>
-                <div className={styles.quickFillInfo}>
-                  <span className={styles.quickFillTag}>
-                    {lang === "bn" ? "দ্রুত টেস্ট লগইন" : "Quick test login"}
-                  </span>
-                  <span className={styles.quickFillCreds}>
-                    {lang === "bn"
-                      ? 'মোবাইল: "a" · পাসওয়ার্ড: "a"'
-                      : 'Mobile: "a" · Password: "a"'}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: "var(--s-2)" }}>
-                  <button
-                    type="button"
-                    className={styles.quickFillBtn}
-                    onClick={() => {
-                      setIdentifier("a");
-                      setPassword("a");
-                      setError(null);
-                    }}
-                  >
-                    {lang === "bn" ? "পূরণ করুন" : "Auto-fill"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.quickFillBtn}
-                    onClick={() => {
-                      setIdentifier("a");
-                      setPassword("a");
-                      setError(null);
-                      try {
-                        router.push(role.home);
-                      } catch {
-                        // Fallback
-                      }
-                      if (typeof window !== "undefined") {
-                        window.location.assign(role.home);
-                      }
-                    }}
-                  >
-                    {lang === "bn" ? "সরাসরি প্রবেশ" : "Quick enter"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
             <Field
               id="identifier"
               label={t("mobileNumber")}
@@ -144,7 +139,7 @@ export function SignInPortal({ role }: SignInPortalProps) {
               type={role.id === "citizen" ? "text" : "tel"}
               inputMode={role.id === "citizen" ? "text" : "tel"}
               autoComplete={role.id === "citizen" ? "username" : "tel"}
-              placeholder={role.id === "citizen" ? "a" : t("mobilePlaceholder")}
+              placeholder={t("mobilePlaceholder")}
               value={identifier}
               onChange={(event) => setIdentifier(event.target.value)}
             />
@@ -155,7 +150,6 @@ export function SignInPortal({ role }: SignInPortalProps) {
               name="password"
               type="password"
               autoComplete="current-password"
-              placeholder={role.id === "citizen" ? "a" : undefined}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -170,12 +164,39 @@ export function SignInPortal({ role }: SignInPortalProps) {
               {pending ? t("signingIn") : t("signInAction")}
             </Button>
           </form>
-
-          <PortalLinks current={role} />
         </div>
 
         <footer className={styles.footer}>{t("footer")}</footer>
       </section>
     </main>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Rotated vertical role label — sits inside the left `.art` panel
+ *  near the bottom-right edge. Rendered as a single span rotated
+ *  -90deg so the original word reads as its reverse vertically.
+ *
+ *  No background, no border, no container — it sits on the photograph
+ *  as a quiet editorial caption. The vignette layer above it keeps
+ *  the text legible without obscuring Lady Justice.
+ * ------------------------------------------------------------------ */
+function RotatedRoleLabel({
+  role,
+  lang,
+}: {
+  role: Role;
+  lang: "bn" | "en";
+}) {
+  const label = rotatedLabelFor(role.id);
+  return (
+    <span
+      className={styles.rotatedRole}
+      aria-label={label[lang]}
+      // The text itself is the rotated label — no separate screen
+      // reader copy, no badge, no border, no background.
+    >
+      {label[lang]}
+    </span>
   );
 }

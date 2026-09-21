@@ -1,6 +1,6 @@
-# Res Judicata Digitalis — Shakkho
+# Res Judicata Digitalis — সাক্ষ্য
 
-Shakkho is an evidence-grounded operational layer for Bangladesh legal aid services. It preserves
+সাক্ষ্য is an evidence-grounded operational layer for Bangladesh legal aid services. It preserves
 conflicting operational observations, derives explainable milestone states, and requires an
 authorised, evidence-citing human resolution before a conflict can become resolved. It is neither
 a generic case-management dashboard nor a source of legal advice.

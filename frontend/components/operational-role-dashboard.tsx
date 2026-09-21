@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/button";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { getRole, type Localized, type RoleId } from "@/lib/roles";
+import { HelplineWorkspace } from "@/components/helpline/workspace";
+import { UdcWorkspace } from "@/components/udc/workspace";
 import styles from "./operational-role-dashboard.module.css";
 
 type OperationalRoleId = Exclude<RoleId, "citizen" | "dlo" | "lawyer" | "admin">;
@@ -132,10 +134,24 @@ const value = (copy: Localized, lang: Lang) => copy[lang];
 
 export function OperationalRoleDashboard({ role }: { role: OperationalRoleId }) {
   const { lang } = useI18n();
-  const config = workspaces[role];
-  const roleMeta = getRole(role);
   const [selected, setSelected] = useState<Task | null>(null);
   const [completed, setCompleted] = useState<string[]>([]);
+
+  /* The helpline role has its own dedicated workspace mounted at
+     /dashboard/helpline/page.tsx. We delegate here as a safety net
+     so any other route that still renders this component for helpline
+     shows the new UI instead of the legacy stub. Hooks above must
+     always run; the conditional return is the LAST line. */
+  if (role === "helpline") {
+    return <HelplineWorkspace />;
+  }
+
+  if (role === "udc") {
+    return <UdcWorkspace role={role} />;
+  }
+
+  const config = workspaces[role];
+  const roleMeta = getRole(role);
 
   function complete(reference: string) {
     setCompleted((items) => [...new Set([...items, reference])]);

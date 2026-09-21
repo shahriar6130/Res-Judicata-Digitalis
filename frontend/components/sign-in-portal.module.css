@@ -37,6 +37,61 @@
   gap: var(--s-6);
 }
 
+/* ------------------------------------------------------------------ *
+ *  Rotated vertical role label — large serif caption on the image
+ *  panel. One short word per portal, sitting high enough on the lower
+ *  edge of the image to read as an editorial title rather than a
+ *  watermark.
+ *
+ *  - Anchored on the inner edge of the image (the seam where the image
+ *    meets the form). On the default layout that is the right edge; on
+ *    `.pageArtRight` the image sits in the right column, so the label
+ *    flips to the left edge.
+ *  - White serif type at hero scale; tracking tightened slightly so
+ *    wide letter-spacing that reads elegant at small sizes does not
+ *    feel thin at hero scale.
+ *  - No background, no border, no container.
+ *  - Rotated -90deg as one element (letters are not stacked manually);
+ *    the source word therefore visually reads as its reverse from top
+ *    to bottom (CITIZEN → N E Z I T I C).
+ *  - transform-origin pivots from the inner-bottom corner of the
+ *    unrotated box so the rotated caption grows upward from the inner
+ *    edge regardless of which side the image sits on.
+ * ------------------------------------------------------------------ */
+.rotatedRole {
+  position: absolute;
+  right: var(--s-3);
+  bottom: 280px;
+  z-index: 4;
+  pointer-events: none;
+  transform: rotate(-90deg);
+  transform-origin: 100% 100%;
+  font-family: var(--font-serif, "Playfair Display", Georgia, serif);
+  font-size: var(--t-hero);
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: var(--weight-medium);
+  color: var(--white);
+  opacity: 0.92;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* When the image sits in the right column, the rotated caption must
+   hug the LEFT (inner) edge of the image so it stays adjacent to the
+   form panel — not the outer right edge of the page.
+
+   Every right-column portal currently uses the bright gavel image,
+   whose lightest zone is on the LEFT half. Pull the anchor a bit
+   further right so the white serif lands in the darker shadow area
+   instead of disappearing into the bright reflection. */
+.pageArtRight .rotatedRole {
+  right: auto;
+  left: 160px;
+  transform-origin: 0% 100%;
+}
+
 /* Right: login column */
 .panel {
   display: flex;
@@ -62,27 +117,6 @@
   gap: var(--s-2);
 }
 
-.roleChip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-3);
-  align-self: flex-start;
-  padding: var(--s-2) var(--s-3);
-  background: var(--black);
-  color: var(--white);
-  font-size: var(--t-label);
-  line-height: var(--leading-label);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: var(--weight-bold);
-}
-
-.eyebrowDot {
-  width: var(--s-2);
-  height: var(--s-2);
-  border-radius: var(--r-1);
-}
-
 .title {
   font-size: var(--t-title);
   line-height: var(--leading-title);
@@ -101,59 +135,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-6);
-}
-
-.quickFillBox {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--r-2);
-}
-
-.quickFillInfo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.quickFillTag {
-  display: inline-flex;
-  font-size: var(--t-label);
-  line-height: var(--leading-label);
-  font-weight: var(--weight-semibold);
-  color: var(--black);
-}
-
-.quickFillCreds {
-  font-size: var(--t-label);
-  line-height: var(--leading-label);
-  color: var(--gray);
-  font-family: monospace;
-}
-
-.quickFillBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--s-2) var(--s-4);
-  background: var(--black);
-  color: var(--white);
-  font-size: var(--t-label);
-  line-height: var(--leading-label);
-  font-weight: var(--weight-medium);
-  border: 1px solid var(--black);
-  border-radius: var(--r-2);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity var(--motion-fast) var(--ease);
-}
-
-.quickFillBtn:hover {
-  opacity: 0.85;
 }
 
 .formError {
@@ -190,6 +171,14 @@
     min-height: calc(100dvh - 280px);
     padding: var(--s-12) var(--page-pad) var(--s-6);
   }
+
+  /* On the short stacked image, the rotated caption drops back to a
+     small editorial mark so it does not eat the whole panel. */
+  .rotatedRole {
+    font-size: var(--t-small);
+    letter-spacing: 0.22em;
+    bottom: 64px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -199,5 +188,13 @@
 
   .panel {
     min-height: calc(100dvh - 224px);
+  }
+
+  /* Mobile panel is only 224px tall — clamp the rotated caption so it
+     still fits within the stacked image. */
+  .rotatedRole {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    bottom: 40px;
   }
 }

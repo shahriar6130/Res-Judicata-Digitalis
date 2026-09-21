@@ -1,0 +1,33 @@
+.form {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.form > input {
+  flex: 1 1 280px;
+  min-height: 48px;
+}
+
+.reducedMotion *,
+.reducedMotion *::before,
+.reducedMotion *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+.ok {
+  border: 1px solid var(--black);
+  background: var(--off-white);
+  padding: var(--s-3);
+  font-size: var(--t-small);
+}
+
+.bad {
+  border: 1px solid var(--red);
+  background: var(--off-white);
+  color: var(--red);
+  padding: var(--s-3);
+  font-size: var(--t-small);
+}

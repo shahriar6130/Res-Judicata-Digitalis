@@ -1,30 +1,32 @@
 /* ------------------------------------------------------------------ *
- *  Wordmark — four variants:
+ *  Wordmark — three variants:
  *    default     → name is black, tagline gray (used on white cards)
  *    onDark      → name is white, tagline muted (used on login dark pane)
  *    onSidebar   → name is WHITE inside a dark chip on the light sidebar
  *                  so the brand stays immediately recognizable.
- *    compact     → for the new dark citizen sidebar — pairs a scale icon
- *                  with name + tagline. No card surface (the parent
- *                  sidebar already provides the dark plate).
  * ------------------------------------------------------------------ */
 
 .wordmark {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--s-1);
+  gap: var(--s-2);
 }
 
 .name {
   font-size: var(--t-title);
   font-weight: var(--weight-bold);
-  line-height: 1;
+  /* Slightly taller than 1 so the Bangla "খ" / "শ" descending
+     strokes keep their full cap without getting clipped at the
+     line-box edge. */
+  line-height: 1.1;
   letter-spacing: -0.01em;
   color: var(--black);
+  display: block;
 }
 
 .tagline {
+  display: block;
   font-size: var(--t-label);
   line-height: var(--leading-label);
   color: var(--gray);
@@ -39,7 +41,7 @@
   color: var(--on-black-muted);
 }
 
-/* Light sidebar — keep Shakko in white inside a defined dark plate so it
+/* Light sidebar — keep সাক্ষ্য in white inside a defined dark plate so it
    stays instantly recognizable on the soft gray surface. */
 .onSidebar {
   background: var(--ink);
@@ -50,8 +52,9 @@
 
 .onSidebar .name {
   color: var(--white);
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: 0;
+  line-height: 1.2;
 }
 
 .onSidebar .tagline {
@@ -61,42 +64,69 @@
   text-transform: uppercase;
 }
 
-/* Dark citizen sidebar — horizontal layout with a scale icon badge.
-   Sized to fit a 272px sidebar header without crowding. */
-.compact {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--s-3);
-  color: var(--sidebar-dark-fg);
-  padding: 0;
-  background: transparent;
-}
-
-.compact .text {
+/* Role badge — clear pill that hangs off the wordmark so the user can
+   tell which workspace they're on at a glance. Composed of:
+     • a small accent dot
+     • the workspace label (e.g. "Helpline")
+     • an optional sub-label (e.g. "16699 · Operations")
+   Only renders when the wordmark is given a `roleLabel`. */
+.roleBadge {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
-}
-
-.compact .badge {
-  flex: 0 0 auto;
-  color: var(--sidebar-dark-accent);
-}
-
-.compact .name {
-  color: var(--sidebar-dark-fg);
-  font-size: 19px;
-  font-weight: var(--weight-bold);
-  letter-spacing: -0.005em;
-  line-height: 1;
-}
-
-.compact .tagline {
-  color: var(--sidebar-dark-muted);
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--on-black-muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-black-muted);
   font-size: 11px;
-  letter-spacing: 0.06em;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  line-height: 1.3;
   text-transform: uppercase;
-  line-height: 1.2;
+}
+
+.roleBadgeDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-citizen, var(--yellow));
+  display: inline-block;
+}
+
+.roleBadgeText {
+  letter-spacing: 0.1em;
+}
+
+.roleBadgeSub {
+  font-weight: var(--weight-medium);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 0.85;
+  padding-left: var(--s-2);
+  border-left: 1px solid var(--on-black-muted);
+}
+
+.onSidebar .roleBadge {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.onSidebar .roleBadgeDot {
+  background: var(--yellow);
+}
+
+.onSidebar .roleBadgeSub {
+  border-left-color: rgba(255, 255, 255, 0.35);
+}
+
+/* When a role badge is present, give the wordmark a touch more breathing
+   room and stretch to fill the sidebar brand block. */
+.hasRoleBadge {
+  width: 100%;
+  align-items: stretch;
 }

@@ -5,19 +5,32 @@ import { usePathname } from "next/navigation";
 import { listCitizenCases } from "@/lib/case-demo";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
+import { useDloProfile } from "@/lib/dlo-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
 import {
+  AlertCircle,
   Bell,
   Building,
+  Calendar,
+  Check,
+  Clock,
   FileText,
   HelpingHand,
   Home,
   MoreVertical,
   Phone,
+  Play,
   Scale,
+  Shield,
+  User,
+  Users,
+  Briefcase,
 } from "@/components/icons";
+import type { ComponentType, SVGProps } from "react";
+
+type IconComponent = ComponentType<{ size?: number; "aria-hidden"?: boolean } & SVGProps<SVGSVGElement>>;
 import styles from "./sidebar.module.css";
 
 type SidebarProps = {
@@ -335,37 +348,47 @@ type LegacyNavItem = {
   href: string;
   label: MessageKey;
   key: string;
+  Icon: IconComponent;
 };
 
 const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
+  helpline: [
+    { href: "/dashboard/helpline#dashboard", label: "helplineNavDashboard", key: "dashboard", Icon: Home },
+    { href: "/dashboard/helpline#new-call", label: "helplineNavNewCall", key: "new-call", Icon: Phone },
+    { href: "/dashboard/helpline#new-intake", label: "helplineNavContinueIntake", key: "new-intake", Icon: Play },
+    { href: "/dashboard/helpline#search", label: "helplineNavSearchRecord", key: "search", Icon: FileText },
+    { href: "/dashboard/helpline#handoffs", label: "helplineNavHandoffs", key: "handoffs", Icon: AlertCircle },
+    { href: "/dashboard/helpline#handoffs?filter=dlao", label: "helplineNavDlaoTasks", key: "dlao-tasks", Icon: Briefcase },
+    { href: "/dashboard/helpline#history", label: "helplineNavHistory", key: "history", Icon: Clock },
+    { href: "/dashboard/helpline#accessibility-demo", label: "helplineNavAccessibility", key: "accessibility", Icon: Shield },
+  ],
   dlo: [
-    { href: "/dashboard/dlo", label: "navActionQueue", key: "queue" },
-    { href: "/dashboard/dlo#cases", label: "navCases", key: "cases" },
-    { href: "/dashboard/dlo#queue", label: "navAlerts", key: "alerts" },
-    { href: "/dashboard/dlo#queue", label: "navAssignments", key: "assignments" },
-    { href: "/dashboard/dlo#queue", label: "navTimeline", key: "timeline" },
+    { href: "/dashboard/dlo#case", label: "navCases", key: "case", Icon: Briefcase },
+    { href: "/dashboard/dlo#alerts", label: "navAlerts", key: "alerts", Icon: AlertCircle },
+    { href: "/dashboard/dlo#assignments", label: "navAssignments", key: "assignments", Icon: Check },
+    { href: "/dashboard/dlo#timeline", label: "navTimeline", key: "timeline", Icon: Clock },
   ],
   lawyer: [
-    { href: "/dashboard/lawyer", label: "navAssignedCases", key: "assigned" },
-    { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports" },
-    { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar" },
-    { href: "/dashboard/lawyer#assigned", label: "navProfile", key: "profile" },
+    { href: "/dashboard/lawyer", label: "navAssignedCases", key: "assigned", Icon: Briefcase },
+    { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
+    { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
+    { href: "/dashboard/lawyer#assigned", label: "navProfile", key: "profile", Icon: User },
   ],
   admin: [
-    { href: "/dashboard/admin", label: "navOverview", key: "overview" },
-    { href: "/dashboard/admin#users", label: "navUsers", key: "users" },
-    { href: "/dashboard/admin#rules", label: "navRules", key: "rules" },
-    { href: "/dashboard/admin#overview", label: "navMetrics", key: "metrics" },
-    { href: "/dashboard/admin#audit", label: "navAudit", key: "audit" },
+    { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
+    { href: "/dashboard/admin#users", label: "navUsers", key: "users", Icon: Users },
+    { href: "/dashboard/admin#rules", label: "navRules", key: "rules", Icon: Shield },
+    { href: "/dashboard/admin#overview", label: "navMetrics", key: "metrics", Icon: Building },
+    { href: "/dashboard/admin#audit", label: "navAudit", key: "audit", Icon: Clock },
   ],
 };
 
 function getLegacyItems(role: string): LegacyNavItem[] {
   if (role in LEGACY_NAV) return LEGACY_NAV[role];
   return [
-    { href: `/dashboard/${role}#work`, label: "navActionQueue", key: "work" },
-    { href: `/dashboard/${role}#today`, label: "navOverview", key: "today" },
-    { href: `/dashboard/${role}#history`, label: "navAudit", key: "history" },
+    { href: `/dashboard/${role}#work`, label: "navActionQueue", key: "work", Icon: Briefcase },
+    { href: `/dashboard/${role}#today`, label: "navOverview", key: "today", Icon: Home },
+    { href: `/dashboard/${role}#history`, label: "navAudit", key: "history", Icon: Clock },
   ];
 }
 
@@ -374,19 +397,121 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const { lang, t } = useI18n();
   const items = getLegacyItems(role);
 
+  // DLO is the only legacy role that needs an inline profile panel at
+  // the bottom of the sidebar right now. Other roles fall back to the
+  // wordmark-only chrome.
+  const showProfile = role === "dlo";
+  const profile = useDloProfile();
+
+  // The DLO profile kebab mirrors the citizen sidebar's profile menu.
+  // Click outside / Escape close it so the menu stays dismissable.
+  const [kebabOpen, setKebabOpen] = useState(false);
+  const kebabRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!kebabOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!kebabRef.current) return;
+      if (!kebabRef.current.contains(e.target as Node)) {
+        setKebabOpen(false);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setKebabOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [kebabOpen]);
+
   return (
     <aside
       className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
       <div className={styles.brand}>
-        <Wordmark variant="onSidebar" />
+        <Wordmark
+          variant="onSidebar"
+          roleLabel={getRoleLabel(role)}
+          roleSubLabel={getRoleSubLabel(role)}
+        />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
         <ul className={styles.legacyList}>
           {items.map((item) => renderLegacyItem(item, pathname, onNavigate, t))}
         </ul>
       </nav>
+      {showProfile ? (
+        <div
+          className={styles.legacyProfilePanel}
+          role="group"
+          aria-label={lang === "bn" ? "প্রোফাইল" : "Profile"}
+        >
+          <div className={styles.legacyProfileAvatar} aria-hidden>
+            {profile.initials}
+          </div>
+          <div className={styles.legacyProfileText}>
+            <span className={styles.legacyProfileName}>
+              {lang === "bn" ? profile.nameBn : profile.nameEn}
+            </span>
+            <span className={styles.legacyProfileRole}>
+              {lang === "bn" ? profile.roleBn : profile.roleEn}
+            </span>
+            <span
+              className={styles.legacyProfileStatusInline}
+              aria-label={lang === "bn" ? "লগইন সক্রিয়" : "Signed in"}
+              title={lang === "bn" ? "লগইন সক্রিয়" : "Signed in"}
+            >
+              <span className={styles.legacyProfileStatusDot} aria-hidden />
+              <span className={styles.legacyProfileStatusLabel}>
+                {lang === "bn" ? "লগইন" : "Logged in"}
+              </span>
+            </span>
+          </div>
+          <div className={styles.legacyKebab} ref={kebabRef}>
+            <button
+              type="button"
+              className={styles.legacyKebabBtn}
+              onClick={() => setKebabOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={kebabOpen}
+              aria-label={lang === "bn" ? "প্রোফাইল মেনু" : "Profile menu"}
+            >
+              <MoreVertical size={18} aria-hidden />
+            </button>
+            {kebabOpen ? (
+              <div className={styles.legacyKebabMenu} role="menu">
+                <button
+                  type="button"
+                  className={styles.legacyKebabItem}
+                  role="menuitem"
+                  onClick={() => setKebabOpen(false)}
+                  title={t("profileComingSoon")}
+                >
+                  {t("profileSettings")}
+                  <span className={styles.legacyComingSoonTag}>
+                    {t("profileComingSoon")}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.legacyKebabItem}
+                  role="menuitem"
+                  onClick={() => setKebabOpen(false)}
+                  title={t("profileComingSoon")}
+                >
+                  {t("profileLogout")}
+                  <span className={styles.legacyComingSoonTag}>
+                    {t("profileComingSoon")}
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -403,6 +528,7 @@ function renderLegacyItem(
     currentPath === itemPath &&
     (itemHash === "" || itemHash === currentHash);
 
+  const Icon = item.Icon;
   return (
     <li key={item.key} className={styles.listItem}>
       <button
@@ -410,22 +536,49 @@ function renderLegacyItem(
         className={`${styles.legacyLink} ${isActive ? styles.legacyLinkActive : ""}`}
         onClick={() => {
           onNavigate?.();
-          if (itemHash && currentPath === itemPath) {
-            const nextHash = `#${itemHash}`;
-            if (window.location.hash !== nextHash) {
+          // All legacy items use hash navigation now. Same-path items
+          // just rewrite the hash so the dashboard mirrors the new
+          // workspace — no full reload, no scrolling into hidden
+          // sections (the dashboard replaces the visible workspace).
+          if (itemHash) {
+            if (window.location.hash !== `#${itemHash}`) {
               window.location.hash = itemHash;
+            } else {
+              // Re-clicking the active sidebar item — fire a synthetic
+              // hashchange so subscribers re-render.
+              window.dispatchEvent(new HashChangeEvent("hashchange"));
             }
-            const target = document.getElementById(itemHash);
-            if (target) target.scrollIntoView({ block: "start" });
-          } else {
+          } else if (currentPath !== itemPath) {
             window.location.href = item.href;
           }
         }}
       >
-        {t(item.label)}
+        <span className={styles.legacyIcon} aria-hidden>
+          <Icon size={18} />
+        </span>
+        <span className={styles.legacyLabel}>{t(item.label)}</span>
       </button>
     </li>
   );
+}
+
+/* Role label helpers — surface which workspace the user is on right in
+   the sidebar header. Returns the localised label + sub-label so the
+   wordmark can render them inside a clear pill. */
+function getRoleLabel(role: string): string | undefined {
+  if (role === "helpline") return "Helpline";
+  if (role === "dlo") return "DLO";
+  if (role === "lawyer") return "Lawyer";
+  if (role === "admin") return "Admin";
+  return undefined;
+}
+
+function getRoleSubLabel(role: string): string | undefined {
+  if (role === "helpline") return "16699";
+  if (role === "dlo") return "District";
+  if (role === "lawyer") return "Panel";
+  if (role === "admin") return "System";
+  return undefined;
 }
 
 /* Local `t()` helper — CitizenSidebar uses i18n keys it knows exist

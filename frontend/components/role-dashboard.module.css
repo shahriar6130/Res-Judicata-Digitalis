@@ -11,7 +11,14 @@
 .heroStatus p:last-child { color: var(--gray); max-width: 760px; }
 .state { display: inline-flex; align-items: center; height: fit-content; border: 1px solid var(--black); padding: var(--s-1) var(--s-2); text-transform: uppercase; letter-spacing: .04em; font-size: var(--t-label); white-space: nowrap; }
 .reported, .pending { border-color: var(--gray); color: var(--gray); }
-.missing, .disputed { border-color: var(--red); color: var(--red); font-weight: var(--weight-semibold); }
+/* Critical states — strong red background + white text for the badge
+   so the alert reads at a glance, not just "red text on white". */
+.missing, .disputed {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+  font-weight: var(--weight-semibold);
+}
 .stale { border-style: dashed; color: var(--gray); border-color: var(--gray); }
 .twoColumn { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--s-8); align-items: start; }
 .section, .facts { background: var(--white); border: 1px solid var(--line); padding: var(--s-6); }
@@ -37,17 +44,76 @@
 .udcTab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: var(--s-3) 0; font: inherit; color: var(--gray); cursor: pointer; font-size: var(--t-body); font-weight: var(--weight-medium); }
 .udcTabActive { border-color: var(--black); color: var(--black); font-weight: var(--weight-semibold); }
 
-.queue { background: var(--white); border-top: 1px solid var(--line); }
-.queueHead, .queueRow { width: 100%; display: grid; grid-template-columns: 140px minmax(280px, 1fr) 130px 105px 50px; gap: var(--s-4); align-items: center; text-align: left; padding: var(--s-4); border: 0; border-bottom: 1px solid var(--line); }
+.queue { background: var(--white); border-top: 1px solid var(--black); }
+.queueHead, .queueRow { width: 100%; display: grid; grid-template-columns: 140px minmax(280px, 1fr) 130px 105px 50px; gap: var(--s-4); align-items: center; text-align: left; padding: var(--s-4); border: 0; border-bottom: 1px solid var(--black); }
 .queueHead { color: var(--gray); font-size: var(--t-label); text-transform: uppercase; letter-spacing: .06em; }
 .queueRow { background: var(--white); font: inherit; cursor: pointer; }
 .queueRow:hover { background: var(--off-white); }
 .queueRow strong { font-weight: var(--weight-regular); }
-.priority { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-small); }
-.priority i { width: 8px; height: 8px; border-radius: 50%; background: var(--black); }
-.priority.escalated { color: var(--red); font-weight: var(--weight-semibold); }
-.priority.escalated i { background: var(--red); }
-.priority.watch i { background: var(--yellow); }
+/* Each priority paints the entire row so the colour itself carries
+   the urgency, not just the priority pill. A thin black border runs
+   between rows so adjacent colours don't bleed into each other. */
+.queueRow.escalated {
+  background: var(--red);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.queueRow.escalated strong,
+.queueRow.escalated span { color: var(--white); }
+.queueRow.escalated:hover { background: #c60f0f; }
+
+.queueRow.action {
+  background: var(--ink);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.queueRow.action strong,
+.queueRow.action span { color: var(--white); }
+.queueRow.action:hover { background: #1f1f1f; }
+
+.queueRow.watch {
+  background: var(--yellow);
+  color: var(--ink);
+  border-bottom: 1px solid var(--black);
+}
+.queueRow.watch strong,
+.queueRow.watch span { color: var(--ink); }
+.queueRow.watch:hover { background: #f0c800; }
+
+/* Priority sits flat on the row — no rounded corners, no contrasting
+   background, no border. Text + dot inherit the row's colour so the
+   badge blends into the painted row. */
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-small);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.priority i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.priority.escalated,
+.priority.action,
+.priority.watch {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+}
+.priority.escalated i,
+.priority.action i,
+.priority.watch i { background: currentColor; }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--black); border-bottom: 1px solid var(--line); }
 .metrics > div { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-6); border-right: 1px solid var(--line); }
 .metrics > div:last-child { border-right: 0; }
@@ -64,12 +130,365 @@
 .evidenceCompare article + article { border-left: 1px solid var(--line); }
 .evidenceCompare p { color: var(--gray); }
 
+/* ------------------------------------------------------------------ *
+ *  DLO WordPress-style single workspace.
+ *
+ *  Each sidebar item (Case / Alerts / Assignments / Timeline) renders
+ *  one of these panels; the previously selected one disappears
+ *  entirely. The panel itself owns its own background so it reads as
+ *  a single, focused workspace — not a stacked layout.
+ * ------------------------------------------------------------------ */
+.workspacePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  background: var(--white);
+  border: 1px solid var(--line);
+  padding: var(--s-6);
+}
+
+.workspacePanelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--black);
+}
+
+.workspacePanelHead h2 {
+  font-size: var(--t-section);
+  line-height: var(--leading-section);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+}
+
+.sidePanelCount {
+  font-variant-numeric: tabular-nums;
+  color: var(--gray);
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+}
+
+/* ---- Case detail cards (inside Case workspace) ---- */
+.caseCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--s-6);
+}
+
+.caseCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  background: var(--white);
+  border: 1px solid var(--line);
+  padding: var(--s-6);
+}
+
+.caseCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.caseCardHead h3 {
+  font-size: var(--t-sub);
+  line-height: var(--leading-sub);
+  font-weight: var(--weight-semibold);
+  margin: var(--s-1) 0 0;
+}
+
+.caseCardVs {
+  color: var(--gray);
+  font-weight: var(--weight-regular);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--red);
+  color: var(--white);
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.statusBadgeOk {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.statusBadgeMuted {
+  background: var(--off-white);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.caseCardList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.caseCardList > div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: var(--s-4);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-small);
+}
+
+.caseCardList > div:last-child { border-bottom: 0; }
+.caseCardList dt { color: var(--gray); }
+.caseCardList dd { margin: 0; }
+
+.caseCardDescription {
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+/* ---- Alerts workspace ---- */
+.alertsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.alertRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--black);
+  background: transparent;
+}
+
+.alertRow:last-child { border-bottom: 0; }
+/* Each severity paints the entire alert row — escalated red, action
+   black, watch yellow. A thin black border runs between rows so
+   adjacent colours don't bleed into each other. */
+.alertRow.escalated {
+  background: var(--red);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.alertRow.escalated .alertBody strong,
+.alertRow.escalated .alertBody p,
+.alertRow.escalated .alertBody small { color: var(--white); }
+
+.alertRow.action {
+  background: var(--ink);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.alertRow.action .alertBody strong,
+.alertRow.action .alertBody p,
+.alertRow.action .alertBody small { color: var(--white); }
+
+.alertRow.watch {
+  background: var(--yellow);
+  color: var(--ink);
+  border-bottom: 1px solid var(--black);
+}
+.alertRow.watch .alertBody strong,
+.alertRow.watch .alertBody p,
+.alertRow.watch .alertBody small { color: var(--ink); }
+
+/* Severity sits flat on the row — no rounded corners, no contrasting
+   background, no border. Text inherits the row colour so the badge
+   blends into the painted alert row. */
+.alertSeverity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: fit-content;
+  padding: 0;
+  border-radius: 0;
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-weight: var(--weight-semibold);
+}
+
+.alertSeverity_escalated,
+.alertSeverity_action,
+.alertSeverity_watch {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+}
+
+.alertBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.alertBody strong { font-weight: var(--weight-semibold); line-height: 1.3; }
+.alertBody p { margin: 0; color: var(--gray); font-size: var(--t-small); line-height: 1.5; }
+.alertBody small { color: var(--gray); font-size: var(--t-label); letter-spacing: 0.04em; }
+
+/* ---- Assignments workspace ---- */
+.assignmentsHead {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.6fr) 130px 110px 140px;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--off-white);
+  border-bottom: 1px solid var(--black);
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
+.assignmentsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assignmentRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.6fr) 130px 110px 140px;
+  gap: var(--s-4);
+  align-items: center;
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--black);
+  background: var(--white);
+}
+
+.assignmentRow:last-child { border-bottom: 0; }
+.assignmentRow:hover { background: var(--off-white); }
+/* Each priority paints the whole row — escalated red, action black,
+   watch yellow. A thin black border runs between rows so adjacent
+   colours don't bleed into each other. */
+.assignmentRow.escalated {
+  background: var(--red);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.assignmentRow.escalated:hover { background: #c60f0f; }
+.assignmentRow.escalated .assignmentOfficer,
+.assignmentRow.escalated .assignmentTask,
+.assignmentRow.escalated .assignmentCase,
+.assignmentRow.escalated .assignmentDue { color: var(--white); }
+
+.assignmentRow.action {
+  background: var(--ink);
+  color: var(--white);
+  border-bottom: 1px solid var(--black);
+}
+.assignmentRow.action:hover { background: #1f1f1f; }
+.assignmentRow.action .assignmentOfficer,
+.assignmentRow.action .assignmentTask,
+.assignmentRow.action .assignmentCase,
+.assignmentRow.action .assignmentDue { color: var(--white); }
+
+.assignmentRow.watch {
+  background: var(--yellow);
+  color: var(--ink);
+  border-bottom: 1px solid var(--black);
+}
+.assignmentRow.watch:hover { background: #f0c800; }
+.assignmentRow.watch .assignmentOfficer,
+.assignmentRow.watch .assignmentTask,
+.assignmentRow.watch .assignmentCase,
+.assignmentRow.watch .assignmentDue { color: var(--ink); }
+
+.assignmentOfficer { font-weight: var(--weight-semibold); }
+.assignmentTask { color: var(--ink); line-height: 1.4; }
+.assignmentCase { font-variant-numeric: tabular-nums; color: var(--gray); font-size: var(--t-small); }
+.assignmentDue { font-size: var(--t-small); color: var(--ink); white-space: nowrap; }
+
+/* ---- Timeline workspace ---- */
+.timelineList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  /* Thin connecting line through the dot rail of every entry. */
+  border-left: 1px solid var(--line);
+  padding-left: var(--s-6);
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.timelineItem:last-child { border-bottom: 0; }
+
+/* The little connector dot on the rail. */
+.timelineItem::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--s-6) - 4px);
+  top: 22px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--white);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.timelineTime {
+  font-variant-numeric: tabular-nums;
+  color: var(--gray);
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  padding-top: 4px;
+}
+
+.timelineBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.timelineBody strong { font-weight: var(--weight-semibold); line-height: 1.3; }
+.timelineBody small { color: var(--gray); font-size: var(--t-label); }
+
 @media (max-width: 1024px) {
   .queueHead { display: none; }
   .queueRow { grid-template-columns: 140px 1fr; }
   .queueRow > :nth-child(n+3) { grid-column: 2; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
   .twoColumn { grid-template-columns: 1fr; }
+  .assignmentsHead { display: none; }
+  .assignmentRow {
+    grid-template-columns: 1fr;
+    gap: var(--s-2);
+  }
+  .assignmentRow > * { grid-column: 1; }
 }
 @media (max-width: 640px) {
   .page { gap: var(--s-8); }
@@ -84,4 +503,7 @@
   .evidenceCompare { grid-template-columns: 1fr; }
   .evidenceCompare article + article { border-left: 0; border-top: 1px solid var(--line); }
   .dialog { padding: var(--s-6) var(--s-4); }
+  .alertRow { grid-template-columns: 1fr; gap: var(--s-2); }
+  .timelineItem { grid-template-columns: 1fr; gap: 4px; }
+  .caseCardList > div { grid-template-columns: 1fr; gap: 2px; }
 }

@@ -12,7 +12,7 @@ flows remain governed by `docs/PRD/PRD.md`.
 | Panel lawyer | `/lawyer` | `/dashboard/lawyer` | Accept work and submit the next structured update |
 | Administrator | `/admin` | `/dashboard/admin` | Inspect operations and draft versioned policy changes |
 
-Successful prototype sign-in routes directly to the matching dashboard.
+Successful prototype sign-in routes directly to the matching dashboard. For citizen evaluation, the prototype provides quick test credentials (mobile: `a`, password: `a`) with one-click **Auto-fill** and direct **Quick enter** actions.
 
 ## Functional requirements
 
@@ -65,3 +65,4 @@ Successful prototype sign-in routes directly to the matching dashboard.
 - [x] Consequential resolution is not simulated as a successful save.
 - [x] Colours and fonts come exclusively from shared tokens.
 - [x] Queue rows and evidence layouts stack without horizontal page overflow.
+- [x] Sign-in portals render visible, responsive law-mark imagery with vignette framing and grid overlay.

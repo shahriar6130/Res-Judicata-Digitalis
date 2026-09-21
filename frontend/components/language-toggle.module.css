@@ -1,59 +1,32 @@
-/* ------------------------------------------------------------------ *
- *  Language toggle — compact WordPress-style segmented pill.
- *  Used in the dashboard top header (small, always visible, never the
- *  primary citizen action). Active option gets a fully-filled gray
- *  pill; inactive stays subtle.
- * ------------------------------------------------------------------ */
-
-/* Light surface — default */
 .bar {
   display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--line);
-  background: var(--white);
-  border-radius: var(--r-1);
-  padding: 1px;
-  gap: 1px;
+  align-items: center;
+  gap: var(--s-2);
 }
 
 .item {
-  flex: 1 1 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0 var(--s-3);
+  padding: var(--s-1) var(--s-2);
   border: 0;
   background: transparent;
-  font-family: inherit;
   font-size: var(--t-label);
-  line-height: 1.2;
+  line-height: var(--leading-label);
   color: var(--gray);
   cursor: pointer;
-  border-radius: 2px;
-  font-weight: var(--weight-medium);
-  transition: background var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease);
+  transition: color var(--motion-fast) var(--ease);
 }
 
 .item:hover {
-  color: var(--black);
+  color: var(--ink);
+}
+
+.item + .item {
+  padding-left: var(--s-3);
+  border-left: 1px solid var(--line);
 }
 
 .active {
-  background: var(--line);
   color: var(--black);
   font-weight: var(--weight-semibold);
-}
-
-.active:hover {
-  background: var(--line);
-  color: var(--black);
-}
-
-/* Dark surface — for the sign-in portal art pane */
-.onDark {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--line-on-black);
 }
 
 .onDark .item {
@@ -65,12 +38,9 @@
 }
 
 .onDark .active {
-  background: var(--white);
-  color: var(--black);
-  font-weight: var(--weight-semibold);
+  color: var(--white);
 }
 
-.onDark .active:hover {
-  background: var(--white);
-  color: var(--black);
+.onDark .item + .item {
+  border-left-color: var(--line-on-black);
 }

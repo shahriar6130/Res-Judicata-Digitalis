@@ -1,0 +1,55 @@
+{
+  "tenant_id": "shakkho-dev-tenant",
+  "citizens": [
+    {
+      "id": "citizen-rahim-01",
+      "mobile": "a",
+      "password": "a",
+      "name_bn": "মোঃ আব্দুর রহিম",
+      "name_en": "Md. Abdur Rahim",
+      "case_reference": "DLO-DHK-2026-0842"
+    }
+  ],
+  "office": {
+    "id": "OFFICE-DHK-CENTRAL",
+    "name_bn": "জেলা আইনি সহায়তা কার্যালয়, ঢাকা",
+    "name_en": "District Legal Aid Office, Dhaka",
+    "district": "Dhaka",
+    "division": "Dhaka"
+  },
+  "cases": [
+    {
+      "case_reference": "DLO-DHK-2026-0842",
+      "official_id": "APP-2026-00192",
+      "pathway": "LITIGATION",
+      "priority": "HIGH",
+      "status": "ACTIVE",
+      "status_sentence_bn": "প্যানেল আইনজীবী নিযুক্ত হয়েছেন এবং পরবর্তী শুনানির তারিখ ধার্য করা হয়েছে।",
+      "status_sentence_en": "Panel lawyer assigned; next court hearing date scheduled.",
+      "observations": [
+        {
+          "field_key": "HEARING_DATE",
+          "raw_value": "2026-09-24",
+          "source_role": "CITIZEN",
+          "source_actor_id": "citizen-rahim-01",
+          "channel": "WEB_PWA"
+        },
+        {
+          "field_key": "HEARING_DATE",
+          "raw_value": "2026-09-28",
+          "source_role": "LAWYER",
+          "source_actor_id": "lawyer-tanvir-01",
+          "channel": "WEB_PWA"
+        }
+      ],
+      "promises": [
+        {
+          "task_type": "COURT_ATTENDANCE_REPORT",
+          "owner_role": "LAWYER",
+          "due_at": "2026-09-25T17:00:00Z",
+          "state": "PENDING"
+        }
+      ]
+    }
+  ]
+}

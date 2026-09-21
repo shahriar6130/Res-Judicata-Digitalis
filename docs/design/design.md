@@ -14,6 +14,15 @@ All colours, type sizes, spacing, radii, and motion values come from `frontend/a
 Playfair Display and Noto Serif Bengali form the one permitted font stack. Bangla is the default;
 the text toggle changes the entire visible interface to English and persists the choice.
 
+## Sign-in portals and art treatment
+
+- Sign-in portals split into two columns (stacked on mobile/tablet): a dark art pane with the law-mark imagery and a clean form pane.
+- The law-mark component (`components/law-mark.tsx`) displays high-resolution legal emblem imagery using `object-fit: cover` at `--lawmark-opacity` (0.78).
+- A subtle vertical vignette gradient ensures high contrast for the top-bar Wordmark and language toggle, while retaining clear visibility of the central justice sculpture.
+- A geometric hairline grid (`--grid-line`, `--grid-size`) overlays the art pane, maintaining the technical editorial aesthetic.
+- Each role portal alternates image and side layout (left vs right) along with its distinctive role accent chip.
+- For testing convenience, the Citizen sign-in portal (`/`) provides a quick-test credential prompt (`mobile: "a"`, `password: "a"`) with **Auto-fill** and **Quick enter** buttons that immediately navigate to `/dashboard/citizen`.
+
 ## Shared dashboard shell
 
 - Desktop uses a sticky 240px black sidebar and a centered content region up to 1280px.

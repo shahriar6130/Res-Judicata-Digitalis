@@ -77,8 +77,8 @@
   --line-on-black: #4d4d4d;
 
   /* Law-mark image (login art pane) */
-  --lawmark-opacity: 0.38;
-  --grid-line: rgba(255, 255, 255, 0.06);
+  --lawmark-opacity: 0.78;
+  --grid-line: rgba(255, 255, 255, 0.08);
   --grid-size: 54px;
 
   /* Role accents (RGB) — sign-in role chip */

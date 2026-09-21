@@ -1,0 +1,157 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Shakkho Legal Aid API",
+    "version": "0.1.0",
+    "description": "Evidence-grounded operational API for Bangladesh Legal Aid Services (Shakkho). Preserves conflicting observations, reconciles milestones, and connects to Supabase PostgreSQL."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Health Check",
+        "description": "Verify backend system status, Supabase database connection, and API client readiness.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/db": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Database Ping",
+        "description": "Specific endpoint testing direct query ping to Supabase PostgreSQL.",
+        "operationId": "database_ping_health_db_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/cases": {
+      "get": {
+        "tags": ["Cases"],
+        "summary": "List Cases",
+        "description": "Retrieve operational cases from Supabase PostgreSQL or active fixtures.",
+        "operationId": "list_cases_cases_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/cases/{case_ref}": {
+      "get": {
+        "tags": ["Cases"],
+        "summary": "Get Case Detail",
+        "description": "Retrieve single case with explainable timeline and milestone progression.",
+        "operationId": "get_case_detail_cases__case_ref__get",
+        "parameters": [
+          {
+            "name": "case_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Case not found"
+          }
+        }
+      }
+    },
+    "/observations": {
+      "post": {
+        "tags": ["Evidence Observations"],
+        "summary": "Record Observation",
+        "description": "Record an operational observation without assuming the latest value is true. Preserves competing claims and triggers deterministic reconciliation.",
+        "operationId": "record_observation_observations_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateObservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Observation registered"
+          }
+        }
+      }
+    },
+    "/resolutions": {
+      "post": {
+        "tags": ["Authoritative Decisions"],
+        "summary": "Submit Resolution",
+        "description": "Authoritative DLAO resolution gate. Explicitly returns HTTP 501 in Phase 1.",
+        "operationId": "submit_resolution_resolutions_post",
+        "responses": {
+          "501": {
+            "description": "Not implemented in Phase 1"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DatabaseDiagnostic": {
+        "type": "object",
+        "properties": {
+          "configured": { "type": "boolean" },
+          "connected": { "type": "boolean" },
+          "message": { "type": "string" },
+          "latency_ms": { "type": "number" },
+          "pooler_mode": { "type": "string" }
+        },
+        "required": ["configured", "connected", "message"]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "version": { "type": "string" },
+          "environment": { "type": "string" },
+          "database": { "$ref": "#/components/schemas/DatabaseDiagnostic" },
+          "supabase_client_ready": { "type": "boolean" },
+          "timestamp": { "type": "string" }
+        },
+        "required": ["status", "version", "environment", "database", "supabase_client_ready", "timestamp"]
+      },
+      "CreateObservationRequest": {
+        "type": "object",
+        "properties": {
+          "case_id": { "type": "string" },
+          "field_key": { "type": "string" },
+          "raw_value": { "type": "string" },
+          "source_role": { "type": "string" },
+          "source_actor_id": { "type": "string" },
+          "channel": { "type": "string", "default": "WEB_PWA" }
+        },
+        "required": ["case_id", "field_key", "raw_value", "source_role", "source_actor_id"]
+      }
+    }
+  }
+}

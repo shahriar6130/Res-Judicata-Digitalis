@@ -30,18 +30,20 @@ Each role signs in from its own URL; after sign-in the app lands directly on tha
 | Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/dashboard/lawyer` | `/dashboard/lawyer` |
 | Administrator (প্রশাসক) | `/admin` | `/dashboard/admin` | `/dashboard/admin` |
 
+*Quick test login:* For fast evaluation on `/` (Citizen), quick-test credentials (Mobile: `a`, Password: `a`) are provided with **Auto-fill** and direct **Quick enter** buttons.
+
 Each portal links to the other three. Role names, descriptions and routes live in `lib/roles.ts`.
 Every role signs in with a **mobile number and a password**; both are required before the primary
 action becomes available. Sign-in portals split into two panes: a black art pane with the law-mark
-(a grayscale, low-opacity image under a white hairline grid — `components/law-mark.tsx`) and a login
+(a clear, high-contrast law emblem image rendered via `components/law-mark.tsx` with `object-fit: cover`, `--lawmark-opacity` token, a soft protective vignette, and a geometric hairline grid) and a login
 pane. **Each role has its own art treatment** so the entry points are easily distinguished:
 `lib/portal-art.ts` picks the image (from `assets/`), the side (left or right), and the **RGB accent
 colour** per role (`--accent-citizen` blue, `--accent-dlo` red, `--accent-lawyer` green,
 `--accent-admin` violet), and the login pane leads with a **bold white-on-black role-chip** naming
 the end.
 
-**Dashboard** (`/dashboard/{citizen|dlo|lawyer|admin}`): WordPress-style layout with a black
-left sidebar (240px, sticky) containing role-specific navigation, Wordmark, and a "Simulated"
+**Dashboard** (`/dashboard/{role}`): WordPress-style layout with a black
+left sidebar (240px, sticky) containing role-specific navigation for core roles (citizen, dlo, lawyer, admin) and operational roles, Wordmark, and a "Simulated"
 section (clock/SMS/court/scenario/reset). Content area is off-white, max-width 1280px, centered.
 Header has hamburger menu (mobile) and language toggle. Mobile: sidebar slides in via overlay.
 Navigation labels from i18n (Bangla/English). The role pages are implemented in

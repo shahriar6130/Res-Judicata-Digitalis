@@ -215,9 +215,9 @@ flowchart LR
 
 | Concern | Prototype decision | Production seam |
 |---|---|---|
-| UI | Existing Next.js 16 App Router frontend, TypeScript, React, CSS tokens | Separate CDN/edge delivery if needed |
-| API | Server-only Next.js route handlers/actions with domain services | Domain modules can move behind FastAPI/other service without changing contracts |
-| Database | PostgreSQL; tenant, office and case scope on every protected row | Managed HA PostgreSQL, read replicas, partitioning |
+| UI | Existing Next.js 16 App Router frontend, TypeScript, React, CSS tokens (decoupled from Supabase) | Separate CDN/edge delivery if needed |
+| API | FastAPI service (`backend/apps/api`) with Pydantic contracts and pure reconciliation domain | High-performance asynchronous API endpoints |
+| Database | Supabase (PostgreSQL) with connection pooling (port 6543/5432); tenant, office and case scope on every protected row | Managed HA PostgreSQL, Supavisor connection pooling, read replicas, partitioning |
 | Files | Private object storage; database stores metadata/hash only | Government-approved object store and malware scanning |
 | Offline | Service worker + IndexedDB encrypted with AES-GCM | Managed device policy and approved key management |
 | Crypto | WebCrypto/SHA-256; ECDSA P-256 for T11 | Approved PKI, identity proofing and signing authority |

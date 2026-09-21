@@ -8,7 +8,6 @@ import { OperationalRoleDashboard } from "@/components/operational-role-dashboar
 import { useI18n, type Lang } from "@/lib/i18n";
 import type { RoleId } from "@/lib/roles";
 import styles from "./role-dashboard.module.css";
-import citizenStyles from "./citizen-dashboard.module.css";
 
 type Copy = { bn: string; en: string };
 const copy = (value: Copy, lang: Lang) => value[lang];
@@ -59,132 +58,62 @@ function State({ value }: { value: "verified" | "reported" | "pending" | "disput
   return <span className={`${styles.state} ${styles[value]}`}>{value.replace("_", " ")}</span>;
 }
 
-// Citizen view — easy, calm, large. General users see this; it is deliberately
-// the most readable view in the app. Uses its own CSS module so the operational
-// role dashboards stay compact.
-const citizenCopy = {
-  statusLabel: { bn: "মামলা SHK-DEMO-007", en: "Case SHK-DEMO-007" },
-  verifiedHeading: { bn: "পরবর্তী শুনানি ৩০ সেপ্টেম্বর ২০২৬", en: "Next hearing: 30 September 2026" },
-  verifiedBody: {
-    bn: "তারিখটি আদালতের নথি দেখে যাচাই করা হয়েছে। সকাল ১০টার মাঝে জেলা আদালতে উপস্থিত থাকুন।",
-    en: "The date was verified against a court record. Arrive at the District Court by 10:00 AM.",
-  },
-  tabCases: { bn: "আমার মামলা", en: "My case" },
-  tabMessages: { bn: "বার্তা", en: "Message" },
-  tabProfile: { bn: "মামলার তথ্য", en: "Case details" },
-  tabHelp: { bn: "সাহায্য", en: "Get help" },
-  messageLabel: { bn: "সর্বশেষ বার্তা", en: "Latest message" },
-  messageHeading: { bn: "পরবর্তী পদক্ষেপ নিশ্চিত করুন", en: "Confirm your next step" },
-  messageBody: {
-    bn: "আপনার শুনানির তারিখ ৩০ সেপ্টেম্বর। এই তথ্যটি কি আপনার জানা তথ্যের সঙ্গে মেলে?",
-    en: "Your hearing date is 30 September. Does this match the information you have?",
-  },
-  confirm: { bn: "হ্যাঁ, তথ্য ঠিক আছে", en: "Yes, this is correct" },
-  dispute: { bn: "না, তথ্যটি ভুল", en: "No, this is wrong" },
-  callback: { bn: "আমাকে ফোন করুন", en: "Call me back" },
-  factsHeading: { bn: "মামলার তথ্য", en: "Case details" },
-  status: { bn: "অবস্থা", en: "Status" },
-  statusValue: { bn: "আইনি সহায়তা চলমান", en: "Legal aid active" },
-  lawyer: { bn: "আইনজীবী", en: "Lawyer" },
-  lawyerValue: { bn: "ফারহানা রহমান", en: "Farhana Rahman" },
-  nextAction: { bn: "পরবর্তী কাজ", en: "Next action" },
-  nextActionValue: { bn: "শুনানিতে উপস্থিতি", en: "Attend hearing" },
-  view: { bn: "প্রমাণ দেখুন", en: "View source" },
-  viewLess: { bn: "প্রমাণ লুকান", en: "Hide source" },
-  evidence: {
-    bn: "উৎস: সিমুলেটেড আদালত নথি · ধারণ: ২০ সেপ্টেম্বর ২০২৬ · নীতি: hearing-date/v1",
-    en: "Source: simulated court record · captured 20 Sep 2026 · policy: hearing-date/v1",
-  },
-  helpHeading: { bn: "সাহায্য দরকার?", en: "Need help?" },
-  helpBody: {
-    bn: "যেকোনো প্রশ্নে ১৬৬৯৯ নম্বরে কল করুন অথবা নিচের বোতামে চাপ দিয়ে আমাদের জানান — আমরাই আপনাকে ফোন করব।",
-    en: "Call 16699 for any question, or tap the button below and we will call you back.",
-  },
-  confirmSuccess: { bn: "আপনার নিশ্চিতকরণ নথিভুক্ত হয়েছে।", en: "Your confirmation was recorded." },
-  disputeSuccess: { bn: "বিষয়টি কর্মকর্তার পর্যালোচনার জন্য পাঠানো হয়েছে।", en: "This was sent to an officer for review." },
-  callbackSuccess: { bn: "ফোন করার অনুরোধ নথিভুক্ত হয়েছে।", en: "Your callback request was recorded." },
-};
-
-// Tab keys match the URL hash destinations on the citizen sidebar.
-// "cases" is the default landing tab.
-type CitizenTab = "cases" | "messages" | "profile" | "help" | "complaint";
-
-const TAB_HASH: Record<CitizenTab, string> = {
-  cases: "#cases",
-  messages: "#messages",
-  profile: "#profile",
-  help: "#help",
-  complaint: "#complaint",
-};
-
-function readHashTab(): CitizenTab {
-  if (typeof window === "undefined") return "cases";
-  const raw = window.location.hash.replace(/^#/, "");
-  if (raw === "messages" || raw === "profile" || raw === "help" || raw === "complaint") return raw;
-  return "cases";
-}
-
 function CitizenDashboard({ lang }: { lang: Lang }) {
   const [reply, setReply] = useState<"confirm" | "dispute" | "callback" | null>(null);
   const [details, setDetails] = useState(false);
-  // Active tab is driven by the URL hash so the sidebar acts as the tab bar
-  // and the same in-page anchor links work.
-  const [tab, setTab] = useState<CitizenTab>("cases");
+  // WordPress-style tab switcher. Active tab is driven by the URL hash so
+  // the sidebar acts as the tab bar; only the active panel renders.
+  type Tab = "cases" | "messages" | "profile" | "help" | "complaint";
+  const [tab, setTab] = useState<Tab>("cases");
   useEffect(() => {
     function sync() {
-      setTab(readHashTab());
+      const raw = window.location.hash.replace(/^#/, "");
+      if (raw === "messages" || raw === "profile" || raw === "help" || raw === "complaint") {
+        setTab(raw);
+      } else {
+        setTab("cases");
+      }
     }
     sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
-  function selectTab(next: CitizenTab) {
-    // Update the URL hash so deep-links/back-button work and the sidebar
-    // active state stays in sync. We use replaceState + a synthetic
-    // hashchange so the React state catches up without a full nav.
-    history.replaceState(null, "", TAB_HASH[next] + window.location.search);
+  function selectTab(next: Tab) {
+    history.replaceState(null, "", `#${next}`);
     setTab(next);
   }
-  const c = (k: keyof typeof citizenCopy) => copy(citizenCopy[k], lang);
+  const tabs: { id: Tab; label: string; isComplaint?: boolean }[] = [
+    { id: "cases", label: lang === "bn" ? "আমার মামলা" : "My case" },
+    { id: "messages", label: lang === "bn" ? "বার্তা" : "Message" },
+    { id: "profile", label: lang === "bn" ? "মামলার তথ্য" : "Case details" },
+    { id: "help", label: lang === "bn" ? "সাহায্য" : "Get help" },
+    { id: "complaint", label: lang === "bn" ? "অভিযোগ" : "Complaint", isComplaint: true },
+  ];
 
   return (
-    <div className={citizenStyles.page}>
-      <p className={citizenStyles.prototypeNote}>
-        <span className={citizenStyles.simTag}>{copy(labels.simulated, lang)}</span>
-        {lang === "bn"
-          ? "প্রোটোটাইপ তথ্য · ঘড়ি, এসএমএস ও আদালতের তথ্য বাস্তব নয়"
-          : "Prototype data · clock, SMS, and court records are not live"}
-      </p>
+    <div className={styles.page}>
+      <PrototypeNote lang={lang} />
+      <PageHeader
+        eyebrow={lang === "bn" ? "নাগরিক পোর্টাল" : "Citizen portal"}
+        title={lang === "bn" ? "আপনার আইনি সহায়তা" : "Your legal aid"}
+        intro={lang === "bn" ? "যাচাইকৃত পরবর্তী পদক্ষেপ দেখুন এবং কোনো তথ্য ভুল হলে জানান।" : "See the verified next step and tell the office when something is wrong."}
+      />
 
-      <header className={citizenStyles.pageHeader}>
-        <p className={citizenStyles.eyebrow}>{lang === "bn" ? "নাগরিক পোর্টাল" : "Citizen portal"}</p>
-        <h1>{lang === "bn" ? "আপনার আইনি সহায়তা" : "Your legal aid"}</h1>
-        <p className={citizenStyles.intro}>
-          {lang === "bn"
-            ? "যাচাইকৃত পরবর্তী পদক্ষেপ দেখুন এবং কোনো তথ্য ভুল হলে জানান।"
-            : "See the verified next step and tell the office when something is wrong."}
-        </p>
-      </header>
-
-      {/* WordPress-style tab strip — only the active panel renders below. */}
-      <nav className={citizenStyles.tabs} role="tablist" aria-label={lang === "bn" ? "বিভাগ" : "Sections"}>
-        {(
-          [
-            { id: "cases", label: c("tabCases") },
-            { id: "messages", label: c("tabMessages") },
-            { id: "profile", label: c("tabProfile") },
-            { id: "help", label: c("tabHelp") },
-            { id: "complaint", label: lang === "bn" ? "অভিযোগ" : "Complaint" },
-          ] as { id: CitizenTab; label: string }[]
-        ).map((t) => (
+      <nav
+        className={styles.tabs}
+        role="tablist"
+        aria-label={lang === "bn" ? "নাগরিক বিভাগ" : "Citizen sections"}
+      >
+        {tabs.map((t) => (
           <button
             key={t.id}
+            id={`citizen-tab-${t.id}`}
             role="tab"
+            type="button"
             aria-selected={tab === t.id}
             aria-controls={`citizen-panel-${t.id}`}
-            id={`citizen-tab-${t.id}`}
             tabIndex={tab === t.id ? 0 : -1}
-            className={`${citizenStyles.tab} ${tab === t.id ? citizenStyles.tabActive : ""}`}
+            className={`${styles.tab} ${tab === t.id ? styles.tabActive : ""} ${t.isComplaint ? styles.complaintLink : ""}`}
             onClick={() => selectTab(t.id)}
           >
             {t.label}
@@ -195,40 +124,65 @@ function CitizenDashboard({ lang }: { lang: Lang }) {
       {tab === "cases" ? (
         <section
           id="cases"
+          key="cases"
           role="tabpanel"
           aria-labelledby="citizen-tab-cases"
-          className={citizenStyles.heroStatus}
+          className={styles.heroStatus}
         >
-          <div className={citizenStyles.heroStatusTop}>
-            <p className={citizenStyles.sectionLabel}>{c("statusLabel")}</p>
-            <State value="verified" />
+          <div>
+            <p className={styles.sectionLabel}>{lang === "bn" ? "মামলা SHK-DEMO-007" : "Case SHK-DEMO-007"}</p>
+            <h2>{lang === "bn" ? "পরবর্তী শুনানি ৩০ সেপ্টেম্বর ২০২৬" : "Next hearing: 30 September 2026"}</h2>
+            <p>{lang === "bn" ? "তারিখটি আদালতের নথি দেখে যাচাই করা হয়েছে। সকাল ১০টার মাঝে জেলা আদালতে উপস্থিত থাকুন।" : "The date was verified against a court record. Arrive at the District Court by 10:00 AM."}</p>
           </div>
-          <h2>{c("verifiedHeading")}</h2>
-          <p>{c("verifiedBody")}</p>
+          <State value="verified" />
         </section>
       ) : null}
 
       {tab === "messages" ? (
         <section
           id="messages"
+          key="messages"
           role="tabpanel"
           aria-labelledby="citizen-tab-messages"
-          className={`${citizenStyles.card} ${citizenStyles.cardSplit}`}
+          className={styles.section}
         >
-          <div>
-            <p className={citizenStyles.sectionLabel}>{c("messageLabel")}</p>
-            <h2>{c("messageHeading")}</h2>
-            <p className={citizenStyles.message}>{c("messageBody")}</p>
-            {reply ? (
-              <p role="status" className={citizenStyles.success}>
-                {reply === "confirm" ? c("confirmSuccess") : reply === "dispute" ? c("disputeSuccess") : c("callbackSuccess")}
-              </p>
-            ) : null}
-            <div className={citizenStyles.actions}>
-              <Button onClick={() => setReply("confirm")}>{c("confirm")}</Button>
-              <Button variant="secondary" onClick={() => setReply("dispute")}>{c("dispute")}</Button>
-              <button className={citizenStyles.textButton} onClick={() => setReply("callback")}>{c("callback")}</button>
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionLabel}>{lang === "bn" ? "সর্বশেষ বার্তা" : "Latest message"}</p>
+              <h2>{lang === "bn" ? "পরবর্তী পদক্ষেপ নিশ্চিত করুন" : "Confirm your next step"}</h2>
             </div>
+            <span className={styles.simTag}>{copy(labels.simulated, lang)}</span>
+          </div>
+          <p className={styles.message}>
+            {lang === "bn"
+              ? "আপনার শুনানির তারিখ ৩০ সেপ্টেম্বর। এই তথ্যটি কি আপনার জানা তথ্যের সঙ্গে মেলে?"
+              : "Your hearing date is 30 September. Does this match the information you have?"}
+          </p>
+          {reply ? (
+            <p role="status" className={styles.success}>
+              {reply === "confirm"
+                ? lang === "bn"
+                  ? "আপনার নিশ্চিতকরণ নথিভুক্ত হয়েছে।"
+                  : "Your confirmation was recorded."
+                : reply === "dispute"
+                ? lang === "bn"
+                  ? "বিষয়টি কর্মকর্তার পর্যালোচনার জন্য পাঠানো হয়েছে।"
+                  : "This was sent to an officer for review."
+                : lang === "bn"
+                ? "ফোন করার অনুরোধ নথিভুক্ত হয়েছে।"
+                : "Your callback request was recorded."}
+            </p>
+          ) : null}
+          <div className={styles.actions}>
+            <Button onClick={() => setReply("confirm")}>
+              {lang === "bn" ? "তথ্য ঠিক আছে" : "Confirm"}
+            </Button>
+            <Button variant="secondary" onClick={() => setReply("dispute")}>
+              {lang === "bn" ? "তথ্যটি ভুল" : "Dispute"}
+            </Button>
+            <button className={styles.textButton} onClick={() => setReply("callback")}>
+              {lang === "bn" ? "আমাকে ফোন করুন" : "Request a call"}
+            </button>
           </div>
         </section>
       ) : null}
@@ -236,42 +190,83 @@ function CitizenDashboard({ lang }: { lang: Lang }) {
       {tab === "profile" ? (
         <aside
           id="profile"
+          key="profile"
           role="tabpanel"
           aria-labelledby="citizen-tab-profile"
-          className={`${citizenStyles.card} ${citizenStyles.facts}`}
-          aria-label={c("factsHeading")}
+          className={styles.facts}
         >
-          <h2>{c("factsHeading")}</h2>
+          <h2>{lang === "bn" ? "মামলার তথ্য" : "Case facts"}</h2>
           <dl>
-            <div><dt>{c("status")}</dt><dd>{c("statusValue")}</dd></div>
-            <div><dt>{c("lawyer")}</dt><dd>{c("lawyerValue")}</dd></div>
-            <div><dt>{c("nextAction")}</dt><dd>{c("nextActionValue")}</dd></div>
+            <div>
+              <dt>{lang === "bn" ? "নাগরিক" : "Citizen"}</dt>
+              <dd>{lang === "bn" ? "মোঃ আব্দুর রহিম (মোবাইল: a)" : "Md. Abdur Rahim (Mobile: a)"}</dd>
+            </div>
+            <div>
+              <dt>{lang === "bn" ? "অবস্থা" : "Status"}</dt>
+              <dd>{lang === "bn" ? "আইনি সহায়তা চলমান" : "Legal aid active"}</dd>
+            </div>
+            <div>
+              <dt>{lang === "bn" ? "আইনজীবী" : "Lawyer"}</dt>
+              <dd>{lang === "bn" ? "ফারহানা রহমান" : "Farhana Rahman"}</dd>
+            </div>
+            <div>
+              <dt>{lang === "bn" ? "পরবর্তী কাজ" : "Next action"}</dt>
+              <dd>{lang === "bn" ? "শুনানিতে উপস্থিতি" : "Attend hearing"}</dd>
+            </div>
           </dl>
-          <button className={citizenStyles.textButton} onClick={() => setDetails(!details)}>
-            {details ? c("viewLess") : c("view")}
+          <button className={styles.textButton} onClick={() => setDetails(!details)}>
+            {copy(labels.view, lang)}
           </button>
-          {details ? <p className={citizenStyles.evidence}>{c("evidence")}</p> : null}
+          {details ? (
+            <p className={styles.evidence}>
+              {lang === "bn"
+                ? "উৎস: সিমুলেটেড আদালত নথি · ধারণ: ২০ সেপ্টেম্বর ২০২৬ · নীতি: hearing-date/v1"
+                : "Source: simulated court record · captured 20 Sep 2026 · policy: hearing-date/v1"}
+            </p>
+          ) : null}
         </aside>
       ) : null}
 
       {tab === "help" ? (
         <section
           id="help"
+          key="help"
           role="tabpanel"
           aria-labelledby="citizen-tab-help"
-          className={citizenStyles.help}
+          className={styles.section}
         >
-          <h3>{c("helpHeading")}</h3>
-          <p>{c("helpBody")}</p>
-          <div className={citizenStyles.actions}>
-            <Button onClick={() => setReply("callback")}>{c("callback")}</Button>
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.sectionLabel}>{lang === "bn" ? "সাহায্য" : "Help"}</p>
+              <h2>{lang === "bn" ? "সাহায্য দরকার?" : "Need help?"}</h2>
+            </div>
           </div>
+          <p className={styles.message}>
+            {lang === "bn"
+              ? "যেকোনো প্রশ্নে ১৬৬৯৯ নম্বরে কল করুন অথবা নিচের বোতামে চাপ দিয়ে আমাদের জানান — আমরাই আপনাকে ফোন করব।"
+              : "Call 16699 for any question, or tap the button below and we will call you back."}
+          </p>
+          <div className={styles.actions}>
+            <Button onClick={() => setReply("callback")}>
+              {lang === "bn" ? "আমাকে ফোন করুন" : "Request a call"}
+            </Button>
+          </div>
+          {reply === "callback" ? (
+            <p role="status" className={styles.success}>
+              {lang === "bn"
+                ? "ফোন করার অনুরোধ নথিভুক্ত হয়েছে।"
+                : "Your callback request was recorded."}
+            </p>
+          ) : null}
         </section>
       ) : null}
 
-      {/* Complaint — same panel pattern as the other tabs. */}
       {tab === "complaint" ? (
-        <div role="tabpanel" aria-labelledby="citizen-tab-complaint">
+        <div
+          key="complaint"
+          role="tabpanel"
+          aria-labelledby="citizen-tab-complaint"
+        >
           <ComplaintModal />
         </div>
       ) : null}
@@ -299,62 +294,7 @@ function LawyerDashboard({ lang }: { lang: Lang }) {
         <button className={styles.textButton} onClick={() => setFormOpen(true)}>{lang === "bn" ? "এখন প্রতিবেদন পূরণ করুন" : "Complete report now"}</button>
       </section>
 
-      {formOpen ? (
-        <div className={styles.dialogBackdrop} role="presentation">
-          <section
-            className={styles.dialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="report-title"
-          >
-            <div className={styles.sectionHeading}>
-              <h2 id="report-title">{lang === "bn" ? "শুনানির প্রতিবেদন" : "Hearing report"}</h2>
-              <button className={styles.textButton} onClick={() => setFormOpen(false)}>
-                {copy(labels.close, lang)}
-              </button>
-            </div>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                setSubmitted(true);
-              }}
-              className={styles.form}
-            >
-              <label>
-                {lang === "bn" ? "উপস্থিতি" : "Attendance"}
-                <select required>
-                  <option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option>
-                  <option>{lang === "bn" ? "উপস্থিত" : "Attended"}</option>
-                  <option>{lang === "bn" ? "অনুপস্থিত" : "Did not attend"}</option>
-                </select>
-              </label>
-              <label>
-                {lang === "bn" ? "ফলাফল" : "Outcome"}
-                <select required>
-                  <option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option>
-                  <option>{lang === "bn" ? "মুলতবি" : "Adjourned"}</option>
-                  <option>{lang === "bn" ? "আদেশ হয়েছে" : "Order issued"}</option>
-                </select>
-              </label>
-              <label>
-                {lang === "bn" ? "পরবর্তী তারিখ" : "Next date"}
-                <input type="date" required />
-              </label>
-              {submitted ? (
-                <p role="status" className={styles.success}>
-                  {lang === "bn"
-                    ? "প্রতিবেদনটি স্ব-প্রতিবেদিত প্রমাণ হিসেবে নথিভুক্ত হয়েছে।"
-                    : "Report recorded as self-reported evidence."}
-                </p>
-              ) : (
-                <Button type="submit">
-                  {lang === "bn" ? "প্রতিবেদন জমা দিন" : "Submit report"}
-                </Button>
-              )}
-            </form>
-          </section>
-        </div>
-      ) : null}
+      {formOpen ? <div className={styles.dialogBackdrop} role="presentation"><section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="report-title"><div className={styles.sectionHeading}><h2 id="report-title">{lang === "bn" ? "শুনানির প্রতিবেদন" : "Hearing report"}</h2><button className={styles.textButton} onClick={() => setFormOpen(false)}>{copy(labels.close, lang)}</button></div><form onSubmit={(event) => { event.preventDefault(); setSubmitted(true); }} className={styles.form}><label>{lang === "bn" ? "উপস্থিতি" : "Attendance"}<select required><option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option><option>{lang === "bn" ? "উপস্থিত" : "Attended"}</option><option>{lang === "bn" ? "অনুপস্থিত" : "Did not attend"}</option></select></label><label>{lang === "bn" ? "ফলাফল" : "Outcome"}<select required><option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option><option>{lang === "bn" ? "মুলতবি" : "Adjourned"}</option><option>{lang === "bn" ? "আদেশ হয়েছে" : "Order issued"}</option></select></label><label>{lang === "bn" ? "পরবর্তী তারিখ" : "Next date"}<input type="date" required /></label>{submitted ? <p role="status" className={styles.success}>{lang === "bn" ? "প্রতিবেদনটি স্ব-প্রতিবেদিত প্রমাণ হিসেবে নথিভুক্ত হয়েছে।" : "Report recorded as self-reported evidence."}</p> : <Button type="submit">{lang === "bn" ? "প্রতিবেদন জমা দিন" : "Submit report"}</Button>}</form></section></div> : null}
       <section id="calendar" className={styles.hairlineList}><h2>{lang === "bn" ? "আগামী সময়সূচি" : "Upcoming schedule"}</h2><div><time>30 Sep · 10:00</time><span>SHK-DEMO-007</span><span>{lang === "bn" ? "জেলা আদালত" : "District Court"}</span></div><div><time>08 Oct · 11:30</time><span>SHK-DEMO-011</span><span>{lang === "bn" ? "পারিবারিক আদালত" : "Family Court"}</span></div></section>
       <CoverageNavigator />
     </div>

@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useI18n();
 
-  const role = (pathname?.split("/")[2] ?? "citizen") as "citizen" | "dlo" | "lawyer" | "admin";
+  const role = pathname?.split("/")[2] ?? "citizen";
 
   return (
     <div className={styles.wrapper}>

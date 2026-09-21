@@ -8,14 +8,6 @@ import styles from "./complaint-modal.module.css";
 type Reason = "not_responding" | "asked_payment" | "other";
 type Contact = "16699" | "this_phone" | "none";
 
-type ComplaintModalProps = {
-  /**
-   * `id` is set on the section so the sidebar hash link (`#complaint`) can
-   * jump-scroll the page to this section instead of opening an overlay.
-   */
-  id?: string;
-};
-
 const ACTIVE_CASE = {
   id: "SHK-DEMO-007",
   titleBn: "রহিমা বেগম বনাম মোহাম্মদ আলী",
@@ -42,11 +34,10 @@ const ACTIVE_CASE = {
  * Prototype-only: no backend mutation, no audit event. Reference
  * number is local-state-only.
  *
- * Rendered as an in-page section — same pattern as the rest of the
- * citizen dashboard — so the sidebar hash link scrolls the page to it
- * rather than opening a modal.
+ * Rendered as an in-page section, matching the pattern of the other
+ * citizen tabs — one panel under the tab strip, never a modal.
  */
-export function ComplaintModal({ id = "complaint" }: ComplaintModalProps) {
+export function ComplaintModal() {
   const { t, lang } = useI18n();
   const [anonymous, setAnonymous] = useState(false);
   const [reason, setReason] = useState<Reason>("not_responding");
@@ -69,19 +60,15 @@ export function ComplaintModal({ id = "complaint" }: ComplaintModalProps) {
   );
 
   // Who sees the complaint depends on reason AND anonymity.
-  // "asked payment" goes to the District Legal Aid Officer (financial misconduct).
-  // "lawyer not responding" goes to the Panel Lawyer Manager (panel accountability).
-  // "other" defaults to the DLO.
-  // Anonymous always routes to the anonymous review pool (decoupled from the citizen's
-  // identity), per PRD A1 safe-contact principle.
+  // - "asked payment" / "other" → District Legal Aid Officer (financial misconduct)
+  // - "lawyer not responding"   → Panel Lawyer Manager (panel accountability)
+  // - anonymous                  → Anonymous Review Panel (decoupled from citizen's identity)
   const whoSeesLabel = useMemo(() => {
     if (anonymous) return t("complaintWhoSeesAnonymousPool");
     if (reason === "not_responding") return t("complaintWhoSeesManager");
     return t("complaintWhoSeesOfficer");
   }, [anonymous, reason, t]);
 
-  // When the citizen switches to anonymous, hide the per-case link and the
-  // safe-contact channel — they aren't needed.
   const showLinkedCase = !anonymous;
   const showContactField = !anonymous;
 
@@ -105,15 +92,10 @@ export function ComplaintModal({ id = "complaint" }: ComplaintModalProps) {
     firstFieldRef.current?.focus();
   }
 
-  const caseTitle =
-    lang === "bn" ? ACTIVE_CASE.titleBn : ACTIVE_CASE.titleEn;
+  const caseTitle = lang === "bn" ? ACTIVE_CASE.titleBn : ACTIVE_CASE.titleEn;
 
   return (
-    <section
-      id={id}
-      className={styles.section}
-      aria-labelledby="complaint-title"
-    >
+    <div className={styles.section}>
       {submittedRef ? (
         <SuccessView
           refNumber={submittedRef}
@@ -125,9 +107,7 @@ export function ComplaintModal({ id = "complaint" }: ComplaintModalProps) {
       ) : (
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <header className={styles.header}>
-            <h2 id="complaint-title" className={styles.title}>
-              {t("complaintTitle")}
-            </h2>
+            <h2 className={styles.title}>{t("complaintTitle")}</h2>
             <p className={styles.intro}>{t("complaintIntro")}</p>
           </header>
 
@@ -265,7 +245,7 @@ export function ComplaintModal({ id = "complaint" }: ComplaintModalProps) {
           </footer>
         </form>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -299,7 +279,9 @@ function SuccessView({
       <h2 className={styles.title}>{t("complaintSuccess")}</h2>
 
       <section className={styles.whatNext}>
-        <h3 className={styles.whatNextTitle}>{t("complaintWhatNextTitle")}</h3>
+        <h3 className={styles.whatNextTitle}>
+          {t("complaintWhatNextTitle")}
+        </h3>
         <ul className={styles.whatNextList}>
           <li>{t("complaintWhatNextCase")}</li>
           <li>{t("complaintWhatNextContact")}</li>

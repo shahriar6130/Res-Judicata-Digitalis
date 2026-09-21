@@ -1,0 +1,6 @@
+{
+  "name": "Shakkho · Verified Legal Aid Operations",
+  "description": "An evidence-grounded operational layer for Bangladesh legal aid services.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

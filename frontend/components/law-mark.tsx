@@ -13,13 +13,14 @@ export function LawMark({ image }: LawMarkProps) {
     <div className={styles.wrap} aria-hidden="true">
       <Image
         className={styles.image}
-        style={{ objectFit: "contain" }}
+        style={{ objectFit: "cover" }}
         src={image}
-        alt=""
+        alt="Justice symbol"
         fill
         priority
-        sizes="50vw"
+        sizes="(max-width: 1024px) 100vw, 55vw"
       />
+      <div className={styles.vignette} />
       <div className={styles.grid} />
     </div>
   );

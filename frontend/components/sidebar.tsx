@@ -8,7 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 
 type SidebarProps = {
-  role: "citizen" | "dlo" | "lawyer" | "admin";
+  role: string;
   open?: boolean;
   onNavigate?: () => void;
 };
@@ -45,10 +45,21 @@ const NAV_ITEMS: Record<
   ],
 };
 
+const getNavItems = (role: string) => {
+  if (role in NAV_ITEMS) {
+    return NAV_ITEMS[role as keyof typeof NAV_ITEMS];
+  }
+  return [
+    { href: `/dashboard/${role}#work`, label: "navActionQueue" as MessageKey, key: "work" },
+    { href: `/dashboard/${role}#today`, label: "navOverview" as MessageKey, key: "today" },
+    { href: `/dashboard/${role}#history`, label: "navAudit" as MessageKey, key: "history" },
+  ];
+};
+
 export function Sidebar({ role, open = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { lang, t } = useI18n();
-  const items = NAV_ITEMS[role];
+  const items = getNavItems(role);
 
   return (
     <aside className={`${styles.sidebar} ${open ? styles.open : ""}`} aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}>
@@ -58,15 +69,15 @@ export function Sidebar({ role, open = false, onNavigate }: SidebarProps) {
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
         <ul className={styles.list}>
           {items.map((item) => {
-            const isComplaint = item.key === "file-complaint";
-            // Active match must split the path from the hash so hash-only
-            // links (e.g. /dashboard/citizen#complaint) light up correctly
-            // on the citizen route.
+            // Active match splits path from hash so hash-only links
+            // (e.g. /dashboard/citizen#complaint) light up correctly when
+            // their hash matches the current URL hash.
             const [itemPath, itemHash = ""] = item.href.split("#");
-            const [currentPath, currentHash = ""] = pathname.split("#");
+            const [currentPath, currentHash = ""] = (pathname ?? "").split("#");
             const isActive =
               currentPath === itemPath &&
               (itemHash === "" || itemHash === currentHash);
+            const isComplaint = item.key === "file-complaint";
             return (
               <li
                 key={item.key}

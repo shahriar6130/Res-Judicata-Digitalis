@@ -1,0 +1,33 @@
+{
+  "case_reference": "DLO-DHK-2026-0842",
+  "status": "ACTIVE",
+  "pathway": "LITIGATION",
+  "status_sentence_bn": "আইনজীবী নিযুক্ত হয়েছেন এবং পরবর্তী শুনানির তারিখ ধার্য করা হয়েছে।",
+  "status_sentence_en": "Panel lawyer assigned; next court hearing date scheduled.",
+  "observations": [
+    {
+      "field_key": "HEARING_DATE",
+      "raw_value": "2026-09-24",
+      "source_role": "CITIZEN",
+      "verified": false,
+      "is_disputed": true
+    },
+    {
+      "field_key": "HEARING_DATE",
+      "raw_value": "2026-09-28",
+      "source_role": "LAWYER",
+      "verified": false,
+      "is_disputed": true
+    }
+  ],
+  "milestones": [
+    {
+      "milestone_type": "INTAKE_VERIFIED",
+      "state": "COMPLETED"
+    },
+    {
+      "milestone_type": "LAWYER_ASSIGNED",
+      "state": "COMPLETED"
+    }
+  ]
+}

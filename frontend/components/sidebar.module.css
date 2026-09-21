@@ -1,22 +1,19 @@
 .sidebar {
   width: var(--sidebar-width);
   min-height: 100dvh;
-  /* Off-white canvas — same surface as the main content.
-     Easier to read on cheap screens than pure black on gray text. */
-  background: var(--off-white);
-  color: var(--black);
+  background: var(--black);
+  color: var(--white);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 10;
   flex-shrink: 0;
-  border-right: 1px solid var(--line);
 }
 
 .header {
   padding: var(--s-8) var(--s-6);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-on-black);
 }
 
 .nav {
@@ -41,7 +38,7 @@
 .link {
   display: block;
   padding: var(--s-3) var(--s-4);
-  color: var(--ink);
+  color: var(--on-black-muted);
   text-decoration: none;
   font-size: var(--t-body);
   line-height: var(--leading-body);
@@ -50,21 +47,14 @@
 }
 
 .link:hover {
-  background: var(--white);
-  color: var(--black);
+  background: var(--line-on-black);
+  color: var(--white);
 }
 
 .active {
-  /* WordPress-style "you are here" pill: black text on a soft gray fill,
-     not a fully-inverted black block. Calm and scannable. */
-  background: var(--line);
-  color: var(--black);
-  font-weight: var(--weight-semibold);
-}
-
-.active:hover {
-  background: var(--line);
-  color: var(--black);
+  background: var(--ink);
+  color: var(--white);
+  font-weight: var(--weight-medium);
 }
 
 /* Complaint / out-of-band action: visually separated from the main nav
@@ -72,7 +62,7 @@
 .listItemComplaint {
   margin-top: var(--s-2);
   padding-top: var(--s-3);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-on-black);
 }
 
 .complaintLink {
@@ -93,13 +83,13 @@
 }
 
 .complaintLink:hover {
-  background: rgba(229, 57, 53, 0.08);
+  background: rgba(229, 57, 53, 0.12);
   color: var(--red);
 }
 
 .complaintLink.active {
-  background: var(--line);
-  color: var(--black);
+  background: var(--ink);
+  color: var(--white);
 }
 
 .complaintLink.active::before {
@@ -107,7 +97,7 @@
 }
 
 .simulatedSection {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-on-black);
   padding: var(--s-6) var(--s-4);
   margin-top: auto;
 }
@@ -117,7 +107,7 @@
   line-height: var(--leading-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--gray);
+  color: var(--on-black-muted);
   margin: 0 0 var(--s-4);
 }
 
@@ -133,7 +123,7 @@
 .simulatedLink {
   display: block;
   padding: var(--s-2) var(--s-3);
-  color: var(--gray);
+  color: var(--on-black-muted);
   text-decoration: none;
   font-size: var(--t-small);
   line-height: var(--leading-small);
@@ -142,8 +132,8 @@
 }
 
 .simulatedLink:hover {
-  background: var(--white);
-  color: var(--black);
+  background: var(--line-on-black);
+  color: var(--white);
 }
 
 @media (max-width: 1024px) {
@@ -155,9 +145,6 @@
     transform: translateX(-100%);
     transition: transform var(--motion-base) var(--ease);
     z-index: 50;
-    /* On mobile the sidebar opens over content — keep the soft surface
-       but add a touch of contrast so it reads as a layer. */
-    box-shadow: 0 0 0 1px var(--line);
   }
 
   .sidebar.open {

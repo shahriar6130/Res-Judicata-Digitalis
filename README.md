@@ -7,26 +7,49 @@ a generic case-management dashboard nor a source of legal advice.
 
 ## Repository structure
 
-- `backend/apps/api/` — FastAPI, SQLAlchemy, Alembic, pure reconciliation domain, fixtures and tests
-- `backend/packages/contracts/` — generated OpenAPI and evidence-state contracts plus examples
-- `frontend/` — Next.js role sign-in portals and bilingual citizen, lawyer, DLO, and admin dashboards
-- `docs/architecture/` — backend boundaries and reconciliation rules
+- `backend/` — FastAPI backend with Supabase (PostgreSQL) database integration, SQLAlchemy, Alembic migrations, and pure reconciliation domain
+  - `backend/apps/api/` — API routers, Supabase database client, models, and migrations
+  - `backend/packages/contracts/` — generated OpenAPI and evidence-state contracts plus examples
+- `frontend/` — Next.js role sign-in portals and bilingual citizen, lawyer, DLO, and admin dashboards (decoupled from Supabase)
+- `docs/architecture/` — backend boundaries, Supabase foundation, and reconciliation rules
 
-## Backend setup
+## Backend & Supabase setup
 
-Install Python 3.12+ and PostgreSQL, then:
+The backend initiates **Supabase (PostgreSQL)** as its authoritative database. Install Python 3.10+ and configure your Supabase credentials:
 
 ```bash
 cd backend/apps/api
 cp .env.example .env
-uv sync
-uv run alembic upgrade head
+# Provide SUPABASE_DATABASE_URL and Supabase project keys in .env
+```
+
+To provision the database schema in Supabase:
+- **Option 1 (Supabase Dashboard)**: Paste `backend/apps/api/supabase/migrations/20260921000001_initial_schema.sql` into the Supabase SQL Editor and run it.
+- **Option 2 (Alembic)**: Run `alembic upgrade head`.
+
+To start the FastAPI service:
+
+```bash
+uv sync  # or pip install -r requirements.txt
 uv run python -m scripts.seed
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
 Use `uv run ruff format .`, `uv run ruff check .`, and `uv run pytest` for verification. Standard
 Python virtual environments remain supported when `uv` is unavailable.
+
+## Frontend setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:3000` to access the Citizen sign-in portal. You can quickly test citizen login using:
+- **Mobile number:** `a`
+- **Password:** `a`
+- Or click the **Auto-fill** or **Quick enter** buttons on the sign-in form.
 
 ## Shared contract
 

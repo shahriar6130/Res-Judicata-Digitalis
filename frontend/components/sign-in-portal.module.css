@@ -30,7 +30,7 @@
   top: var(--s-8);
   left: var(--s-8);
   right: var(--s-8);
-  z-index: 2;
+  z-index: 5;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -101,6 +101,59 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-6);
+}
+
+.quickFillBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+
+.quickFillInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.quickFillTag {
+  display: inline-flex;
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+}
+
+.quickFillCreds {
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  color: var(--gray);
+  font-family: monospace;
+}
+
+.quickFillBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-2) var(--s-4);
+  background: var(--black);
+  color: var(--white);
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  font-weight: var(--weight-medium);
+  border: 1px solid var(--black);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--motion-fast) var(--ease);
+}
+
+.quickFillBtn:hover {
+  opacity: 0.85;
 }
 
 .formError {

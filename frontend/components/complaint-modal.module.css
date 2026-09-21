@@ -1,8 +1,7 @@
 /* ------------------------------------------------------------------ *
  *  Citizen grievance section.
- *  In-page block on the citizen dashboard. The sidebar hash link
- *  `#complaint` scrolls the page to this section — same pattern as
- *  the other in-page anchors (case, messages, profile, help).
+ *  In-page panel on the citizen dashboard — same surface as other
+ *  tab panels. Calm, readable, modest type scale.
  * ------------------------------------------------------------------ */
 
 .section {
@@ -11,7 +10,7 @@
   gap: var(--s-6);
   background: var(--white);
   border: 1px solid var(--line);
-  padding: var(--s-6);
+  padding: var(--s-8);
 }
 
 .form {
@@ -27,25 +26,25 @@
 }
 
 .title {
-  font-size: var(--citizen-section, 22px);
-  line-height: 1.25;
+  font-size: var(--t-section);
+  line-height: var(--leading-section);
   font-weight: var(--weight-semibold);
   color: var(--black);
   margin: 0;
 }
 
 .intro {
-  font-size: var(--citizen-body, 15px);
-  line-height: 1.5;
-  color: var(--ink);
-  max-width: 640px;
+  color: var(--gray);
+  max-width: 720px;
+  margin-top: var(--s-2);
 }
 
 .eyebrow {
-  font-size: var(--citizen-small, 13px);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--gray);
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   margin: 0;
 }
 
@@ -75,7 +74,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: var(--citizen-body, 15px);
+  color: var(--ink);
   line-height: 1.4;
 }
 
@@ -86,8 +85,7 @@
 
 .anonymousHint {
   color: var(--gray);
-  font-size: var(--citizen-small, 13px);
-  line-height: 1.4;
+  font-size: var(--t-small);
 }
 
 /* --- Who-sees disclosure --- */
@@ -99,7 +97,7 @@
   padding: var(--s-3) var(--s-4);
   background: var(--line);
   border-radius: var(--r-2);
-  font-size: var(--citizen-small, 13px);
+  font-size: var(--t-small);
   flex-wrap: wrap;
 }
 
@@ -111,7 +109,7 @@
 .whoSeesValue {
   color: var(--black);
   font-weight: var(--weight-semibold);
-  font-size: var(--citizen-body, 15px);
+  font-size: var(--t-body);
 }
 
 /* --- Linked case --- */
@@ -130,7 +128,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: var(--citizen-body, 15px);
   color: var(--ink);
 }
 
@@ -141,9 +138,8 @@
 }
 
 .linkedCaseTitle {
-  font-size: var(--citizen-small, 13px);
+  font-size: var(--t-small);
   color: var(--gray);
-  line-height: 1.4;
 }
 
 /* --- Fieldsets / radios / inputs --- */
@@ -158,7 +154,7 @@
 }
 
 .legend {
-  font-size: var(--citizen-body, 15px);
+  font-size: var(--t-body);
   font-weight: var(--weight-semibold);
   color: var(--black);
   margin-bottom: var(--s-2);
@@ -171,8 +167,6 @@
   gap: var(--s-3);
   min-height: 44px;
   padding: var(--s-2) 0;
-  font-size: var(--citizen-body, 15px);
-  line-height: 1.4;
   color: var(--ink);
   cursor: pointer;
 }
@@ -188,12 +182,11 @@
   margin-top: var(--s-2);
   min-height: 44px;
   padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
+  border: var(--control-border);
+  border-radius: var(--control-radius);
   background: var(--white);
   color: var(--ink);
-  font-family: inherit;
-  font-size: var(--citizen-body, 15px);
+  font: inherit;
 }
 
 .otherInput:focus-visible {
@@ -209,7 +202,7 @@
 }
 
 .fieldLabel {
-  font-size: var(--citizen-body, 15px);
+  font-size: var(--t-body);
   font-weight: var(--weight-semibold);
   color: var(--black);
 }
@@ -217,12 +210,11 @@
 .dateInput {
   min-height: 44px;
   padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
+  border: var(--control-border);
+  border-radius: var(--control-radius);
   background: var(--white);
   color: var(--ink);
-  font-family: inherit;
-  font-size: var(--citizen-body, 15px);
+  font: inherit;
 }
 
 .dateInput:focus-visible {
@@ -232,15 +224,13 @@
 }
 
 .textarea {
-  min-height: 96px;
+  min-height: 120px;
   padding: var(--s-3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
+  border: var(--control-border);
+  border-radius: var(--control-radius);
   background: var(--white);
   color: var(--ink);
-  font-family: inherit;
-  font-size: var(--citizen-body, 15px);
-  line-height: 1.5;
+  font: inherit;
   resize: vertical;
 }
 
@@ -256,7 +246,6 @@
   display: flex;
   align-items: flex-start;
   gap: var(--s-3);
-  font-size: var(--citizen-body, 15px);
   line-height: 1.45;
   color: var(--ink);
   cursor: pointer;
@@ -290,7 +279,7 @@
 }
 
 .refNumber {
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1.2;
   font-weight: var(--weight-semibold);
   color: var(--black);
@@ -304,7 +293,7 @@
   align-self: flex-start;
   gap: var(--s-2);
   padding: var(--s-1) var(--s-3);
-  font-size: var(--citizen-small, 13px);
+  font-size: var(--t-small);
   font-weight: var(--weight-semibold);
   letter-spacing: 0.02em;
   border-radius: 999px;
@@ -332,7 +321,7 @@
 
 .whatNextTitle {
   margin: 0 0 var(--s-3);
-  font-size: var(--citizen-body, 15px);
+  font-size: var(--t-body);
   font-weight: var(--weight-semibold);
   color: var(--black);
 }
@@ -344,8 +333,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
-  font-size: var(--citizen-body, 15px);
-  line-height: 1.45;
   color: var(--ink);
 }
 
@@ -363,7 +350,7 @@
   padding: 2px var(--s-2);
   background: var(--line);
   color: var(--black);
-  font-size: var(--citizen-small, 13px);
+  font-size: var(--t-small);
   font-weight: var(--weight-semibold);
   border-radius: var(--r-1);
   font-variant-numeric: tabular-nums lining-nums;

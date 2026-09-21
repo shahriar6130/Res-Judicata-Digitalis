@@ -75,10 +75,16 @@
   --on-black-muted: #bfbfbf;
   --line-on-black: #4d4d4d;
 
-  /* Law-mark image (login left pane) */
-  --lawmark-opacity: 0.24;
+  /* Law-mark image (login art pane) */
+  --lawmark-opacity: 0.38;
   --grid-line: rgba(255, 255, 255, 0.06);
   --grid-size: 54px;
+
+  /* Role accents (RGB) — sign-in role chip */
+  --accent-citizen: #2f6fed;
+  --accent-dlo: #e53935;
+  --accent-lawyer: #16a34a;
+  --accent-admin: #7c3aed;
 
   /* Icon */
   --icon: 28px;

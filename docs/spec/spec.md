@@ -1,4 +1,4 @@
-# Spec
+# ____Spec____ 
 
 > What to build, for whom, and how to know it works. For the technical design (components, flows, data model), see [`architecture.md`](./architecture.md).
 
@@ -59,9 +59,11 @@
 | **Admin** | Configures thresholds, manages users, views metrics |
 
 Everyone signs in from their own portal with a **mobile number and password**. Each sign-in portal
-splits into a black pane with a subtle grayscale law-mark image under a white hairline grid and an
-off-white pane with the login form (§8 of the PRD describes the role-specific screens). See §12 for
-the acceptance check.
+splits into a black art pane and a login pane; the art image, its side, and the **RGB accent
+colour** per role (`--accent-citizen` blue, `--accent-dlo` red, `--accent-lawyer` green,
+`--accent-admin` violet) vary, and the login pane leads with a bold white-on-black role chip,
+so the four entry points are easy to distinguish (`lib/portal-art.ts`). §8 of the PRD describes the
+role-specific screens; §12 is the acceptance check.
 
 ---
 

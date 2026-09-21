@@ -31,7 +31,30 @@ export type MessageKey =
   | "footer"
   | "workspacePlaceholder"
   | "backToSignIn"
-  | "portalLinks";
+  | "portalLinks"
+  | "openMenu"
+  | "simulated"
+  | "simClock"
+  | "simSms"
+  | "simCourt"
+  | "simScenario"
+  | "simReset"
+  | "navMyCases"
+  | "navMessages"
+  | "navProfile"
+  | "navActionQueue"
+  | "navCases"
+  | "navAlerts"
+  | "navAssignments"
+  | "navTimeline"
+  | "navAssignedCases"
+  | "navHearingReports"
+  | "navCalendar"
+  | "navOverview"
+  | "navUsers"
+  | "navRules"
+  | "navMetrics"
+  | "navAudit";
 
 type Messages = Record<Lang, Record<MessageKey, string>>;
 
@@ -51,6 +74,29 @@ export const messages: Messages = {
       "এই ওয়ার্কস্পেসটি পরবর্তী ধাপে তৈরি হবে। লগইন প্রবাহটি সফল।",
     backToSignIn: "লগইন পৃষ্ঠায় ফিরুন",
     portalLinks: "অন্যান্য লগইন পোর্টাল",
+    openMenu: "মেনু খুলুন",
+    simulated: "সিমুলেশন",
+    simClock: "ঘড়ি",
+    simSms: "এসএমএস",
+    simCourt: "আদালত",
+    simScenario: "পরিস্থিতি",
+    simReset: "রিসেট",
+    navMyCases: "আমার মামলা",
+    navMessages: "বার্তা",
+    navProfile: "প্রোফাইল",
+    navActionQueue: "কার্যক্রম সারি",
+    navCases: "মামলা",
+    navAlerts: "সতর্কতা",
+    navAssignments: "নিয়োগ",
+    navTimeline: "সময়রেখা",
+    navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
+    navHearingReports: "শুনানির প্রতিবেদন",
+    navCalendar: "ক্যালেন্ডার",
+    navOverview: "সংক্ষেপ",
+    navUsers: "ব্যবহারকারী",
+    navRules: "নিয়ম ও থ্রেশহোল্ড",
+    navMetrics: "মেট্রিক্স",
+    navAudit: "নিবন্ধন",
   },
   en: {
     tagline: "Verified legal aid operations",
@@ -67,6 +113,29 @@ export const messages: Messages = {
       "This workspace is built in a later step. The sign-in flow works.",
     backToSignIn: "Back to sign in",
     portalLinks: "Other sign-in portals",
+    openMenu: "Open menu",
+    simulated: "Simulated",
+    simClock: "Clock",
+    simSms: "SMS",
+    simCourt: "Court",
+    simScenario: "Scenario",
+    simReset: "Reset",
+    navMyCases: "My Cases",
+    navMessages: "Messages",
+    navProfile: "Profile",
+    navActionQueue: "Action Queue",
+    navCases: "Cases",
+    navAlerts: "Alerts",
+    navAssignments: "Assignments",
+    navTimeline: "Timeline",
+    navAssignedCases: "Assigned Cases",
+    navHearingReports: "Hearing Reports",
+    navCalendar: "Calendar",
+    navOverview: "Overview",
+    navUsers: "Users",
+    navRules: "Rules & Thresholds",
+    navMetrics: "Metrics",
+    navAudit: "Audit Log",
   },
 };
 

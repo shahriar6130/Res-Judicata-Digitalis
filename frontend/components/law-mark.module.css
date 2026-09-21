@@ -6,6 +6,7 @@
 }
 
 .image {
+  object-fit: contain;
   opacity: var(--lawmark-opacity);
   filter: grayscale(1) contrast(1.05);
   -webkit-mask-image: radial-gradient(

@@ -49,10 +49,16 @@ Reference: the Harvey marketing site: off-white canvas, a large serif headline, 
   --on-black-muted: #BFBFBF;   /* muted text on black; passes 4.5:1 */
   --line-on-black: #4D4D4D;
 
-  /* Law-mark image (login left pane) */
-  --lawmark-opacity: .24;
+  /* Law-mark image (login art pane) */
+  --lawmark-opacity: .38;
   --grid-line: rgba(255, 255, 255, .06);
   --grid-size: 54px;
+
+  /* Role accents (RGB) — sign-in role chip */
+  --accent-citizen: #2f6fed;
+  --accent-dlo: #e53935;
+  --accent-lawyer: #16a34a;
+  --accent-admin: #7c3aed;
 
   /* Icon */
   --icon: 28px;
@@ -186,21 +192,38 @@ One family: **Playfair Display** (with the Bangla fallback above).
 - **Top bar:** none. Page title and primary action sit in the content header.
 - **Simulator + clock** live in the sidebar as a separate section labelled **Simulated**.
 
+### Dashboard (all roles)
+
+Route: `/dashboard/{citizen|dlo|lawyer|admin}`. A WordPress-style layout with:
+
+- **Left sidebar** (240px, black, sticky): role-specific navigation, Wordmark top, "Simulated" section at bottom with clock/SMS/court/scenario/reset links. Active link: ink background (`#1A1A1A`), 4px radius.
+- **Top header** (off-white, sticky): hamburger menu (mobile), language toggle right.
+- **Content area** (off-white, max-width 1280px, centered): role-specific placeholder content.
+- **Mobile (<1024px):** sidebar slides in from left via overlay; header shows hamburger; simulated section hidden.
+- Role determined from URL (`/dashboard/citizen`, `/dashboard/dlo`, `/dashboard/lawyer`, `/dashboard/admin`).
+- Navigation labels from i18n (Bangla/English), no hardcoded strings.
+
 ### Sign-in portals (all roles)
 
 Login pages split into two full-height panes:
 
-- **Left pane — black.** A subtle **law-mark image** (currently
-  `assets/justice-stands-strong-stockcake.jpg`) fills the pane: grayscale, low opacity
+- **Left or right pane — black.** The **law-mark image** (see `lib/portal-art.ts`) fills the pane
+  at its natural ratio (`object-fit: contain`, never squeezed or cropped): grayscale, low opacity
   (`--lawmark-opacity`), radially faded into the black, with a **white hairline grid** overlay
   (`--grid-line`, `--grid-size`) that also fades at the edges. The wordmark (white, muted tagline)
-  sits top-left and the language toggle (on-dark variant) top-right.
+  sits top-left of the pane and the language toggle (on-dark variant) top-right.
+- **Each role is visually distinct.** The art pane sits on the **left** for citizen and lawyer and
+  on the **right** for DLO and admin; the image alternates between the two law-mark images; and the
+  role name in the login pane is a **bold white-on-black chip** (uppercase) with an **RGB token
+  accent dot** (`--accent-citizen` blue, `--accent-dlo` red, `--accent-lawyer` green,
+  `--accent-admin` violet) so the end is unmistakable — even collapsed to one column on mobile.
 - **Right pane — off-white.** The centred login column: eyebrow role label, serif H1, gray
   supporting line, white mobile-number + password fields, black primary button, and the "Other
   sign-in portals" text row, with the prototype footer beneath.
 
-Below 1024px the two panes stack: the sculpture becomes a 224–280px black banner and the login
-column follows with standard page padding.
+Below 1024px the two panes stack: the art image becomes a 224–280px black banner at the top,
+and the login column (role chip, "Sign in" heading, supporting line, form, portal links) flows
+naturally below it — both the image and the heading stay at the top of the viewport.
 
 ### Lawyer and citizen views
 Mobile-first, single column, no sidebar. A simple top wordmark and 2–3 text links. Large tap targets (44px minimum). Officer/admin views are desktop-first and remain usable on tablet.
@@ -275,7 +298,7 @@ Almost none. Allowed only for functional meaning (close, chevron, external link)
 
 | Screen | Layout notes |
 |---|---|
-| **Sign-in portal** (per role) | Black left pane: grayscale law-mark image at low opacity with white grid overlay + white wordmark + language toggle. Right pane: eyebrow role, H1 "Sign in", supporting line, mobile number + password, primary button, portal links |
+| **Sign-in portal** (per role) | Black art pane (alternating image + side per role) with white wordmark + language toggle. Other pane: bold white-on-black role chip, H1 "Sign in", supporting line, mobile number + password, primary button, portal links |
 | **Officer queue** | H1 "Action queue", gray supporting line with counts, table as in section 6, filters as plain text toggles (All · Escalated · Needs action · Watch) |
 | **Case timeline** | H1 is the case reference. Left column: timeline. Right column (320px): case facts, assigned lawyer, next expected event. Hairline dividers only |
 | **Alert detail** | Reason as H2. Below: supporting timestamps, rule id + version in gray, action buttons, state control, interventions log |
@@ -333,7 +356,7 @@ Before finishing any screen, confirm:
 
 - [ ] Only Playfair Display (with Bengali fallback); lining tabular numerals on.
 - [ ] Every screen renders fully in Bangla or fully in English; the language toggle switches everything, with Bangla the default.
-- [ ] Sign-in portals split black (subtle grayscale law-mark image + grid overlay) and off-white (login) panes; nothing else decorative was added.
+- [ ] Sign-in portals are distinct per role: art image + side alternate (`lib/portal-art.ts`), and the role name shows as a bold white-on-black chip with a token accent dot; nothing else decorative was added.
 - [ ] Mostly black, white, off-white; accents limited to priority dots, failures, warnings.
 - [ ] No gradients, shadows, glass, or radii above 8px; no pill buttons.
 - [ ] Lists use hairline rows, not stacked cards; no cards inside cards.

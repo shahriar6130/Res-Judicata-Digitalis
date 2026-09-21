@@ -1,15 +1,20 @@
 "use client";
 
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import styles from "./law-mark.module.css";
-import justiceImage from "@/assets/justice-stands-strong-stockcake.jpg";
 
-export function LawMark() {
+type LawMarkProps = {
+  image: StaticImageData;
+};
+
+export function LawMark({ image }: LawMarkProps) {
   return (
     <div className={styles.wrap} aria-hidden="true">
       <Image
         className={styles.image}
-        src={justiceImage}
+        style={{ objectFit: "contain" }}
+        src={image}
         alt=""
         fill
         priority

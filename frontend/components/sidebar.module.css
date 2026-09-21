@@ -1,0 +1,118 @@
+.sidebar {
+  width: var(--sidebar-width);
+  min-height: 100dvh;
+  background: var(--black);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.header {
+  padding: var(--s-8) var(--s-6);
+  border-bottom: 1px solid var(--line-on-black);
+}
+
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-6) var(--s-4);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.listItem {
+  margin: 0;
+}
+
+.link {
+  display: block;
+  padding: var(--s-3) var(--s-4);
+  color: var(--on-black-muted);
+  text-decoration: none;
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  border-radius: var(--r-2);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.link:hover {
+  background: var(--line-on-black);
+  color: var(--white);
+}
+
+.active {
+  background: var(--ink);
+  color: var(--white);
+  font-weight: var(--weight-medium);
+}
+
+.simulatedSection {
+  border-top: 1px solid var(--line-on-black);
+  padding: var(--s-6) var(--s-4);
+  margin-top: auto;
+}
+
+.simulatedLabel {
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-black-muted);
+  margin: 0 0 var(--s-4);
+}
+
+.simulatedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.simulatedLink {
+  display: block;
+  padding: var(--s-2) var(--s-3);
+  color: var(--on-black-muted);
+  text-decoration: none;
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+  border-radius: var(--r-1);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.simulatedLink:hover {
+  background: var(--line-on-black);
+  color: var(--white);
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform var(--motion-base) var(--ease);
+    z-index: 50;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .simulatedSection {
+    display: none;
+  }
+}

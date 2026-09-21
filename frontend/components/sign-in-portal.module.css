@@ -4,6 +4,18 @@
   min-height: 100dvh;
 }
 
+.pageArtRight {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+}
+
+.pageArtRight .art {
+  order: 2;
+}
+
+.pageArtRight .panel {
+  order: 1;
+}
+
 /* Left: black panel with the WebGL sculpture */
 .art {
   position: relative;
@@ -50,12 +62,25 @@
   gap: var(--s-2);
 }
 
-.eyebrow {
+.roleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  align-self: flex-start;
+  padding: var(--s-2) var(--s-3);
+  background: var(--black);
+  color: var(--white);
   font-size: var(--t-label);
   line-height: var(--leading-label);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gray);
+  font-weight: var(--weight-bold);
+}
+
+.eyebrowDot {
+  width: var(--s-2);
+  height: var(--s-2);
+  border-radius: var(--r-1);
 }
 
 .title {
@@ -109,6 +134,7 @@
   }
 
   .panel {
+    min-height: calc(100dvh - 280px);
     padding: var(--s-12) var(--page-pad) var(--s-6);
   }
 }
@@ -116,5 +142,9 @@
 @media (max-width: 640px) {
   .art {
     height: 224px;
+  }
+
+  .panel {
+    min-height: calc(100dvh - 224px);
   }
 }

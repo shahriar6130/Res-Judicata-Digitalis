@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Shakkho — System Architecture
 
 **Status:** Canonical target architecture for prototype implementation
@@ -361,9 +360,15 @@ Production tenants represent the programme, not individual citizens. The per-vis
 - Seed target is under two seconds; show progress and retry safely rather than exposing a half-seeded tenant.
 - Expire a tenant after six hours of inactivity or 24 hours absolute lifetime.
 - A garbage-collection job runs every ten minutes and deletes expired synthetic rows, object-store fixtures and derived caches.
-- Cap the public environment at 200 active demo tenants. At the cap, reuse the caller's existing tenant or show a retry response; never fall back to a shared mutable tenant.
+- Treat 200 active demo tenants only as an initial hard safety ceiling, never as a supported-capacity claim. Before freeze, load-test at least 25 simultaneous visitor tenants performing seed, reset and core reads/writes; record p95 latency, seed/reset time and error rate, then set or lower the operational cap from evidence. At the cap, reuse the caller's existing tenant or show a retry response; never fall back to a shared mutable tenant.
 - Reset is idempotent: mark the old generation inactive, reseed a new generation and prevent late requests from the old generation mutating it.
 - These deletion rules apply only to synthetic public-demo tenants, not production legal-aid retention.
+
+#### Required fixture corpus
+
+- Two complete T5 Bangla conversations and about ten utterance variants cover colloquial wording, spelling variation, correction and sensitive/ambiguous human handoff.
+- Six to eight versioned approved knowledge articles/templates are searchable by 16699 agents and UDC assistants and are cited when T5/T7 use them.
+- The remaining named citizens, providers, T1–T4/T6–T11 counts and trap/failure fixtures follow the PRD seed-data contract; architecture code must not replace them with generic records.
 
 ### 8.2 Core aggregates
 
@@ -449,7 +454,7 @@ erDiagram
 | `AccessLog` / `BreakGlassAccess` | actor, role, record, action, purpose, break-glass reason/expiry/review, timestamp |
 | `CitizenSession` / `OtpSession` / `SafePhrase` | citizen/session reference, safe channel, OTP lifecycle, phrase verifier, expiry, attempts and disclosure level |
 | `Checkpoint` | tenant/event cut-off, deterministic root, external-to-database signature, public-key ID and verification result |
-| `PolicyPackVersion` | effective dates, geography, source/claim-register reference, status, configuration hash and named settings including `referral_consecutive_return_threshold = 2` |
+| `PolicyPackVersion` | effective dates, geography, source/claim-register reference, status, configuration hash and named settings including `referral_return_threshold = 2` |
 
 ### 8.4 Identifier rules
 
@@ -620,7 +625,7 @@ stateDiagram-v2
     SENT --> OVERDUE
     RETURNED --> RESUBMITTED
     RESUBMITTED --> ACCEPTED
-    RETURNED --> ESCALATED: consecutive returns >= 2
+    RETURNED --> ESCALATED: returns in unresolved chain >= 2
     OVERDUE --> ESCALATED
     ESCALATED --> ACCEPTED: authorised decision + named office accepts
     ESCALATED --> REROUTED: authorised routing decision
@@ -629,7 +634,7 @@ stateDiagram-v2
 
 The sender owns the case while `SENT`, `ACKNOWLEDGED`, `RETURNED`, `RESUBMITTED`, `OVERDUE`, `ESCALATED` or `REROUTED`. Ownership changes only when a named receiving office reaches `ACCEPTED`. An escalation cannot be closed by recording “reviewed”; it must produce a route decision and receiver acceptance or remain visible.
 
-The ADLASB prototype setting is `referral_consecutive_return_threshold = 2`. It is stored in `PolicyPackVersion` for provenance and effective-date traceability, but the prototype must not silently raise it; a change requires an authorised higher-document/policy update. Any acceptance following a reroute resets the consecutive-return counter for that completed handoff, while the full transfer history remains auditable.
+The ADLASB prototype setting is `referral_return_threshold = 2`. It counts returned/rejected transfers within the same unresolved transfer chain, regardless of interleaved resubmission or acknowledgement. It is stored in `PolicyPackVersion` for provenance and effective-date traceability, but the prototype must not silently raise it; a change requires an authorised higher-document/policy update. Acceptance by a named receiver completes that transfer chain; the full transfer history remains auditable.
 
 ### 9.5 Interim and final payment-stage reconciliation
 
@@ -724,7 +729,7 @@ An auditor can see that information was withdrawn, not retrieve content that pol
 
 ### 10.3 Checkpoints
 
-A checkpoint records the latest `(aggregate_id, sequence, event_hash)` set for a tenant/scenario and a deterministic root over that set. The application signs the root with an ECDSA P-256 checkpoint key kept in the host secret store, outside PostgreSQL; only its public key is shipped with the independent verifier. The verifier accepts an exported event bundle, recomputes every event hash and chain/root, then validates the checkpoint signature without querying the application's current event rows.
+A checkpoint records the latest `(aggregate_id, sequence, event_hash)` set for a tenant/scenario and a deterministic root over that set. The application signs the root with an ECDSA P-256 checkpoint key kept in the host secret store, outside PostgreSQL; only its public key is shipped with the independent verifier. The verifier is a separately built static client-side page/script. It accepts only an exported event/signature bundle and public key, makes no Shakkho API calls, reads no application state or database, recomputes every event/document hash and chain/root, then validates the checkpoint/signature. Reusing an in-app S28/S34 verification component does not satisfy independence.
 
 This is independent of the database, not independent of the application host/operator: compromise of both the event store and checkpoint signing key could forge a new history. A production design should anchor signed checkpoints to a separately governed service. The 23/23 navigator displays the prototype verification result. The Failure Lab's “tamper row” action operates only on seeded demo data and proves detection; it is disabled in production mode.
 
@@ -1317,13 +1322,13 @@ Operational logs and accountable audit events are separate. Log retention must n
 - **Playwright path 3:** Nabila/Rahim referral non-acknowledgement, virtual time, two-return escalation and authorised reroute.
 - **Playwright path 4:** Malek/Marzina missed updates, reassignment/coverage and interim payment reconciliation.
 - **Playwright path 5:** mediation safety, T7 version lock and independent T11 mutation failure.
-- **Independent verifier:** exported ledger/checkpoint and signature artefacts verify without trusting current UI/database reads.
+- **Independent verifier:** a separately built static client-side page/script accepts only the exported artefact and public key, makes no Shakkho API calls, reads no application state or database, recomputes the event/document hashes and verifies the signature. Embedding the same verifier component in S28/S34 does not satisfy this test.
 
 Broad API-contract, exhaustive integration and security suites are production work. The prototype still validates every schema at runtime and must not mark an item PASS from UI presence alone.
 
 ### 25.2 `/selftest`
 
-`/selftest` creates a fresh tenant, runs all 23 scenarios and reports:
+`/selftest` creates a fresh tenant and runs all 23 scenarios plus explicit suites for the five access doors (including neutral USSD/SMS), G1–G10, rejection and applicable appeal, both financial-status branches, and closure blocking when reports, verification, documents or approvals are incomplete. It reports:
 
 - PASS/FAIL;
 - starting and final aggregate state;
@@ -1346,6 +1351,7 @@ Before dependent work:
 6. prove withdrawal destroys the payload HMAC key, hides vault content and preserves event-chain verification;
 7. exercise foreground-only sync after an expired session and the forgotten-PIN discard warning;
 8. run the normal/light T10 harness under the identical throttled profile.
+9. load-test at least 25 concurrent visitor tenants across seed, reset and representative writes; publish p95 latency, seed/reset time and error rate, and configure the cap from the result rather than assuming 200-tenant capacity.
 
 ---
 
@@ -1491,53 +1497,3 @@ The architecture is implemented—not merely illustrated—when:
 - metrics are labelled as seeded prototype measurements rather than real-world impact.
 
 This gate is the handoff contract between solution design and implementation.
-=======
-# Frontend dashboard architecture
-
-The canonical system architecture and business model live in `docs/PRD/PRD.md`. This document
-records the implemented frontend boundary for the four current role portals.
-
-## Component boundaries
-
-```text
-app/layout.tsx
-  I18nProvider
-    sign-in portal -> role.home
-    dashboard/layout.tsx
-      Sidebar(role)
-      LanguageToggle
-      RoleDashboard(role)
-        CitizenDashboard | OfficerDashboard | LawyerDashboard | AdminDashboard
-    sim/[[...tool]]/page.tsx
-      SimulatorPanel(tool)
-```
-
-`RoleDashboard` is a client boundary because the prototype controls need local state and event
-handlers. Route pages remain server components and pass only the role identifier. Component styles
-use colocated CSS Modules; global type and colour tokens remain in `app/tokens.css`.
-
-## Authority boundary
-
-The Next.js layer presents data and gathers intent. It does not derive legal eligibility, resolve a
-conflict, declare misconduct, approve payment, or make another consequential decision. The DLAO
-evidence drawer exposes the inputs that a future authorised decision API must receive, while its
-resolution button remains disabled. The administrator rule editor stores only a local draft.
-
-Current dashboard records are deterministic prototype fixtures. Local state is intentionally reset
-on reload. When backend integration is added, read data must come from generated contracts and all
-mutations must pass server-side role and case scope. The interface must display queued, sent,
-delivered, and failed notification states separately.
-
-## Routing
-
-`lib/roles.ts` is the source for sign-in destinations. Each role now lands directly on
-`/dashboard/{role}`. Dashboard navigation uses same-page section fragments to avoid unfinished
-routes. The optional catch-all `/sim/[[...tool]]` supports the five simulator links with one shared
-panel.
-
-## Responsive shell
-
-The desktop sidebar is sticky. At 1024px and below it is translated off canvas until
-`DashboardLayout` passes `open=true`; an overlay and navigation callback close it. The role is read
-from the dashboard URL and controls only the navigation and role component selection.
->>>>>>> e843ea3f8011f6d481b62e47da911cd10f9d631e

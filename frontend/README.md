@@ -3,6 +3,11 @@
 Next.js (App Router, TypeScript) frontend for Shakkho, an evidence-grounded operational layer for
 Bangladesh legal aid services. Visual system: `docs/design/design.md`.
 
+The current four dashboards are migration-era surfaces, not the final route contract. Build toward
+the 35 canonical S01–S35 route templates in `docs/spec/spec.md`: complete Tier 1 acceptance paths
+first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/dashboard/{role}` and
+`/sim/*` are legacy aliases; `/`, `/dlo`, `/lawyer` and `/admin` are canonical routes.
+
 ## Stack
 
 - Next.js 16 (App Router, static-server-rendered pages)

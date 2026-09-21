@@ -1,8 +1,8 @@
-# FINAL AUTHORITATIVE SOLUTION MODEL
+# Shakkho — Final Authoritative Solution Model
 
 **Document status:** Final solution-model baseline for prototype implementation and the 1,000-word solution paper.  
 **Supersedes:** All earlier concept, strategy and pitch drafts in this workspace.  
-**Source hierarchy:** The ADLASB Final Round Case is the sole source of truth for competition scope, workflow, acceptance tests and judging. External laws, programme announcements and the supplementary workflow PDF are research candidates only; they may enter the paper or automated rules only after a team member personally validates and records them in the claim register.
+**Source hierarchy:** The ADLASB Final Round Case is the sole source of truth for competition scope, workflow, acceptance tests and judging. External laws, programme announcements and the supplementary workflow PDF are research candidates only; they may enter the paper or automated rules only after a team member personally validates and records them in the claim register. The operative precedence and conflict-resolution rule is maintained in [reconciliation-rules.md](../architecture/reconciliation-rules.md#document-precedence).
 **Merged gap review:** The corrections in `final_final_changes.md` are incorporated into this same authoritative file; no separate model should be used for implementation.
 
 > **Every legal-aid case is a chain of human obligations. It keeps one authoritative record, makes every obligation visible, and prevents a citizen from disappearing between channels, offices and providers.**
@@ -26,7 +26,7 @@ The deeper operational failure is that **recorded activity is often mistaken for
 
 The result is delay, repeat travel, repeated storytelling, unsafe communication, chase calls, weak accountability and unreliable management data.
 
-NyaySangjog solves this by making a distinction between:
+Shakkho solves this by making a distinction between:
 
 1. **information recorded**;
 2. **a decision made by an authorised human**;
@@ -39,7 +39,7 @@ That distinction is the solution's central operating insight.
 
 ## 2. What it is—and is not
 
-NyaySangjog is a reference operating model for the required DLAS prototype. It combines the complete ADLASB workflow with four reusable mechanisms.
+Shakkho is a reference operating model for the required DLAS prototype. It combines the complete ADLASB workflow with four reusable mechanisms.
 
 ### Mechanism 1 — Canonical Case Record and Case Ledger
 
@@ -245,7 +245,7 @@ A referral contains:
 - return reason vocabulary;
 - escalation rule.
 
-The sender retains responsibility until the receiving office acknowledges and accepts. **Two or more consecutive** returned/rejected transfers trigger and retain escalation; an authorised human makes the final routing decision.
+The sender retains responsibility until the receiving office acknowledges and accepts. **Two or more returned/rejected transfers within the same unresolved transfer chain** trigger and retain escalation, even when resubmission or acknowledgement events occur between the returns; an authorised human makes the final routing decision.
 
 ### Stage 5 — Outcome, closure and continuing accountability
 
@@ -384,7 +384,7 @@ The adoption principle is simple: **the system must remove chase calls and dupli
 - `HearingUpdate`
 - `PaymentStage`
 - `OutcomeClosure`
-- `AppealGrievance`
+- `AppealReview`
 - `RelatedIncidentGroup`
 - `AuditEvent`
 - `PolicyPackVersion`
@@ -491,7 +491,7 @@ These are visible, versioned prototype thresholds—not DBLA policy and not proo
 
 ### T2 — Jurisdiction ping-pong
 
-Rahim Mia's case is returned between DLAO and Labour Legal Aid Cell. At two or more consecutive returned transfers, the Promise Engine retains escalation. The transfer-chain view shows structured reasons and time in limbo; the sender remains owner in transit until the receiving office accepts, and a supervisor decides the route.
+Rahim Mia's case is returned between DLAO and Labour Legal Aid Cell. At two or more returned transfers in the same unresolved transfer chain—regardless of interleaved resubmission or acknowledgement—the Promise Engine retains escalation. The transfer-chain view shows structured reasons and time in limbo; the sender remains owner in transit until the receiving office accepts, and a supervisor decides the route.
 
 ### T3 — Related incident
 
@@ -577,7 +577,7 @@ These are connected services on the same record—not disconnected feature pages
 
 - **Approved knowledge and template assistance:** six to eight versioned procedure explainers, checklists and approved templates searchable by 16699 agents, UDC assistants and officers. T5 and T7 cite this content; it is labelled illustrative where appropriate.
 - **Panel management:** registration, approval status, practice areas, workload and citizen-safe feedback on communication/responsiveness. Never rank by win rate and never trigger automatic punishment.
-- **Grievance and feedback:** thin but real `REGISTERED -> INVESTIGATING -> RESOLVED -> CLOSED` flow, including “asked for payment” and “lawyer not responding.”
+- **Grievance and feedback:** thin but real `REGISTERED -> INVESTIGATING -> RESOLVED -> CLOSED` flow, including “asked for payment” and “lawyer not responding”; an authorised reopen returns `RESOLVED -> INVESTIGATING` without rewriting history.
 - **Dashboard and reporting:** Today queue, ageing/SLA, district-wise management view, five live prototype measurements and the B7 routine/monthly report from ledger events.
 - **Integrations panel:** 16699, SMS, email, payment gateway, NID service and court source, each showing an interface contract and `SIMULATED` or `REAL`. Simulation is limited to unavailable external connections; internal state changes remain real.
 - **Notification centre/outbox:** in-app provider notifications plus labelled email/SMS simulations with `QUEUED -> SENT -> DELIVERED | FAILED`, retry history, bilingual neutral templates and per-case delivery log.
@@ -619,7 +619,7 @@ The Failure Lab includes a tenant-scoped clock with `+1 hour`, `+24 hours`, `+48
 
 ### Self-test and deployment reliability
 
-`/selftest` creates a fresh visitor namespace, runs all 23 acceptance scenarios and reports PASS/FAIL with event IDs; CI runs it before freeze and the navigator shows the result. Deploy on an always-on instance in a nearby region with health monitoring, server-side secrets, no PII logs, rate limits without CAPTCHA, tenant ID on every row and deterministic AI fallbacks. Keep pre-generated Bangla audio, local Docker and the offline MP4. Test Chrome/Firefox, target Android/Chrome, check iOS Safari separately, scan the QR on two phones and run a throttled clean-browser install/offline/reconnect test.
+`/selftest` creates a fresh visitor namespace and reports PASS/FAIL with event IDs. It exercises all 23 acceptance scenarios, all five doors including the neutral USSD/SMS Status Sentence path, G1–G10, rejection and applicable appeal, both financial-status branches, and closure blocking when reports, verification, documents or approvals are incomplete. CI runs it before freeze and the navigator shows the result. Deploy on an always-on instance in a nearby region with health monitoring, server-side secrets, no PII logs, rate limits without CAPTCHA, tenant ID on every row and deterministic AI fallbacks. Keep pre-generated Bangla audio, local Docker and the offline MP4. Test Chrome/Firefox, target Android/Chrome, check iOS Safari separately, scan the QR on two phones and run a throttled clean-browser install/offline/reconnect test.
 
 ### Public-jury isolation
 
@@ -639,7 +639,7 @@ These are technical acceptance controls, not presentation extras.
 
 ### Differentiation
 
-Unified records, routing, UDC access, AI intake and dashboards are expected. NyaySangjog's distinction is the combination of:
+Unified records, routing, UDC access, AI intake and dashboards are expected. Shakkho's distinction is the combination of:
 
 - field/event-level legal provenance;
 - accepted—not merely sent—responsibility;
@@ -727,7 +727,7 @@ For the architecture view, group the same system into ADLASB's four layers: **Ci
 - a protected server-side LLM adapter with strict schemas plus deterministic fixtures/fallbacks;
 - Playwright for `/selftest`, clean-session, accessibility and state-transition regression tests;
 - an OpenAPI/adapter-contract page for 16699, SMS/email, payment, NID and court sources, with every connection visibly marked real or simulated;
-- an always-on nearby deployment plus local Docker fallback. SQLite may support local development only; the public concurrent demo uses PostgreSQL.
+- an always-on nearby deployment plus local Docker fallback. SQLite may support local development only; the public concurrent demo uses PostgreSQL. Capacity is established by a pre-freeze load test at the expected jury concurrency (minimum 25 simultaneous visitor tenants), reporting p95 response time, seed/reset time and error rate; no untested tenant number is presented as supported capacity.
 
 | PDF flow | End-to-end implementation scope | Main Annex blocks |
 |---|---|---|
@@ -797,9 +797,9 @@ The paper must not claim a module is built until its trigger, state change and a
 | **B4 UDC** | Record free-service notice and verbal-readback consent -> use T6 checklist -> complete offline recovery without operator phone as applicant contact -> expire access -> expose “asked to pay” grievance path. |
 | **B5 Lawyer** | Accept/decline with reason -> receive latest-version package -> use mobile hearing/deadline/update view -> miss later obligations -> DLAO receives alert without chase call. |
 | **B6 Receiving DLAO** | Completeness validator blocks an incomplete package -> send complete minimum package -> accept/return with structured reason -> shared timeline updates -> acknowledgement SLA/non-ack follow-up. |
-| **B7 Case support** | Search Bangla/English/transliteration -> inspect field-version history and handover notes -> export one routine CSV/PDF report entirely from captured record data. |
+| **B7 Case support** | Search Bangla/English/transliteration -> inspect field-version history and handover notes -> generate and view one routine report entirely from captured record data. CSV/PDF export is Tier 2 and may be cut first. |
 | **T1** | Marzina request -> human review -> handover/urgent coverage promise -> reassignment -> illustrative paid/earned/disputed stage reconciliation -> separate three-case “review, not misconduct” alert. |
-| **T2** | Return Rahim transfer two or more times -> show reasons/time in limbo and sender ownership -> Promise Engine retains escalation -> supervisor route-decision event. |
+| **T2** | Return/reject Rahim's transfer two or more times within the same unresolved transfer chain, even with resubmission or acknowledgement interleaved -> show reasons/time in limbo and sender ownership -> Promise Engine retains escalation -> supervisor route-decision event. |
 | **T3** | Create three separate related cases -> upload one common document -> controlled group view without merging case-specific data. |
 | **T4** | Run 12–15 records including two trap pairs -> produce confusion table -> intake sees masked warning, staff sees attributes -> reversible human duplicate/separate/related decision; never auto-reject/merge/fraud-label. |
 | **T5** | Safety-first opening -> complete straightforward Bangla intake -> mask PII and enforce tool schema -> hand sensitive/ambiguous intake to human with slots/transcript/provenance/uncertainty -> correction loop. |
@@ -842,7 +842,7 @@ The Failure Lab is a juror-triggerable control panel over real workflow logic, n
 | Nuching loses network halfway | Encrypted draft survives; reconnect deduplicates; sync events join the canonical ledger |
 | Two offline edits conflict | No silent overwrite; comparison goes to authorised human resolution |
 | Malek's lawyer misses two updates | DLAO action appears; citizen status is updated only after human verification |
-| Rahim's referral is returned twice | Jurisdiction escalation appears; human route decision is required |
+| Rahim's referral is returned twice within the same unresolved transfer chain | Jurisdiction escalation appears even if resubmission/acknowledgement is interleaved; human route decision is required |
 | Duplicate trap is selected | Side-by-side evidence appears; no automatic fraud/merge/rejection |
 | Triage components disagree | Conflict and concise reasons appear; officer resolves and audit records override |
 | Document is unreadable | T6 marks uncertainty and missing evidence; it does not fabricate a summary |

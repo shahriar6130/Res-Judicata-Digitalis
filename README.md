@@ -11,6 +11,11 @@ a generic case-management dashboard nor a source of legal advice.
 - `backend/packages/contracts/` — generated OpenAPI and evidence-state contracts plus examples
 - `frontend/` — Next.js role sign-in portals and bilingual citizen, lawyer, DLO, and admin dashboards
 - `docs/architecture/` — backend boundaries and reconciliation rules
+- `docs/spec/spec.md` — 35-route Shakkho build contract, including Tier 1 acceptance paths and thin Tier 2 surfaces
+
+Document precedence is ADLASB PDF → PRD → architecture → specification → design/code. See
+`docs/architecture/reconciliation-rules.md`. The implementation must complete Tier 1 acceptance
+paths before S23 export, expanded S24 grievance administration or editable S33 policy tooling.
 
 ## Backend setup
 

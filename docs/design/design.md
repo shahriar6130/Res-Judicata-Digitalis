@@ -1,7 +1,9 @@
 # Dashboard design system
 
-This document defines the implemented frontend dashboard treatment for the four role portals. The
-canonical product and authority model is `docs/PRD/PRD.md`.
+This document defines the implemented frontend treatment for Shakkho's canonical route inventory.
+Document precedence is the ADLASB PDF, then `docs/PRD/PRD.md`, architecture, specification and this
+design file. The specification's 35 routes are delivered by tier: acceptance-critical Tier 1 first;
+S24 and S33 stay thin, while only S23 export—not its B7 report/search—is optional Tier 2.
 
 ## Direction
 
@@ -48,8 +50,8 @@ cannot imply another.
 ### Administrator
 
 Show sourceable service counts, versioned policy values, authorised-user totals, and audit events.
-Administrators can draft configuration changes but cannot make legal or case-consequential
-decisions from this view.
+For this prototype S33 is a read-only seeded configuration reference, not a full policy-pack editor.
+Administrators cannot make legal or case-consequential decisions from this view.
 
 ## State and simulation treatment
 

@@ -9,6 +9,8 @@ import type { MessageKey } from "@/lib/i18n";
 
 type SidebarProps = {
   role: "citizen" | "dlo" | "lawyer" | "admin";
+  open?: boolean;
+  onNavigate?: () => void;
 };
 
 const NAV_ITEMS: Record<
@@ -16,49 +18,50 @@ const NAV_ITEMS: Record<
   { href: string; label: MessageKey; key: string }[]
 > = {
   citizen: [
-    { href: "/dashboard/citizen", label: "navMyCases", key: "my-cases" },
-    { href: "/dashboard/citizen/messages", label: "navMessages", key: "messages" },
-    { href: "/dashboard/citizen/profile", label: "navProfile", key: "profile" },
+    { href: "/dashboard/citizen#cases", label: "navMyCases", key: "my-cases" },
+    { href: "/dashboard/citizen#messages", label: "navMessages", key: "messages" },
+    { href: "/dashboard/citizen#profile", label: "navProfile", key: "profile" },
   ],
   dlo: [
     { href: "/dashboard/dlo", label: "navActionQueue", key: "queue" },
-    { href: "/dashboard/dlo/cases", label: "navCases", key: "cases" },
-    { href: "/dashboard/dlo/alerts", label: "navAlerts", key: "alerts" },
-    { href: "/dashboard/dlo/assignments", label: "navAssignments", key: "assignments" },
-    { href: "/dashboard/dlo/timeline", label: "navTimeline", key: "timeline" },
+    { href: "/dashboard/dlo#cases", label: "navCases", key: "cases" },
+    { href: "/dashboard/dlo#queue", label: "navAlerts", key: "alerts" },
+    { href: "/dashboard/dlo#queue", label: "navAssignments", key: "assignments" },
+    { href: "/dashboard/dlo#queue", label: "navTimeline", key: "timeline" },
   ],
   lawyer: [
     { href: "/dashboard/lawyer", label: "navAssignedCases", key: "assigned" },
-    { href: "/dashboard/lawyer/reports", label: "navHearingReports", key: "reports" },
-    { href: "/dashboard/lawyer/calendar", label: "navCalendar", key: "calendar" },
-    { href: "/dashboard/lawyer/profile", label: "navProfile", key: "profile" },
+    { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports" },
+    { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar" },
+    { href: "/dashboard/lawyer#assigned", label: "navProfile", key: "profile" },
   ],
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview" },
-    { href: "/dashboard/admin/users", label: "navUsers", key: "users" },
-    { href: "/dashboard/admin/rules", label: "navRules", key: "rules" },
-    { href: "/dashboard/admin/metrics", label: "navMetrics", key: "metrics" },
-    { href: "/dashboard/admin/audit", label: "navAudit", key: "audit" },
+    { href: "/dashboard/admin#users", label: "navUsers", key: "users" },
+    { href: "/dashboard/admin#rules", label: "navRules", key: "rules" },
+    { href: "/dashboard/admin#overview", label: "navMetrics", key: "metrics" },
+    { href: "/dashboard/admin#audit", label: "navAudit", key: "audit" },
   ],
 };
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, open = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { lang, t } = useI18n();
   const items = NAV_ITEMS[role];
 
   return (
-    <aside className={styles.sidebar} aria-label="Main navigation">
+    <aside className={`${styles.sidebar} ${open ? styles.open : ""}`} aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}>
       <div className={styles.header}>
         <Wordmark />
       </div>
-      <nav className={styles.nav} aria-label="Dashboard">
+      <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
         <ul className={styles.list}>
           {items.map((item) => (
             <li key={item.key} className={styles.listItem}>
               <Link
                 href={item.href}
                 className={`${styles.link} ${pathname === item.href ? styles.active : ""}`}
+                onClick={onNavigate}
               >
                 {t(item.label)}
               </Link>

@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className={styles.wrapper}>
-      <Sidebar role={role} />
+      <Sidebar role={role} open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
       <div className={styles.main}>
         <header className={styles.header}>
           <button
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div
           className={styles.overlay}
           onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
+          aria-label={t("closeMenu")}
         />
       )}
     </div>

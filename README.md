@@ -13,6 +13,8 @@ a generic case-management dashboard nor a source of legal advice.
 - `frontend/` — Next.js role sign-in portals and bilingual citizen, lawyer, DLO, and admin dashboards (decoupled from Supabase)
 - `docs/architecture/` — backend boundaries, Supabase foundation, and reconciliation rules
 
+The independent `DLAO` branch begins the DLAO operational-module and least-privilege authorisation foundation. See `docs/architecture/dlao-foundation.md`. It does not yet claim authenticated endpoint enforcement or a complete DLAO workflow; Ahan will review and merge the branch into `main`.
+
 ## Backend & Supabase setup
 
 The backend initiates **Supabase (PostgreSQL)** as its authoritative database. Install Python 3.10+ and configure your Supabase credentials:

@@ -3,6 +3,8 @@
 **Status:** Canonical foundation guide for the FastAPI backend and Supabase database.  
 **Companion Documents:** `docs/architecture/architecture.md`, `backend/README.md`, `README.md`.
 
+The independent DLAO module boundary and its current authorisation limitations are defined in `docs/architecture/dlao-foundation.md`.
+
 ---
 
 ## 1. Architectural Role

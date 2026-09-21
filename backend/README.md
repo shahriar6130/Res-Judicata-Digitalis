@@ -133,3 +133,11 @@ As instructed:
 - The Next.js frontend (`frontend/`) does **not** directly import or use the Supabase client SDK.
 - The frontend connects to the backend API layer via standard HTTP/JSON requests.
 - This ensures sensitive service-role keys and business reconciliation logic remain safely isolated on the backend.
+
+---
+
+## 4. DLAO module and authorisation foundation
+
+The `DLAO` branch reserves `app/modules/dlao/` for DLAO-specific commands, queries and projections while reusing the shared canonical models. The pure policy in `app/security/authorization.py` distinguishes DLAO officers, other legal-aid staff, panel lawyers and citizens across tenant, office and case-relationship scope.
+
+This is policy scaffolding, not authentication. Current endpoints are not yet protected by a verified-session dependency, and the initial Supabase service-role policies do not provide user-level isolation. Read `docs/architecture/dlao-foundation.md` before adding a DLAO endpoint.

@@ -1,0 +1,28 @@
+.wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+}
+
+.name {
+  font-size: var(--t-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--black);
+}
+
+.tagline {
+  font-size: var(--t-label);
+  line-height: var(--leading-label);
+  color: var(--gray);
+}
+
+.onDark .name {
+  color: var(--white);
+}
+
+.onDark .tagline {
+  color: var(--on-black-muted);
+}

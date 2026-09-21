@@ -1,0 +1,46 @@
+.wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--black);
+}
+
+.image {
+  object-fit: contain;
+  opacity: var(--lawmark-opacity);
+  filter: grayscale(1) contrast(1.05);
+  -webkit-mask-image: radial-gradient(
+    120% 120% at 50% 45%,
+    #000 52%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    120% 120% at 50% 45%,
+    #000 52%,
+    transparent 100%
+  );
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image: linear-gradient(
+      to right,
+      var(--grid-line) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  -webkit-mask-image: radial-gradient(
+    110% 110% at 50% 45%,
+    #000 32%,
+    transparent 96%
+  );
+  mask-image: radial-gradient(
+    110% 110% at 50% 45%,
+    #000 32%,
+    transparent 96%
+  );
+}

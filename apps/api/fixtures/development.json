@@ -1,9 +1,0 @@
-[
-  {"slug": "pending", "field": "hearing_date", "due_offset_hours": 24, "observations": []},
-  {"slug": "missing", "field": "hearing_date", "due_offset_hours": -24, "observations": []},
-  {"slug": "reported", "field": "hearing_date", "due_offset_hours": 24, "observations": [{"value": "2026-09-28", "source_type": "LAWYER_REPORT", "actor": "lawyer"}]},
-  {"slug": "corroborated", "field": "hearing_date", "due_offset_hours": 24, "observations": [{"value": "2026-09-28", "source_type": "LAWYER_REPORT", "actor": "lawyer"}, {"value": "2026-09-28", "source_type": "CLIENT_REPORT", "actor": "officer"}]},
-  {"slug": "verified", "field": "hearing_date", "due_offset_hours": 24, "observations": [{"value": "2026-09-28", "source_type": "CAUSE_LIST", "organisation": "court"}]},
-  {"slug": "stale", "field": "client_contact_status", "due_offset_hours": 24, "freshness_window_hours": 24, "observed_offset_hours": -48, "observations": [{"value": "CONTACTED", "source_type": "OFFICER_REPORT", "actor": "officer"}]},
-  {"slug": "signature-disputed", "field": "hearing_date", "due_offset_hours": 24, "observations": [{"value": "2026-09-28", "source_type": "LAWYER_REPORT", "actor": "lawyer"}, {"value": "2026-09-30", "source_type": "CAUSE_LIST", "organisation": "court"}]}
-]

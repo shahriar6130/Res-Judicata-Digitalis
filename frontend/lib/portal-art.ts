@@ -20,6 +20,16 @@ export type PortalArt = {
 export const PORTAL_ART: Record<RoleId, PortalArt> = {
   citizen: { image: justiceStrongImage, side: "left", accent: "var(--accent-citizen)" },
   dlo: { image: justiceWideImage, side: "right", accent: "var(--accent-dlo)" },
+  mediator: { image: justiceStrongImage, side: "left", accent: "var(--accent-dlo)" },
+  helpline: { image: justiceWideImage, side: "right", accent: "var(--accent-citizen)" },
+  udc: { image: justiceStrongImage, side: "left", accent: "var(--accent-lawyer)" },
   lawyer: { image: justiceWideImage, side: "left", accent: "var(--accent-lawyer)" },
+  "receiving-authority": { image: justiceWideImage, side: "right", accent: "var(--accent-dlo)" },
+  "case-support": { image: justiceStrongImage, side: "left", accent: "var(--accent-admin)" },
+  supervisor: { image: justiceWideImage, side: "right", accent: "var(--accent-dlo)" },
+  finance: { image: justiceStrongImage, side: "left", accent: "var(--accent-lawyer)" },
+  appeal: { image: justiceWideImage, side: "right", accent: "var(--accent-admin)" },
+  committee: { image: justiceStrongImage, side: "left", accent: "var(--accent-dlo)" },
+  auditor: { image: justiceWideImage, side: "right", accent: "var(--accent-citizen)" },
   admin: { image: justiceStrongImage, side: "right", accent: "var(--accent-admin)" },
 };

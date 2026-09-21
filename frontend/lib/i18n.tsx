@@ -33,6 +33,7 @@ export type MessageKey =
   | "backToSignIn"
   | "portalLinks"
   | "openMenu"
+  | "closeMenu"
   | "simulated"
   | "simClock"
   | "simSms"
@@ -75,6 +76,7 @@ export const messages: Messages = {
     backToSignIn: "লগইন পৃষ্ঠায় ফিরুন",
     portalLinks: "অন্যান্য লগইন পোর্টাল",
     openMenu: "মেনু খুলুন",
+    closeMenu: "মেনু বন্ধ করুন",
     simulated: "সিমুলেশন",
     simClock: "ঘড়ি",
     simSms: "এসএমএস",
@@ -114,6 +116,7 @@ export const messages: Messages = {
     backToSignIn: "Back to sign in",
     portalLinks: "Other sign-in portals",
     openMenu: "Open menu",
+    closeMenu: "Close menu",
     simulated: "Simulated",
     simClock: "Clock",
     simSms: "SMS",

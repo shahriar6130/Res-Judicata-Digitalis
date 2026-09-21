@@ -1,9 +1,5 @@
-"use client";
-
-import { getRole } from "@/lib/roles";
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { RoleDashboard } from "@/components/role-dashboard";
 
 export default function LawyerDashboard() {
-  const role = getRole("lawyer");
-  return <PlaceholderPage role={role} portalHref={role.path} />;
+  return <RoleDashboard role="lawyer" />;
 }

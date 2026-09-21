@@ -60,8 +60,15 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
+  border: 0;
   z-index: 40;
+}
+
+@media (min-width: 1025px) {
+  .menuBtn {
+    display: none;
+  }
 }
 
 @media (max-width: 1024px) {

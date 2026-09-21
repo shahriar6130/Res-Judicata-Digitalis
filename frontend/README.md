@@ -14,21 +14,21 @@ Bangladesh legal aid services. Visual system: `docs/design/design.md`.
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
-components/   SignInPortal, PortalLinks, Wordmark, LanguageToggle, Button, Field, PlaceholderPage,
-              Sidebar, LawMark
+components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
+              Button, Field, Sidebar, LawMark
 lib/          i18n context + dictionary, roles, brand, portal-art
 ```
 
 ## Portals
 
-Each role signs in from its own URL; after sign-in the app lands on that role's workspace.
+Each role signs in from its own URL; after sign-in the app lands directly on that role's dashboard.
 
 | Role | Sign-in portal | Workspace (after sign-in) | Dashboard |
 |---|---|---|---|
-| Citizen (নাগরিক) | `/` | `/citizen` | `/dashboard/citizen` |
-| District Legal Aid Officer (জেলা আইনি সহায়তা কর্মকর্তা) | `/dlo` | `/dlo/home` | `/dashboard/dlo` |
-| Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/lawyer/home` | `/dashboard/lawyer` |
-| Administrator (প্রশাসক) | `/admin` | `/admin/home` | `/dashboard/admin` |
+| Citizen (নাগরিক) | `/` | `/dashboard/citizen` | `/dashboard/citizen` |
+| District Legal Aid Officer (জেলা আইনি সহায়তা কর্মকর্তা) | `/dlo` | `/dashboard/dlo` | `/dashboard/dlo` |
+| Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/dashboard/lawyer` | `/dashboard/lawyer` |
+| Administrator (প্রশাসক) | `/admin` | `/dashboard/admin` | `/dashboard/admin` |
 
 Each portal links to the other three. Role names, descriptions and routes live in `lib/roles.ts`.
 Every role signs in with a **mobile number and a password**; both are required before the primary
@@ -44,7 +44,13 @@ the end.
 left sidebar (240px, sticky) containing role-specific navigation, Wordmark, and a "Simulated"
 section (clock/SMS/court/scenario/reset). Content area is off-white, max-width 1280px, centered.
 Header has hamburger menu (mobile) and language toggle. Mobile: sidebar slides in via overlay.
-Navigation labels from i18n (Bangla/English). See `components/sidebar.tsx` and `app/dashboard/layout.tsx`.
+Navigation labels from i18n (Bangla/English). The role pages are implemented in
+`components/role-dashboard.tsx`: citizen status and reply controls, lawyer assignments/reporting,
+DLO evidence queue and comparison, and admin measures/rule drafts. These are deterministic
+prototype interactions. The officer resolution control is intentionally disabled until the
+authorised resolution API exists. The sidebar simulation links are backed by the local-only
+`/sim/{clock|sms|court|scenario|reset}` control panel; it changes visible demo state without
+claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/layout.tsx`.
 
 Nothing hardcodes a color or font family outside `app/tokens.css` and
 `app/layout.tsx`; change the whole look in those two files.

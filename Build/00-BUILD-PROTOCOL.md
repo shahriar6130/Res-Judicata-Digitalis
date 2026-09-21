@@ -15,6 +15,8 @@ Read the relevant portions in this order:
 
 The PDF controls mandatory scope, cases, acceptance tests, checklist and workflow. Never invent a PDF page, legal rule or verified fact. Use the PDF's printed page/section and item ID; otherwise write `page needs team confirmation`.
 
+Supporting operational context and advisory material are indexed in `docs/research/SOURCE-REGISTER.md`. They may improve workflow realism, seeded scenarios and interface decisions, but they do not outrank the sources above, create mandatory scope or verify a legal claim.
+
 ## 2. Frozen baseline versus user input
 
 The PRD, architecture and specification are the approved baseline. Do not re-litigate settled choices in every prompt.

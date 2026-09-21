@@ -1,5 +1,18 @@
 # Reconciliation rules
 
+## Document precedence
+
+The governing order is:
+
+1. **[ADLASB Final Round Case PDF](../ADLASB/ADLASB-Hackathon_Final-Round_Case.pdf)** — competition scope, mandatory workflows, acceptance evidence and Annex business rules;
+2. **[PRD](../PRD/PRD.md)** — Shakkho's product interpretation of the ADLASB requirements;
+3. **[System architecture](architecture.md)** — technical realization of the PRD;
+4. lower-level specifications, designs, generated contracts and code comments.
+
+When two documents conflict, the higher document wins. A lower document may add implementation detail but may not remove, weaken or reinterpret a higher-level mandatory requirement. Resolve discovered conflicts by correcting the lower document and recording the decision; do not make the code choose silently.
+
+This same precedence is linked from the [architecture header](architecture.md). The evidence reconciliation rules below govern conflicting case observations; they do not override the document precedence above.
+
 ## States and decision order
 
 `PENDING` means a required value is not yet due; `MISSING` means it is overdue. `REPORTED` is one

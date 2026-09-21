@@ -1,0 +1,1067 @@
+/* ------------------------------------------------------------------ *
+ *  Citizen case-tracking detail page.
+ *  Calm, generous, mobile-first, Bangla-friendly.
+ *  Tokens-driven — no new visual system introduced.
+ * ------------------------------------------------------------------ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* Back link — textButton pattern */
+.backLink {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--black);
+  font: inherit;
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--black);
+  cursor: pointer;
+  transition: color var(--motion-fast), border-color var(--motion-fast);
+}
+
+.backLink:hover {
+  color: var(--sidebar-accent);
+  border-color: var(--sidebar-accent);
+}
+
+.backLink:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Case header
+ * ------------------------------------------------------------------ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+
+.headerEyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin: 0;
+}
+
+.headerTitle {
+  font-size: var(--t-title);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  line-height: var(--leading-title);
+  margin: 0;
+  font-family: var(--font-serif);
+}
+
+.headerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-6) var(--s-8);
+  color: var(--gray);
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  padding-top: var(--s-3);
+  border-top: 1px dashed var(--line);
+}
+
+.headerMeta strong {
+  display: block;
+  color: var(--black);
+  font-weight: var(--weight-semibold);
+  margin-top: var(--s-1);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Two-column header band (Case ID card + Status badge)
+ * ------------------------------------------------------------------ */
+
+.identityBand {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: stretch;
+}
+
+.caseIdCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-6);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.caseIdEyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin: 0;
+}
+
+.caseIdRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.caseIdValue {
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--black);
+  margin: 0;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: var(--s-1) var(--s-3);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.copyBtn:hover {
+  background: var(--off-white);
+  border-color: var(--gray);
+}
+
+.copyBtn:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.copyBtn[data-copied="true"] {
+  background: var(--accent-citizen);
+  color: var(--white);
+  border-color: var(--accent-citizen);
+}
+
+.caseIdOffice {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+/* Status badge (current status) */
+.statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.statusEyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin: 0;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border-radius: 999px;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  border: 1px solid var(--line);
+  color: var(--black);
+  background: var(--white);
+  align-self: flex-start;
+}
+
+.statusBadgeSubmitted {
+  border-color: var(--gray);
+  color: var(--gray);
+}
+.statusBadgeUnderReview {
+  border-color: var(--accent-citizen);
+  color: var(--accent-citizen);
+}
+.statusBadgeMediation {
+  border-color: var(--sidebar-accent);
+  color: var(--sidebar-accent);
+}
+.statusBadgeAgreement {
+  border-color: var(--yellow);
+  color: var(--black);
+  background: var(--off-white);
+}
+.statusBadgeResolved {
+  border-color: var(--accent-lawyer);
+  color: var(--accent-lawyer);
+}
+.statusBadgeClosed {
+  border-color: var(--gray);
+  color: var(--gray);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Next-action card
+ * ------------------------------------------------------------------ */
+
+.nextActionCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sidebar-accent);
+  border-radius: var(--r-3);
+}
+
+.nextActionIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--off-white);
+  color: var(--sidebar-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+}
+
+.nextActionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.nextActionEyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin: 0;
+}
+
+.nextActionTitle {
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  line-height: var(--leading-sub);
+  margin: 0;
+}
+
+.nextActionBody p {
+  margin: 0;
+  color: var(--ink);
+  line-height: var(--leading-body);
+}
+
+.nextActionHint {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin-top: var(--s-2);
+}
+
+.nextActionActions {
+  display: flex;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+  flex-wrap: wrap;
+}
+
+/* Resolved-card variant — no border-left, green accent */
+.nextActionCardResolved {
+  border-left-color: var(--accent-lawyer);
+}
+
+.nextActionIconResolved {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--accent-lawyer);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Timeline
+ * ------------------------------------------------------------------ */
+
+.timelineSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.timelineHeading {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timelineItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+}
+
+.timelineItem:last-child {
+  padding-bottom: 0;
+}
+
+/* Connector line between dots */
+.timelineConnector {
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -8px;
+  width: 2px;
+  background: var(--line);
+}
+
+.timelineConnectorCompleted {
+  background: var(--accent-citizen);
+}
+
+.timelineItem:last-child .timelineConnector {
+  display: none;
+}
+
+.timelineDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  border: 2px solid var(--line);
+  background: var(--white);
+  color: var(--gray);
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  z-index: 1;
+}
+
+.timelineDotCompleted {
+  background: var(--accent-citizen);
+  border-color: var(--accent-citizen);
+  color: var(--white);
+}
+
+.timelineDotCurrent {
+  background: var(--white);
+  border: 3px solid var(--sidebar-accent);
+  color: var(--sidebar-accent);
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  margin: -2px 0 0 -2px;
+  position: relative;
+}
+
+.timelineDotCurrent::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--sidebar-accent);
+  opacity: 0.3;
+}
+
+.timelineDotUpcoming {
+  background: var(--white);
+  border-color: var(--line);
+  color: var(--gray);
+}
+
+.timelineContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding-top: var(--s-1);
+}
+
+.timelineTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+
+.timelineTitleUpcoming {
+  color: var(--gray);
+  font-weight: var(--weight-medium);
+}
+
+.timelineBody {
+  font-size: var(--t-small);
+  color: var(--ink);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+.timelineBodyUpcoming {
+  color: var(--gray);
+}
+
+.timelineDate {
+  font-size: var(--t-label);
+  color: var(--gray);
+  line-height: var(--leading-label);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.timelineDateUpcoming {
+  font-style: italic;
+}
+
+.currentCallout {
+  margin-top: var(--s-3);
+  padding: var(--s-4);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sidebar-accent);
+  border-radius: var(--r-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.currentCalloutBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  background: var(--sidebar-accent);
+  color: var(--white);
+  border-radius: 999px;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  align-self: flex-start;
+}
+
+.currentCalloutTitle {
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  line-height: var(--leading-sub);
+  margin: 0;
+}
+
+.currentCalloutBody {
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+
+.currentCalloutAction {
+  align-self: flex-start;
+  margin-top: var(--s-2);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Action buttons row
+ * ------------------------------------------------------------------ */
+
+.actionsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.actionsHeading {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.actionsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.actionsRow button {
+  justify-content: center;
+}
+
+.actionHint {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Mediator + Communication grid
+ * ------------------------------------------------------------------ */
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.mediatorCard,
+.communicationCard,
+.documentsCard,
+.infoCard,
+.safetyNotice,
+.notFoundCard {
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.mediatorCard,
+.communicationCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.cardHeading {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.mediatorProfile {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.mediatorIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--off-white);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+  border: 1px solid var(--line);
+}
+
+.mediatorName {
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+  line-height: var(--leading-sub);
+}
+
+.mediatorDesignation {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+.factsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+.factsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: var(--t-small);
+}
+
+.factsRow:last-child {
+  border-bottom: 0;
+}
+
+.factsLabel {
+  color: var(--gray);
+}
+
+.factsValue {
+  color: var(--black);
+  font-weight: var(--weight-medium);
+  text-align: right;
+}
+
+.emptyState {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+/* Communication */
+.messagePreview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.messageSender {
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.messageBody {
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+
+.messageTime {
+  font-size: var(--t-label);
+  color: var(--gray);
+  line-height: var(--leading-label);
+  margin: 0;
+}
+
+.openThreadBtn {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--black);
+  color: var(--black);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+  padding: var(--s-1) 0;
+}
+
+.openThreadBtn:hover {
+  color: var(--sidebar-accent);
+  border-color: var(--sidebar-accent);
+}
+
+.openThreadBtn:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.threadPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.threadHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.threadCloseBtn {
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: var(--gray);
+  cursor: pointer;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-2);
+  font-size: var(--t-small);
+}
+
+.threadCloseBtn:hover {
+  color: var(--black);
+}
+
+.threadCloseBtn:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.threadList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.threadItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border-radius: var(--r-3);
+  border: 1px solid var(--line);
+  background: var(--off-white);
+}
+
+.threadItemCitizen {
+  background: var(--white);
+  border-left: 3px solid var(--sidebar-accent);
+}
+
+.threadItemMediator {
+  background: var(--off-white);
+  border-left: 3px solid var(--gray);
+}
+
+.threadSender {
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.threadBody {
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: var(--leading-body);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Documents list
+ * ------------------------------------------------------------------ */
+
+.documentsCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.documentsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.documentRow {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.documentRow:last-child {
+  border-bottom: 0;
+}
+
+.documentIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-2);
+  background: var(--off-white);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+}
+
+.documentMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.documentName {
+  font-size: var(--t-body);
+  color: var(--black);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+  line-height: var(--leading-body);
+}
+
+.documentStatus {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+.documentCta {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: var(--s-1) var(--s-3);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.documentCta:hover {
+  background: var(--off-white);
+  border-color: var(--gray);
+}
+
+.documentCta:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.documentCtaDisabled {
+  color: var(--gray);
+  cursor: not-allowed;
+  border-color: var(--line);
+  background: var(--off-white);
+}
+
+.documentCtaDisabled:hover {
+  background: var(--off-white);
+  border-color: var(--line);
+}
+
+.documentPendingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-1) var(--s-3);
+  border-radius: 999px;
+  background: var(--off-white);
+  color: var(--gray);
+  font-size: var(--t-small);
+  border: 1px dashed var(--line);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Case information grid
+ * ------------------------------------------------------------------ */
+
+.infoCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-body);
+  background: var(--white);
+}
+
+.infoRow:nth-child(2n+1) {
+  border-right: 1px solid var(--line);
+}
+
+.infoRow:last-child,
+.infoRow:nth-last-child(2):nth-child(odd) {
+  border-bottom: 0;
+}
+
+.infoLabel {
+  color: var(--gray);
+  flex: 0 0 auto;
+}
+
+.infoValue {
+  color: var(--black);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Safety notice
+ * ------------------------------------------------------------------ */
+
+.safetyNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sidebar-accent);
+  color: var(--ink);
+}
+
+.safetyIcon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--sidebar-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.safetyBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.safetyHeading {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.safetyText {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Not-found card
+ * ------------------------------------------------------------------ */
+
+.notFoundCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  align-items: flex-start;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Responsive
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 1024px) {
+  .identityBand {
+    grid-template-columns: 1fr;
+  }
+  .twoColumn {
+    grid-template-columns: 1fr;
+  }
+  .actionsRow {
+    grid-template-columns: 1fr;
+  }
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+  .infoRow {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerTitle {
+    font-size: var(--t-section);
+  }
+  .nextActionCard {
+    flex-direction: column;
+  }
+  .headerMeta {
+    flex-direction: column;
+    gap: var(--s-3);
+  }
+  .mediatorProfile {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-2);
+  }
+  .documentRow {
+    grid-template-columns: 28px 1fr;
+  }
+  .documentCta,
+  .documentPendingPill {
+    grid-column: 2;
+  }
+  .actionsRow {
+    grid-template-columns: 1fr;
+  }
+  .actionsRow button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timelineDotCurrent::after {
+    display: none;
+  }
+}

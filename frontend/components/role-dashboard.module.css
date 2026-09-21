@@ -33,17 +33,10 @@
 .filters button { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: var(--s-3) 0; font: inherit; color: var(--gray); cursor: pointer; }
 .filters .filterActive { border-color: var(--black); color: var(--black); font-weight: var(--weight-semibold); }
 
-/* Tab strip — WordPress-style underline tabs.
-   The citizen dashboard renders exactly one .tabPanel at a time; the
-   active tab is indicated by an underline + weight change. */
-.tabs { display: flex; flex-wrap: wrap; gap: var(--s-6); border-bottom: 1px solid var(--line); }
-.tabs .tab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: var(--s-3) 0; font: inherit; color: var(--gray); cursor: pointer; min-height: 44px; }
-.tabs .tabActive { border-bottom-color: var(--black); color: var(--black); font-weight: var(--weight-semibold); }
-.tabs .tab:focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: -2px; }
-.complaintLink { color: var(--red); }
-/* When the complaint tab is active, keep the red dot identity: override
-   the generic black active border with red, matching the sidebar treatment. */
-.tabs .tabActive.complaintLink { color: var(--red); border-bottom-color: var(--red); }
+.udcTabs { display: flex; flex-wrap: wrap; gap: var(--s-6); border-bottom: 1px solid var(--line); margin-top: var(--s-4); }
+.udcTab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: var(--s-3) 0; font: inherit; color: var(--gray); cursor: pointer; font-size: var(--t-body); font-weight: var(--weight-medium); }
+.udcTabActive { border-color: var(--black); color: var(--black); font-weight: var(--weight-semibold); }
+
 .queue { background: var(--white); border-top: 1px solid var(--line); }
 .queueHead, .queueRow { width: 100%; display: grid; grid-template-columns: 140px minmax(280px, 1fr) 130px 105px 50px; gap: var(--s-4); align-items: center; text-align: left; padding: var(--s-4); border: 0; border-bottom: 1px solid var(--line); }
 .queueHead { color: var(--gray); font-size: var(--t-label); text-transform: uppercase; letter-spacing: .06em; }

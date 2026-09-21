@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
+import { BottomNav } from "@/components/bottom-nav";
 import { LanguageToggle } from "@/components/language-toggle";
 import styles from "./layout.module.css";
 import { useI18n } from "@/lib/i18n";
@@ -42,6 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           aria-label={t("closeMenu")}
         />
       )}
+      <BottomNav role={role} />
     </div>
   );
 }

@@ -1,28 +1,453 @@
+/* ------------------------------------------------------------------ *
+ *  Citizen sidebar.
+ *
+ *  Two surfaces share this file:
+ *    - .dark     → dark charcoal plate with warm-amber accent (citizen)
+ *    - .legacy   → light gray surface with cool-blue accent (other roles)
+ *
+ *  The chrome (position, width, mobile drawer) is shared; the colour
+ *  tokens and inner item styles switch on the surface variant class.
+ * ------------------------------------------------------------------ */
+
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100dvh;
-  background: var(--black);
-  color: var(--white);
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  position: sticky;
+  /* Lock to the viewport so the sidebar itself never scrolls with the
+     page. The inner `.nav` owns its own vertical scroll if the menu
+     ever grows beyond the viewport height. */
+  position: fixed;
   top: 0;
+  left: 0;
   z-index: 10;
   flex-shrink: 0;
+  overflow: hidden;
+  font-family: var(--font-serif);
 }
 
-.header {
-  padding: var(--s-8) var(--s-6);
-  border-bottom: 1px solid var(--line-on-black);
+/* Dark citizen surface ------------------------------------------------ */
+
+.dark {
+  background: var(--sidebar-dark-bg);
+  color: var(--sidebar-dark-fg);
+  border-right: 1px solid var(--sidebar-dark-border);
 }
 
-.nav {
+.dark .brand {
+  padding: var(--s-6) var(--s-6) var(--s-4);
+  border-bottom: 1px solid var(--sidebar-dark-border);
+}
+
+.dark .nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-4) var(--s-3) var(--s-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-dark-border) transparent;
+}
+
+.dark .navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: var(--s-3) var(--s-3);
+  border-radius: var(--r-3);
+  color: var(--sidebar-dark-fg);
+  font: inherit;
+  font-size: var(--t-body);
+  font-weight: var(--weight-medium);
+  line-height: 1.3;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  font-family: var(--font-serif);
+  min-height: 40px;
+}
+
+.dark .navItem:hover {
+  background: var(--sidebar-dark-hover);
+}
+
+.dark .navItem:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+}
+
+.dark .navItemActive {
+  background: var(--sidebar-dark-active-bg);
+  color: var(--sidebar-dark-active-fg);
+  font-weight: var(--weight-semibold);
+}
+
+.dark .navItemActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--sidebar-dark-accent);
+  border-radius: 2px;
+}
+
+.dark .navItemProminent {
+  background: var(--sidebar-dark-accent);
+  color: var(--sidebar-dark-bg);
+  font-weight: var(--weight-bold);
+  min-height: 48px;
+  padding: var(--s-3) var(--s-4);
+}
+
+.dark .navItemProminent:hover {
+  background: #ffce4d;
+  color: var(--sidebar-dark-bg);
+}
+
+.dark .navItemProminent.navItemActive {
+  background: var(--sidebar-dark-accent);
+  color: var(--sidebar-dark-bg);
+}
+
+.dark .navItemSub {
+  padding-left: var(--s-6);
+  font-size: var(--t-small);
+  min-height: 36px;
+  color: var(--sidebar-dark-muted);
+}
+
+.dark .navItemSub.navItemActive {
+  color: var(--sidebar-dark-fg);
+}
+
+.dark .navIcon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: inherit;
+}
+
+.dark .navLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dark .navBadge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--sidebar-dark-accent);
+  color: var(--sidebar-dark-bg);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.dark .section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.dark .sectionLabel,
+.dark .subSectionLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: var(--weight-semibold);
+  color: var(--sidebar-dark-muted);
+  padding: var(--s-2) var(--s-3) var(--s-1);
+  margin: 0;
+}
+
+.dark .subSectionLabel {
+  margin-top: var(--s-2);
+  padding-bottom: 2px;
+}
+
+.dark .channelList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dark .channelEmpty {
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-small);
+  color: var(--sidebar-dark-muted);
+}
+
+.dark .channelItem {
+  display: flex;
+  gap: var(--s-3);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: var(--s-3) var(--s-3);
+  border-radius: var(--r-3);
+  color: var(--sidebar-dark-fg);
+  cursor: pointer;
+  font: inherit;
+  transition: background var(--motion-fast);
+  position: relative;
+  font-family: var(--font-serif);
+}
+
+.dark .channelItem:hover {
+  background: var(--sidebar-dark-hover);
+}
+
+.dark .channelItem:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+}
+
+.dark .channelItemActive {
+  background: var(--sidebar-dark-active-bg);
+}
+
+.dark .channelItemActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--sidebar-dark-accent);
+  border-radius: 2px;
+}
+
+.dark .channelIcon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+  color: var(--sidebar-dark-muted);
+}
+
+.dark .channelItemActive .channelIcon {
+  color: var(--sidebar-dark-accent);
+}
+
+.dark .channelBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dark .channelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: var(--weight-semibold);
+  font-size: var(--t-small);
+  line-height: 1.3;
+}
+
+.dark .channelNumber {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sidebar-dark-muted);
+}
+
+.dark .channelId {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--sidebar-dark-muted);
+  opacity: 0.7;
+  font-family: var(--font-serif);
+  font-weight: var(--weight-regular);
+}
+
+.dark .channelParties {
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+  color: var(--sidebar-dark-fg);
+  word-break: break-word;
+}
+
+.dark .channelStatus {
+  display: flex;
+  margin-top: 4px;
+}
+
+/* Profile panel — pinned to the bottom of the dark sidebar. */
+.dark .profilePanel {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-4);
+  border-top: 1px solid var(--sidebar-dark-border);
+  background: var(--sidebar-dark-bg);
+  position: relative;
+}
+
+.dark .profileAvatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sidebar-dark-accent);
+  color: var(--sidebar-dark-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-bold);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.dark .profileText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dark .profileName {
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  color: var(--sidebar-dark-fg);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dark .profileRole {
+  font-size: 11px;
+  color: var(--sidebar-dark-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+.dark .kebab {
+  position: relative;
+}
+
+.dark .kebabBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-2);
+  color: var(--sidebar-dark-muted);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.dark .kebabBtn:hover {
+  background: var(--sidebar-dark-hover);
+  color: var(--sidebar-dark-fg);
+}
+
+.dark .kebabBtn:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+}
+
+.dark .kebabMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 180px;
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: var(--s-1);
+  z-index: 60;
+}
+
+.dark .kebabItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: var(--s-3) var(--s-4);
+  font: inherit;
+  font-size: var(--t-small);
+  color: var(--ink);
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+
+.dark .kebabItem:hover {
+  background: var(--off-white);
+}
+
+.dark .kebabItem:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: -2px;
+}
+
+.dark .comingSoonTag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  background: var(--off-white);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-2);
+  padding: 2px 6px;
+  margin-left: var(--s-2);
+}
+
+/* Legacy (light) surface --------------------------------------------- */
+
+.legacy {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  border-right: 1px solid var(--sidebar-border);
+}
+
+.legacy .brand {
+  padding: var(--s-6) var(--s-4);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.legacy .nav {
   flex: 1;
   overflow-y: auto;
   padding: var(--s-6) var(--s-4);
 }
 
-.list {
+.legacy .legacyList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -31,110 +456,53 @@
   gap: var(--s-1);
 }
 
-.listItem {
+.legacy .listItem {
   margin: 0;
 }
 
-.link {
+.legacy .legacyLink {
   display: block;
-  padding: var(--s-3) var(--s-4);
-  color: var(--on-black-muted);
+  position: relative;
+  width: 100%;
+  padding: var(--s-4) var(--s-4);
+  color: var(--sidebar-muted);
   text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-2);
+  text-align: left;
+  font: inherit;
   font-size: var(--t-body);
   line-height: var(--leading-body);
-  border-radius: var(--r-2);
+  cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
-}
-
-.link:hover {
-  background: var(--line-on-black);
-  color: var(--white);
-}
-
-.active {
-  background: var(--ink);
-  color: var(--white);
   font-weight: var(--weight-medium);
 }
 
-/* Complaint / out-of-band action: visually separated from the main nav
-   with a hairline divider and a small red dot. Citizen-facing only. */
-.listItemComplaint {
-  margin-top: var(--s-2);
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--line-on-black);
+.legacy .legacyLink:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-fg);
 }
 
-.complaintLink {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  min-height: 44px;
-  color: var(--red);
+.legacy .legacyLinkActive {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.complaintLink::before {
+.legacy .legacyLinkActive::before {
   content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  flex: 0 0 auto;
+  position: absolute;
+  left: -1px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--sidebar-accent);
+  border-radius: 2px;
 }
 
-.complaintLink:hover {
-  background: rgba(229, 57, 53, 0.12);
-  color: var(--red);
-}
-
-.complaintLink.active {
-  background: var(--ink);
-  color: var(--white);
-}
-
-.complaintLink.active::before {
-  background: var(--red);
-}
-
-.simulatedSection {
-  border-top: 1px solid var(--line-on-black);
-  padding: var(--s-6) var(--s-4);
-  margin-top: auto;
-}
-
-.simulatedLabel {
-  font-size: var(--t-label);
-  line-height: var(--leading-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--on-black-muted);
-  margin: 0 0 var(--s-4);
-}
-
-.simulatedList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.simulatedLink {
-  display: block;
-  padding: var(--s-2) var(--s-3);
-  color: var(--on-black-muted);
-  text-decoration: none;
-  font-size: var(--t-small);
-  line-height: var(--leading-small);
-  border-radius: var(--r-1);
-  transition: background var(--motion-fast), color var(--motion-fast);
-}
-
-.simulatedLink:hover {
-  background: var(--line-on-black);
-  color: var(--white);
-}
+/* Mobile drawer (shared) --------------------------------------------- */
 
 @media (max-width: 1024px) {
   .sidebar {
@@ -150,8 +518,36 @@
   .sidebar.open {
     transform: translateX(0);
   }
+}
 
-  .simulatedSection {
-    display: none;
-  }
+/* ------------------------------------------------------------------ *
+ *  English-only sidebar font override.
+ *
+ *  Switches the sidebar (and every descendant button/text) to a clean
+ *  system sans-serif when the page is in English. Bangla keeps the
+ *  serif `--font-bengali` (Noto Serif Bengali) because the Bengali
+ *  glyphs read best in a serif.
+ *
+ *  Scoped to .sidebar so the main content area keeps `--font-serif`
+ *  unchanged. Placed last so it wins against the per-component
+ *  `font-family: var(--font-serif)` declarations above.
+ * ------------------------------------------------------------------ */
+.sidebar:lang(en),
+.sidebar:lang(en) * {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0;
+}
+
+.sidebar:lang(en) .name,
+.sidebar:lang(en) .channelNumber,
+.sidebar:lang(en) .profileRole,
+.sidebar:lang(en) .navBadge,
+.sidebar:lang(en) .badge,
+.sidebar:lang(en) .sectionLabel,
+.sidebar:lang(en) .subSectionLabel,
+.sidebar:lang(en) .comingSoonTag {
+  letter-spacing: 0.04em;
 }

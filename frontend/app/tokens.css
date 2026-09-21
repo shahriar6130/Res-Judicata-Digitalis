@@ -9,13 +9,14 @@
   /* Color */
   --black: #000000;
   --white: #ffffff;
-  --off-white: #f7f7f5;
+  --off-white: #faf9f6;
   --ink: #1a1a1a;
   --gray: #666666;
   --line: #e5e5e5;
   --overlay: rgba(0, 0, 0, 0.52);
   --red: #e53935;
   --yellow: #f4c430;
+  --green: #16a34a;
 
   /* Type */
   /* --font-playfair and --font-bengali are injected by next/font in layout.tsx */
@@ -69,7 +70,42 @@
   --page-pad-mobile: 16px;
 
   /* Sidebar */
-  --sidebar-width: 240px;
+  --sidebar-width: 272px;
+  --sidebar-bg: #f1f1ee;
+  --sidebar-fg: #1a1a1a;
+  --sidebar-muted: #6b6b6b;
+  --sidebar-border: #d9d9d5;
+  --sidebar-active-bg: #ffffff;
+  --sidebar-active-fg: #000000;
+  --sidebar-accent: #2f6fed;
+  --sidebar-hover-bg: #e7e7e2;
+
+  /* Sidebar — dark surface (citizen redesign).
+     Charcoal plate so the sidebar feels like a calm command surface;
+     warm amber accent chosen over a cool blue for South-Asian warmth.
+     Both fg and accent are paired with text — never colour-only. */
+  --sidebar-dark-bg: #1f2329;
+  --sidebar-dark-fg: #f5f5f3;
+  --sidebar-dark-muted: #a3a7ad;
+  --sidebar-dark-border: #2c3138;
+  --sidebar-dark-hover: #2a2f37;
+  --sidebar-dark-active-bg: #2c3340;
+  --sidebar-dark-active-fg: #ffffff;
+  --sidebar-dark-accent: #f0b429;
+
+  /* Case status — colour-coded dot, always paired with text label. */
+  --status-active: #16a34a;
+  --status-review: #f4c430;
+  --status-needs-action: #e53935;
+  --status-resolved: #8b8f95;
+  --status-pending: #c66a00;
+
+  /* Surfaces for cards in the main column. */
+  --surface-card: #ffffff;
+  --surface-card-border: #e5e5e0;
+  --surface-card-lodge: #1f2329;
+  --surface-card-lodge-fg: #f5f5f3;
+  --surface-card-lodge-accent: #f0b429;
 
   /* On-black (login left pane) */
   --on-black: var(--white);
@@ -110,6 +146,11 @@
   --motion-fast: 150ms;
   --motion-base: 200ms;
   --ease: ease;
+
+  /* Bottom nav (mobile citizen) */
+  --bottom-nav-height: 64px;
+  --bottom-nav-bg: #ffffff;
+  --bottom-nav-border: #e5e5e5;
 }
 
 @media (max-width: 640px) {

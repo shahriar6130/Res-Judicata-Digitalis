@@ -1,0 +1,281 @@
+/* ------------------------------------------------------------------ *
+ *  HomeDashboard — landing page for the citizen (#home).
+ *  Warm off-white surface with the dark sidebar providing contrast.
+ *  Three action cards (Lodge / Cases / UDC) and a recent-cases list.
+ * ------------------------------------------------------------------ */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  max-width: 1100px;
+}
+
+/* Greeting ------------------------------------------------------------ */
+.greeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.eyebrow {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray);
+  margin: 0;
+  font-weight: var(--weight-semibold);
+}
+
+.headline {
+  font-size: var(--t-title);
+  line-height: var(--leading-title);
+  letter-spacing: -0.01em;
+  margin: 0;
+  font-weight: var(--weight-bold);
+  color: var(--ink);
+}
+
+.name {
+  color: var(--ink);
+}
+
+.subhead {
+  font-size: var(--t-sub);
+  line-height: var(--leading-sub);
+  color: var(--gray);
+  margin: var(--s-1) 0 0;
+  max-width: 640px;
+}
+
+/* Action cards -------------------------------------------------------- */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-6);
+}
+
+.actionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-4);
+  width: 100%;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-4);
+  padding: var(--s-6);
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast),
+    border-color var(--motion-fast);
+  min-height: 200px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.actionCard:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.actionCard:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+}
+
+.actionCardLodge {
+  background: var(--surface-card-lodge);
+  color: var(--surface-card-lodge-fg);
+  border-color: var(--surface-card-lodge);
+  position: relative;
+  overflow: hidden;
+}
+
+.actionCardLodge::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--surface-card-lodge-accent);
+}
+
+.actionCardLodge:hover {
+  border-color: var(--surface-card-lodge-accent);
+  transform: translateY(-1px);
+}
+
+.actionIcon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-3);
+  background: var(--off-white);
+  color: var(--ink);
+  border: 1px solid var(--surface-card-border);
+}
+
+.actionIconLodge {
+  background: var(--surface-card-lodge-accent);
+  color: var(--surface-card-lodge);
+  border-color: var(--surface-card-lodge-accent);
+}
+
+.actionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.actionTitle {
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.actionCardLodge .actionTitle {
+  color: var(--surface-card-lodge-fg);
+}
+
+.actionDesc {
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  color: var(--gray);
+}
+
+.actionCardLodge .actionDesc {
+  color: var(--surface-card-lodge-fg);
+  opacity: 0.85;
+}
+
+.actionCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: inherit;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+
+/* Recent cases -------------------------------------------------------- */
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.recentHeading {
+  font-size: var(--t-section);
+  line-height: var(--leading-section);
+  font-weight: var(--weight-bold);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.recentEmpty {
+  color: var(--gray);
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  padding: var(--s-6);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-3);
+}
+
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.recentCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-4);
+  padding: var(--s-6);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.recentCard:hover {
+  border-color: var(--ink);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.recentCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--t-label);
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--weight-semibold);
+}
+
+.recentCardId {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: var(--t-small);
+}
+
+.recentCardTitle {
+  font-size: var(--t-section);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.recentCardMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.recentCardCta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  color: var(--ink);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  font-size: var(--t-body);
+  padding: var(--s-1) 0 var(--s-2);
+  cursor: pointer;
+  margin-top: auto;
+}
+
+.recentCardCta:hover {
+  color: var(--sidebar-dark-accent);
+  border-color: var(--sidebar-dark-accent);
+}
+
+.recentCardCta:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+  .actionCard {
+    min-height: 0;
+  }
+}

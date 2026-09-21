@@ -1,5 +1,16 @@
+/* ------------------------------------------------------------------ *
+ *  Wordmark — four variants:
+ *    default     → name is black, tagline gray (used on white cards)
+ *    onDark      → name is white, tagline muted (used on login dark pane)
+ *    onSidebar   → name is WHITE inside a dark chip on the light sidebar
+ *                  so the brand stays immediately recognizable.
+ *    compact     → for the new dark citizen sidebar — pairs a scale icon
+ *                  with name + tagline. No card surface (the parent
+ *                  sidebar already provides the dark plate).
+ * ------------------------------------------------------------------ */
+
 .wordmark {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--s-1);
@@ -7,7 +18,7 @@
 
 .name {
   font-size: var(--t-title);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-bold);
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--black);
@@ -19,10 +30,73 @@
   color: var(--gray);
 }
 
+/* Login dark pane */
 .onDark .name {
   color: var(--white);
 }
 
 .onDark .tagline {
   color: var(--on-black-muted);
+}
+
+/* Light sidebar — keep Shakko in white inside a defined dark plate so it
+   stays instantly recognizable on the soft gray surface. */
+.onSidebar {
+  background: var(--ink);
+  color: var(--white);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-3);
+}
+
+.onSidebar .name {
+  color: var(--white);
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.onSidebar .tagline {
+  color: var(--on-black-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Dark citizen sidebar — horizontal layout with a scale icon badge.
+   Sized to fit a 272px sidebar header without crowding. */
+.compact {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--sidebar-dark-fg);
+  padding: 0;
+  background: transparent;
+}
+
+.compact .text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.compact .badge {
+  flex: 0 0 auto;
+  color: var(--sidebar-dark-accent);
+}
+
+.compact .name {
+  color: var(--sidebar-dark-fg);
+  font-size: 19px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.005em;
+  line-height: 1;
+}
+
+.compact .tagline {
+  color: var(--sidebar-dark-muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
 }

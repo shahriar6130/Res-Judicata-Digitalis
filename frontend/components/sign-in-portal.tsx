@@ -63,7 +63,7 @@ export function SignInPortal({ role }: SignInPortalProps) {
     >
       <div className={styles.art}>
         <div className={styles.artTop}>
-          <Wordmark onDark />
+          <Wordmark variant="onDark" />
           <LanguageToggle onDark />
         </div>
         <LawMark image={art.image} />

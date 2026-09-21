@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
+import { CaseDetail } from "@/components/case-detail";
 import { ComplaintModal } from "@/components/complaint-modal";
 import { CoverageNavigator } from "@/components/coverage-navigator";
+import { HomeDashboard } from "@/components/home-dashboard";
+import { NotificationList } from "@/components/notification-list";
 import { OperationalRoleDashboard } from "@/components/operational-role-dashboard";
+import { UdcSection, type UdcTab } from "@/components/udc-section";
+import { listCitizenCases, type CitizenCaseSummary } from "@/lib/case-demo";
 import { useI18n, type Lang } from "@/lib/i18n";
 import type { RoleId } from "@/lib/roles";
 import styles from "./role-dashboard.module.css";
@@ -23,7 +28,7 @@ type DashboardProps = { role: RoleId };
 
 export function RoleDashboard({ role }: DashboardProps) {
   const { lang } = useI18n();
-  return role === "citizen" ? <CitizenDashboard lang={lang} /> :
+  return role === "citizen" ? <CitizenDashboard /> :
     role === "lawyer" ? <LawyerDashboard lang={lang} /> :
     role === "dlo" ? <OfficerDashboard lang={lang} /> :
     role === "admin" ? <AdminDashboard lang={lang} /> :
@@ -58,219 +63,163 @@ function State({ value }: { value: "verified" | "reported" | "pending" | "disput
   return <span className={`${styles.state} ${styles[value]}`}>{value.replace("_", " ")}</span>;
 }
 
-function CitizenDashboard({ lang }: { lang: Lang }) {
-  const [reply, setReply] = useState<"confirm" | "dispute" | "callback" | null>(null);
-  const [details, setDetails] = useState(false);
-  // WordPress-style tab switcher. Active tab is driven by the URL hash so
-  // the sidebar acts as the tab bar; only the active panel renders.
-  type Tab = "cases" | "messages" | "profile" | "help" | "complaint";
-  const [tab, setTab] = useState<Tab>("cases");
+function CitizenDashboard() {
+  // The citizen sidebar writes `window.location.hash`; this dashboard
+  // mirrors it into state and renders exactly one panel. No tab strip;
+  // no shared context — the URL is the only state holder.
+  //
+  // Hash shapes:
+  //   ""                  → home (default landing)
+  //   #home               → home
+  //   #notifications      → notification feed
+  //   #complaint          → complaint wizard
+  //   #cases              → case list
+  //   #cases/<id>         → case detail
+  //   #udc                → UDC overview
+  //   #udc/office         → My UDC office
+  //   #udc/officer        → Legal aid officer
+  //   #udc/contact        → Contact support
+  const { lang, t } = useI18n();
+  const citizenCases = listCitizenCases();
+  type Section =
+    | "home"
+    | "notifications"
+    | "complaint"
+    | "cases"
+    | "udc";
+  const [section, setSection] = useState<Section>("home");
+  const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+  const [udcTab, setUdcTab] = useState<UdcTab>("overview");
+
   useEffect(() => {
     function sync() {
       const raw = window.location.hash.replace(/^#/, "");
-      if (raw === "messages" || raw === "profile" || raw === "help" || raw === "complaint") {
-        setTab(raw);
+      const [head, rest] = raw.split("/");
+      if (head === "complaint") {
+        setSection("complaint");
+        setActiveCaseId(null);
+      } else if (head === "udc") {
+        setSection("udc");
+        setActiveCaseId(null);
+        setUdcTab((rest as UdcTab) || "overview");
+      } else if (head === "home" || head === "") {
+        setSection("home");
+        setActiveCaseId(null);
+      } else if (head === "notifications") {
+        setSection("notifications");
+        setActiveCaseId(null);
+      } else if (head === "cases") {
+        setSection("cases");
+        setActiveCaseId(rest || null);
       } else {
-        setTab("cases");
+        // Unknown — fall back to home so the user always lands somewhere sane.
+        setSection("home");
+        setActiveCaseId(null);
       }
     }
     sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
-  function selectTab(next: Tab) {
-    history.replaceState(null, "", `#${next}`);
-    setTab(next);
+
+  function openCase(caseId: string) {
+    // Mirror the sidebar's behavior — push the hash so the URL stays
+    // the single source of truth that the sidebar reads.
+    window.location.hash = `cases/${caseId}`;
   }
-  const tabs: { id: Tab; label: string; isComplaint?: boolean }[] = [
-    { id: "cases", label: lang === "bn" ? "আমার মামলা" : "My case" },
-    { id: "messages", label: lang === "bn" ? "বার্তা" : "Message" },
-    { id: "profile", label: lang === "bn" ? "মামলার তথ্য" : "Case details" },
-    { id: "help", label: lang === "bn" ? "সাহায্য" : "Get help" },
-    { id: "complaint", label: lang === "bn" ? "অভিযোগ" : "Complaint", isComplaint: true },
-  ];
+
+  function backToCases() {
+    setActiveCaseId(null);
+    history.replaceState(null, "", "#cases");
+  }
 
   return (
     <div className={styles.page}>
-      <PrototypeNote lang={lang} />
-      <PageHeader
-        eyebrow={lang === "bn" ? "নাগরিক পোর্টাল" : "Citizen portal"}
-        title={lang === "bn" ? "আপনার আইনি সহায়তা" : "Your legal aid"}
-        intro={lang === "bn" ? "যাচাইকৃত পরবর্তী পদক্ষেপ দেখুন এবং কোনো তথ্য ভুল হলে জানান।" : "See the verified next step and tell the office when something is wrong."}
-      />
+      {section === "home" ? <HomeDashboard key="home" /> : null}
 
-      <nav
-        className={styles.tabs}
-        role="tablist"
-        aria-label={lang === "bn" ? "নাগরিক বিভাগ" : "Citizen sections"}
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            id={`citizen-tab-${t.id}`}
-            role="tab"
-            type="button"
-            aria-selected={tab === t.id}
-            aria-controls={`citizen-panel-${t.id}`}
-            tabIndex={tab === t.id ? 0 : -1}
-            className={`${styles.tab} ${tab === t.id ? styles.tabActive : ""} ${t.isComplaint ? styles.complaintLink : ""}`}
-            onClick={() => selectTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      {section === "notifications" ? (
+        <NotificationList key="notifications" />
+      ) : null}
 
-      {tab === "cases" ? (
+      {section === "complaint" ? (
         <section
-          id="cases"
-          key="cases"
-          role="tabpanel"
-          aria-labelledby="citizen-tab-cases"
-          className={styles.heroStatus}
-        >
-          <div>
-            <p className={styles.sectionLabel}>{lang === "bn" ? "মামলা SHK-DEMO-007" : "Case SHK-DEMO-007"}</p>
-            <h2>{lang === "bn" ? "পরবর্তী শুনানি ৩০ সেপ্টেম্বর ২০২৬" : "Next hearing: 30 September 2026"}</h2>
-            <p>{lang === "bn" ? "তারিখটি আদালতের নথি দেখে যাচাই করা হয়েছে। সকাল ১০টার মাঝে জেলা আদালতে উপস্থিত থাকুন।" : "The date was verified against a court record. Arrive at the District Court by 10:00 AM."}</p>
-          </div>
-          <State value="verified" />
-        </section>
-      ) : null}
-
-      {tab === "messages" ? (
-        <section
-          id="messages"
-          key="messages"
-          role="tabpanel"
-          aria-labelledby="citizen-tab-messages"
-          className={styles.section}
-        >
-          <div className={styles.sectionHeading}>
-            <div>
-              <p className={styles.sectionLabel}>{lang === "bn" ? "সর্বশেষ বার্তা" : "Latest message"}</p>
-              <h2>{lang === "bn" ? "পরবর্তী পদক্ষেপ নিশ্চিত করুন" : "Confirm your next step"}</h2>
-            </div>
-            <span className={styles.simTag}>{copy(labels.simulated, lang)}</span>
-          </div>
-          <p className={styles.message}>
-            {lang === "bn"
-              ? "আপনার শুনানির তারিখ ৩০ সেপ্টেম্বর। এই তথ্যটি কি আপনার জানা তথ্যের সঙ্গে মেলে?"
-              : "Your hearing date is 30 September. Does this match the information you have?"}
-          </p>
-          {reply ? (
-            <p role="status" className={styles.success}>
-              {reply === "confirm"
-                ? lang === "bn"
-                  ? "আপনার নিশ্চিতকরণ নথিভুক্ত হয়েছে।"
-                  : "Your confirmation was recorded."
-                : reply === "dispute"
-                ? lang === "bn"
-                  ? "বিষয়টি কর্মকর্তার পর্যালোচনার জন্য পাঠানো হয়েছে।"
-                  : "This was sent to an officer for review."
-                : lang === "bn"
-                ? "ফোন করার অনুরোধ নথিভুক্ত হয়েছে।"
-                : "Your callback request was recorded."}
-            </p>
-          ) : null}
-          <div className={styles.actions}>
-            <Button onClick={() => setReply("confirm")}>
-              {lang === "bn" ? "তথ্য ঠিক আছে" : "Confirm"}
-            </Button>
-            <Button variant="secondary" onClick={() => setReply("dispute")}>
-              {lang === "bn" ? "তথ্যটি ভুল" : "Dispute"}
-            </Button>
-            <button className={styles.textButton} onClick={() => setReply("callback")}>
-              {lang === "bn" ? "আমাকে ফোন করুন" : "Request a call"}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {tab === "profile" ? (
-        <aside
-          id="profile"
-          key="profile"
-          role="tabpanel"
-          aria-labelledby="citizen-tab-profile"
-          className={styles.facts}
-        >
-          <h2>{lang === "bn" ? "মামলার তথ্য" : "Case facts"}</h2>
-          <dl>
-            <div>
-              <dt>{lang === "bn" ? "নাগরিক" : "Citizen"}</dt>
-              <dd>{lang === "bn" ? "মোঃ আব্দুর রহিম (মোবাইল: a)" : "Md. Abdur Rahim (Mobile: a)"}</dd>
-            </div>
-            <div>
-              <dt>{lang === "bn" ? "অবস্থা" : "Status"}</dt>
-              <dd>{lang === "bn" ? "আইনি সহায়তা চলমান" : "Legal aid active"}</dd>
-            </div>
-            <div>
-              <dt>{lang === "bn" ? "আইনজীবী" : "Lawyer"}</dt>
-              <dd>{lang === "bn" ? "ফারহানা রহমান" : "Farhana Rahman"}</dd>
-            </div>
-            <div>
-              <dt>{lang === "bn" ? "পরবর্তী কাজ" : "Next action"}</dt>
-              <dd>{lang === "bn" ? "শুনানিতে উপস্থিতি" : "Attend hearing"}</dd>
-            </div>
-          </dl>
-          <button className={styles.textButton} onClick={() => setDetails(!details)}>
-            {copy(labels.view, lang)}
-          </button>
-          {details ? (
-            <p className={styles.evidence}>
-              {lang === "bn"
-                ? "উৎস: সিমুলেটেড আদালত নথি · ধারণ: ২০ সেপ্টেম্বর ২০২৬ · নীতি: hearing-date/v1"
-                : "Source: simulated court record · captured 20 Sep 2026 · policy: hearing-date/v1"}
-            </p>
-          ) : null}
-        </aside>
-      ) : null}
-
-      {tab === "help" ? (
-        <section
-          id="help"
-          key="help"
-          role="tabpanel"
-          aria-labelledby="citizen-tab-help"
-          className={styles.section}
-        >
-          <div className={styles.sectionHeading}>
-            <div>
-              <p className={styles.sectionLabel}>{lang === "bn" ? "সাহায্য" : "Help"}</p>
-              <h2>{lang === "bn" ? "সাহায্য দরকার?" : "Need help?"}</h2>
-            </div>
-          </div>
-          <p className={styles.message}>
-            {lang === "bn"
-              ? "যেকোনো প্রশ্নে ১৬৬৯৯ নম্বরে কল করুন অথবা নিচের বোতামে চাপ দিয়ে আমাদের জানান — আমরাই আপনাকে ফোন করব।"
-              : "Call 16699 for any question, or tap the button below and we will call you back."}
-          </p>
-          <div className={styles.actions}>
-            <Button onClick={() => setReply("callback")}>
-              {lang === "bn" ? "আমাকে ফোন করুন" : "Request a call"}
-            </Button>
-          </div>
-          {reply === "callback" ? (
-            <p role="status" className={styles.success}>
-              {lang === "bn"
-                ? "ফোন করার অনুরোধ নথিভুক্ত হয়েছে।"
-                : "Your callback request was recorded."}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {tab === "complaint" ? (
-        <div
+          id="complaint"
           key="complaint"
-          role="tabpanel"
-          aria-labelledby="citizen-tab-complaint"
+          role="region"
+          aria-label={t("navLodgeComplaint")}
         >
           <ComplaintModal />
-        </div>
+        </section>
+      ) : null}
+
+      {section === "cases" ? (
+        activeCaseId ? (
+          <CaseDetail
+            key={`case-detail-${activeCaseId}`}
+            caseId={activeCaseId}
+            onBack={backToCases}
+          />
+        ) : (
+          <CasesList
+            key="cases-list"
+            lang={lang}
+            t={t}
+            cases={citizenCases}
+            onOpen={openCase}
+          />
+        )
+      ) : null}
+
+      {section === "udc" ? (
+        <UdcSection key="udc" lang={lang} tab={udcTab} />
       ) : null}
     </div>
+  );
+}
+
+function CasesList({
+  lang,
+  t,
+  cases,
+  onOpen,
+}: {
+  lang: Lang;
+  t: (key: import("@/lib/i18n").MessageKey) => string;
+  cases: CitizenCaseSummary[];
+  onOpen: (caseId: string) => void;
+}) {
+  return (
+    <section
+      id="cases"
+      role="region"
+      aria-label={t("myCasesHeading")}
+      className={styles.hairlineList}
+    >
+      <header className={styles.pageHeader} style={{ marginBottom: "var(--s-4)" }}>
+        <div>
+          <p className={styles.eyebrow}>{t("myCasesHeading")}</p>
+          <h1>{t("myCasesHeading")}</h1>
+          <p className={styles.intro}>{t("myCasesIntro")}</p>
+        </div>
+      </header>
+      {cases.length === 0 ? (
+        <p style={{ color: "var(--gray)" }}>{t("myCasesEmpty")}</p>
+      ) : (
+        cases.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onOpen(c.id)}
+            className={styles.queueRow}
+            style={{ gridTemplateColumns: "160px 1fr" }}
+            aria-label={c.id}
+          >
+            <strong style={{ fontWeight: "var(--weight-regular)" }}>{c.id}</strong>
+            <span>{lang === "bn" ? c.titleBn : c.titleEn}</span>
+          </button>
+        ))
+      )}
+    </section>
   );
 }
 

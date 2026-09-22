@@ -369,3 +369,14 @@ export function Mail({ size = 24, className, "aria-hidden": hidden }: IconProps)
     </>,
   );
 }
+
+export function X({ size = 24, className, "aria-hidden": hidden }: IconProps) {
+  return wrap(
+    size,
+    className,
+    hidden,
+    <>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </>,
+  );
+}

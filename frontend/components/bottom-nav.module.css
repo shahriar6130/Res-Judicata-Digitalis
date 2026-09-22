@@ -17,7 +17,7 @@
     background: var(--bottom-nav-bg);
     border-top: 1px solid var(--bottom-nav-border);
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     align-items: stretch;
     z-index: 60;
     padding-bottom: env(safe-area-inset-bottom, 0);

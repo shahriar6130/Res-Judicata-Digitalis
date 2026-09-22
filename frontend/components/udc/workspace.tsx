@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useHelplineStore } from "@/lib/shakkho";
+import { NetworkBar } from "./primitives/network-bar";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useI18n } from "@/lib/i18n";
 import { UdcDashboardPanel } from "./panels/dashboard.panel";
 import { UdcNewIntakePanel } from "./panels/new-intake.panel";
 import { UdcIntakeWorkspacePanel } from "./panels/intake-workspace.panel";
@@ -15,8 +18,14 @@ import { UdcHistoryPanel } from "./panels/history.panel";
 import { UdcDeviceAndCachePanel } from "./panels/device-and-cache.panel";
 import { UdcPerformancePanel } from "./panels/performance.panel";
 import { UdcJuryModePanel } from "./panels/jury-mode.panel";
+import { UdcApplicationsPanel } from "./panels/applications.panel";
+import { UdcStatusVisitPanel } from "./panels/status-visit.panel";
+import { UdcLetterAccessPanel } from "./panels/letter-access.panel";
+import { UdcTranslationPanel } from "./panels/translation.panel";
+import styles from "./udc.module.css";
 
 export function UdcWorkspace({ role = "udc" }: { role?: string }) {
+  const { lang } = useI18n();
   const envelope = useHelplineStore();
   const [view, setView] = useState(() => parseView(typeof window !== "undefined" ? window.location.hash : ""));
   const [params, setParams] = useState<Record<string, string>>(() =>
@@ -24,60 +33,144 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
   );
 
   useEffect(() => {
-    function onHashChange() {
-      const hash = window.location.hash.replace(/^#/, "");
-      setView(parseView(hash));
-      setParams(parseParams(hash));
+    // Translate a legacy /dashboard/udc/<view> pathname into the matching
+    // hash view so all existing Link targets keep working.
+    function pathToHash(p: string): string {
+      const segments = p.split("/").filter(Boolean);
+      // segments[0] === "dashboard", [1] === "udc", [2+] === view parts
+      const parts = segments.slice(2);
+      if (parts.length === 0) return "";
+      if (parts[0] === "intake" && parts[1] === "new") return "#intake-new";
+      if (parts[0] === "intake" && parts[2] === "documents") return `#intake/${parts[1]}/documents`;
+      if (parts[0] === "intake" && parts[2] === "consent")   return `#intake/${parts[1]}/consent`;
+      if (parts[0] === "intake")                              return `#intake/${parts[1]}`;
+      if (parts[0] === "sync-centre" && parts[1] === "conflicts" && parts[2]) {
+        return `#conflict/${parts[2]}`;
+      }
+      if (parts[0] === "sync-centre") return "#sync-centre";
+      if (parts[0] === "offline-queue") return "#offline-queue";
+      if (parts[0] === "applications") return "#applications";
+      if (parts[0] === "clarification-tasks") return "#clarification-tasks";
+      if (parts[0] === "history") return "#history";
+      if (parts[0] === "device-and-cache") return "#device-and-cache";
+      if (parts[0] === "status-visit") return parts[1] ? `#status-visit/${parts[1]}` : "#status-visit";
+      if (parts[0] === "letter-access") return parts[1] ? `#letter-access/${parts[1]}` : "#letter-access";
+      if (parts[0] === "translation") return "#translation";
+      return "";
     }
-    window.addEventListener("hashchange", onHashChange);
+
+    function syncFromUrl() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash) {
+        setView(parseView("#" + hash));
+        setParams(parseParams("#" + hash));
+        return;
+      }
+      const translated = pathToHash(window.location.pathname);
+      if (translated) {
+        // Update the URL to the hash form so subsequent nav uses the
+        // canonical route, but don't trigger a full reload.
+        window.history.replaceState(null, "", translated);
+        setView(parseView(translated));
+        setParams(parseParams(translated));
+      }
+    }
+
+    syncFromUrl();
+    window.addEventListener("hashchange", syncFromUrl);
+    window.addEventListener("popstate", syncFromUrl);
     return () => {
-      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("hashchange", syncFromUrl);
+      window.removeEventListener("popstate", syncFromUrl);
     };
   }, []);
 
-  if (view === "intake-new") {
-    return <UdcNewIntakePanel role={role} />;
+  function renderPanel() {
+    if (view === "intake-new") {
+      return <UdcNewIntakePanel role={role} />;
+    }
+    if (view === "intake" && params.temporaryId) {
+      return <UdcIntakeWorkspacePanel temporaryId={params.temporaryId} role={role} />;
+    }
+    if (view === "intake" && params.section === "documents" && params.temporaryId) {
+      return <UdcDocumentsPanel temporaryId={params.temporaryId} role={role} />;
+    }
+    if (view === "intake" && params.section === "consent" && params.temporaryId) {
+      return <UdcConsentPanel temporaryId={params.temporaryId} role={role} />;
+    }
+    if (view === "offline-queue") {
+      return <UdcOfflineQueuePanel role={role} />;
+    }
+    if (view === "sync-centre") {
+      return <UdcSyncCentrePanel role={role} />;
+    }
+    if (view === "conflict" && params.conflictId) {
+      return <UdcConflictDetailPanel conflictId={params.conflictId} role={role} />;
+    }
+    if (view === "clarification-tasks") {
+      return <UdcClarificationTasksPanel role={role} />;
+    }
+    if (view === "history") {
+      return <UdcHistoryPanel role={role} />;
+    }
+    if (view === "device-and-cache") {
+      return <UdcDeviceAndCachePanel />;
+    }
+    if (view === "performance") {
+      return <UdcPerformancePanel />;
+    }
+    if (view === "jury-mode") {
+      return <UdcJuryModePanel role={role} envelope={envelope} />;
+    }
+    if (view === "applications") {
+      return <UdcApplicationsPanel role={role} />;
+    }
+    if (view === "status-visit") {
+      return <UdcStatusVisitPanel sessionId={params.sessionId} role={role} />;
+    }
+    if (view === "letter-access") {
+      if (!params.sessionId) {
+        return (
+          <main id="udc-main" className={styles.page}>
+            <p>{lang === "bn" ? "সেশন আইডি দরকার" : "Session id required"}</p>
+          </main>
+        );
+      }
+      return <UdcLetterAccessPanel sessionId={params.sessionId} role={role} />;
+    }
+    if (view === "translation") {
+      return <UdcTranslationPanel role={role} />;
+    }
+    return <UdcDashboardPanel role={role} />;
   }
-  if (view === "intake" && params.temporaryId) {
-    return <UdcIntakeWorkspacePanel temporaryId={params.temporaryId} role={role} />;
-  }
-  if (view === "intake" && params.section === "documents" && params.temporaryId) {
-    return <UdcDocumentsPanel temporaryId={params.temporaryId} role={role} />;
-  }
-  if (view === "intake" && params.section === "consent" && params.temporaryId) {
-    return <UdcConsentPanel temporaryId={params.temporaryId} role={role} />;
-  }
-  if (view === "offline-queue") {
-    return <UdcOfflineQueuePanel role={role} />;
-  }
-  if (view === "sync-centre") {
-    return <UdcSyncCentrePanel role={role} />;
-  }
-  if (view === "conflict" && params.conflictId) {
-    return <UdcConflictDetailPanel conflictId={params.conflictId} role={role} />;
-  }
-  if (view === "clarification-tasks") {
-    return <UdcClarificationTasksPanel role={role} />;
-  }
-  if (view === "history") {
-    return <UdcHistoryPanel role={role} />;
-  }
-  if (view === "device-and-cache") {
-    return <UdcDeviceAndCachePanel />;
-  }
-  if (view === "performance") {
-    return <UdcPerformancePanel />;
-  }
-  if (view === "jury-mode") {
-    return <UdcJuryModePanel role={role} envelope={envelope} />;
-  }
-  return <UdcDashboardPanel role={role} />;
+
+  return (
+    <div className={styles.udcShell}>
+      {/* Floating top network control. Rendered once for every sub-view
+          so it stays visible while the user scrolls or navigates by
+          hash. Colour flips live with the NetworkConditionService. */}
+      <div className={styles.udcStickyTop}>
+        <NetworkBar lang={lang} />
+      </div>
+      <div className={styles.udcShellBody}>
+        {/* Language toggle sits in NORMAL flow right below the floating
+            connection bar — no sticky/absolute/fixed positioning. It
+            scrolls away naturally with the rest of the page content. */}
+        <div className={styles.udcLangRow}>
+          <LanguageToggle />
+        </div>
+        {renderPanel()}
+      </div>
+    </div>
+  );
 }
 
 function parseView(hash: string): string {
   const clean = (hash || "").replace(/^#/, "").split("/")[0];
   if (!clean) return "dashboard";
   if (clean === "intake") return "intake";
+  if (clean === "intake-new") return "intake-new";
+  if (clean === "translation") return "translation";
   return clean;
 }
 
@@ -92,6 +185,12 @@ function parseParams(hash: string): Record<string, string> {
   } else if (clean.startsWith("sync-centre/conflicts/")) {
     const parts = clean.split("/");
     if (parts[2]) out.conflictId = parts[2];
+  } else if (clean.startsWith("status-visit/")) {
+    out.sessionId = clean.slice("status-visit/".length);
+  } else if (clean.startsWith("letter-access/")) {
+    out.sessionId = clean.slice("letter-access/".length);
+  } else if (clean.startsWith("conflict/")) {
+    out.conflictId = clean.slice("conflict/".length);
   }
   return out;
 }

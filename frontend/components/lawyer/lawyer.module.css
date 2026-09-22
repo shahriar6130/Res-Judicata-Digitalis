@@ -1,0 +1,346 @@
+/* ------------------------------------------------------------------ *
+ *  Lawyer + DLAO + citizen-case shared surface styles.
+ *
+ *  Reuses the same tokens and shape as the referrals module so the
+ *  panels feel like one workspace.
+ * ------------------------------------------------------------------ */
+
+.shell {
+  min-height: 100vh;
+  background: var(--off-white, #faf7f2);
+  color: var(--ink, #1f1a14);
+  font-family: "Inter", "Noto Sans Bengali", system-ui, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--line, #e8e2d8);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.brandEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #6b5f4a;
+  text-transform: uppercase;
+}
+
+.langRow {
+  display: flex;
+  gap: 6px;
+}
+
+.langBtn {
+  border: 1px solid var(--line, #e8e2d8);
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.langBtnActive {
+  background: #1f1a14;
+  color: #fff;
+  border-color: #1f1a14;
+}
+
+.main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.title {
+  font-size: 24px;
+  margin: 0;
+}
+
+.intro {
+  margin: 0;
+  color: #4a3f2f;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  background: #fff;
+  border: 1px solid var(--line, #e8e2d8);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  color: #6b5f4a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpiValue {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.kpiDanger {
+  color: #b02a2a;
+}
+
+.section {
+  background: #fff;
+  border: 1px solid var(--line, #e8e2d8);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sectionSub {
+  font-size: 13px;
+  color: #6b5f4a;
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdf7e6;
+  border: 1px solid #efe1a8;
+  font-size: 14px;
+}
+
+.noticeDanger {
+  background: #fdecec;
+  border-color: #f1b3b3;
+  color: #6c1d1d;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.kvLabel {
+  font-size: 12px;
+  color: #6b5f4a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kvValue {
+  font-weight: 600;
+}
+
+.kvValueMono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+
+.queue {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.queue th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line, #e8e2d8);
+  font-weight: 600;
+  color: #4a3f2f;
+}
+
+.queue td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line, #e8e2d8);
+  vertical-align: top;
+}
+
+.queueRow:hover {
+  background: #faf5ec;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--ink, #1f1a14);
+  background: var(--ink, #1f1a14);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btnGhost {
+  background: #fff;
+  color: var(--ink, #1f1a14);
+}
+
+.btnSecondary {
+  background: #6b5f4a;
+  border-color: #6b5f4a;
+}
+
+.btnDanger {
+  background: #b02a2a;
+  border-color: #b02a2a;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formRow input,
+.formRow select,
+.formRow textarea {
+  border: 1px solid var(--line, #e8e2d8);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.disclaimer {
+  background: #fff5e6;
+  border: 1px dashed #d09c4a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #6a4c1f;
+  font-size: 13px;
+}
+
+.caseHero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.timelineItem {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line, #e8e2d8);
+  font-size: 13px;
+}
+
+.timelineItem:last-child {
+  border-bottom: none;
+}
+
+.timelineBadge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f0e8d6;
+  color: #6b5f4a;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b5f4a;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line, #e8e2d8);
+  background: #faf5ec;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.spokenText {
+  background: #f3ede0;
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.travelWarning {
+  background: #fdecec;
+  border: 1px solid #f1b3b3;
+  border-radius: 8px;
+  padding: 12px;
+  color: #6c1d1d;
+  font-size: 14px;
+}
+
+.langToggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #e8e2d8;
+  color: #4a3f2f;
+}
+
+.tagDanger {
+  background: #fdecec;
+  color: #6c1d1d;
+}
+
+.tagOk {
+  background: #e6f4e6;
+  color: #1d5c1d;
+}

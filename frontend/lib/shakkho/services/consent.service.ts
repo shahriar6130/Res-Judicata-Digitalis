@@ -76,6 +76,7 @@ export const ConsentService = {
       "oral_with_readback",
       "applicant_action_on_accessible_control",
       "witnessed_confirmation",
+      "video_consent_capture",
       "other_recorded_assisted_method",
     ];
   },

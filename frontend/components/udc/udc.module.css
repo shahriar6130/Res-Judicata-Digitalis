@@ -109,6 +109,52 @@
   font-weight: var(--weight-semibold);
 }
 
+/* ===== NetworkBar colour states =====
+   Each modifier flips the bar background + foreground live as the
+   NetworkConditionService profile changes.
+     normal / reconnected → green
+     slow / intermittent   → amber
+     offline               → red */
+.networkBarNormal {
+  background: #052e16;           /* deepest green */
+  color: #ffffff;                 /* white text */
+  border-color: #022c22;
+}
+.networkBarReconnected {
+  background: #064e3b;            /* dark teal-green */
+  color: #ffffff;
+  border-color: #022c22;
+}
+.networkBarWarn {
+  background: #7c2d12;            /* dark amber */
+  color: #ffffff;
+  border-color: #431407;
+}
+.networkBarOffline {
+  background: #7f1d1d;            /* dark red */
+  color: #ffffff;
+  border-color: #450a0a;
+}
+
+.networkBarStats {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: monospace;
+  font-size: var(--t-label);
+}
+.networkBarStats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.networkBarStats strong { font-size: 12px; }
+.networkBarStats small  { font-size: 10px; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.04em; }
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -223,6 +269,39 @@
 .queueRow:last-child { border-bottom: 0; }
 .queueRow strong { font-weight: var(--weight-semibold); }
 .queueRow small { color: var(--gray); font-size: var(--t-label); }
+
+/* ----- Live network-state row backgrounds (GitHub PR-style) ----- */
+.queueRowNetOffline    { background: #f5f5f5; color: var(--gray); }
+.queueRowNetSlow       { background: #fff8e1; }
+.queueRowNetIntermittent { background: #fff3cd; }
+.queueRowNetReconnected { background: #f0fdf4; }
+.queueRowNetNormal     { background: var(--white); }
+.queueRowSyncing {
+  background: linear-gradient(
+    90deg,
+    #fff8e1 0%,
+    #fef3c7 50%,
+    #fff8e1 100%
+  );
+  background-size: 200% 100%;
+  animation: syncPulse 1.6s ease-in-out infinite;
+}
+.queueRowSynced   { background: #f0fdf4; border-left: 3px solid var(--green); }
+.queueRowConflict { background: #fef2f2; border-left: 3px solid var(--red); }
+.queueRowIntegrity { background: #fef2f2; border-left: 3px solid var(--red); color: var(--red); }
+.queueRowQueued   { background: #eff6ff; border-left: 3px solid #3b82f6; }
+
+@keyframes syncPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes rowFlash {
+  0% { box-shadow: inset 0 0 0 0 rgba(22,163,74,0.0); }
+  20% { box-shadow: inset 4px 0 0 0 var(--green); }
+  100% { box-shadow: inset 0 0 0 0 rgba(22,163,74,0.0); }
+}
+.rowFlash { animation: rowFlash 1.6s ease-out 1; }
 
 .statusPill {
   display: inline-flex;
@@ -413,6 +492,13 @@
   border-color: var(--black);
 }
 
+.btnActive {
+  background: var(--yellow);
+  color: var(--black);
+  border-color: var(--black);
+  font-weight: var(--weight-semibold);
+}
+
 .btnPrimary {
   background: var(--black);
   color: var(--white);
@@ -588,10 +674,139 @@
   gap: 4px;
 }
 
+/* ===== Consent video capture ===== */
+.consentVideoRow {
+  margin-top: var(--s-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.consentCamera {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: var(--black);
+  border-radius: var(--r-2);
+}
+.consentCameraPreview {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 4 / 3;
+  background: var(--black);
+  border-radius: var(--r-2);
+  object-fit: cover;
+}
+.consentCameraStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.consentVideoPlayback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: var(--off-white);
+  border-radius: var(--r-2);
+}
+
 .docsList {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
+}
+
+/* ===== Document upload grid (per checklist item) ===== */
+.docUploadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--s-3);
+}
+.docUploadCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: var(--r-2);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.docUploadCardReady {
+  border-color: var(--green, #16a34a);
+  background: #f0fdf4;
+}
+.docUploadCardFail {
+  border-color: var(--red, #dc2626);
+  background: #fef2f2;
+}
+.docUploadHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.docUploadBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.docUploadPreview {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--r-2);
+  border: 1px solid var(--line);
+  background: var(--black);
+}
+.docUploadFileChip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: var(--off-white);
+  border-radius: var(--r-2);
+}
+.docUploadDrop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--s-4);
+  border: 2px dashed var(--line);
+  background: var(--off-white);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  color: var(--gray);
+  font-size: var(--t-small);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+  min-height: 100px;
+}
+.docUploadDrop:hover {
+  border-color: var(--ink);
+  background: var(--white);
+  color: var(--ink);
+}
+
+/* ===== OCR result block ===== */
+.ocrBlockOk {
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: #f0fdf4;
+  border-left: 3px solid var(--green, #16a34a);
+  border-radius: var(--r-2);
+}
+.ocrBlockHazy {
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: #fef2f2;
+  border-left: 3px solid var(--red, #dc2626);
+  border-radius: var(--r-2);
 }
 
 .docCard {
@@ -620,6 +835,11 @@
   color: var(--red);
 }
 
+.docFindingOk {
+  font-size: var(--t-label);
+  color: var(--green);
+}
+
 @media (max-width: 1024px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .callGrid { grid-template-columns: 1fr; }
@@ -632,4 +852,222 @@
   .page { padding: var(--s-4); }
   .kpis { grid-template-columns: 1fr; }
   .kpis > div { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+/* ===== Live sync intake grid ===== */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: var(--s-3) var(--s-4);
+  align-items: start;
+}
+.fieldGrid label { color: var(--gray); font-size: var(--t-small); padding-top: 6px; }
+.fieldGrid input,
+.fieldGrid select,
+.fieldGrid textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  width: 100%;
+}
+.fieldGrid input:focus,
+.fieldGrid select:focus,
+.fieldGrid textarea:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  border-color: var(--ink);
+}
+.fieldSaved {
+  border-color: var(--green) !important;
+  background: #f0fdf4 !important;
+  transition: background 0.4s ease, border-color 0.4s ease;
+}
+
+.intakeBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--ink);
+  color: var(--white);
+  font-size: var(--t-small);
+  border: 1px solid var(--black);
+}
+.intakeBanner button { color: var(--white); border-color: var(--white); }
+.intakeBanner strong { color: var(--yellow); }
+
+.draftAutoSave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-label);
+  color: var(--gray);
+}
+.draftAutoSaveSaving { color: var(--yellow); }
+.draftAutoSaveSaved { color: var(--green); }
+
+/* ===== UDC shell — fixed top + scrolling body =====
+   position: fixed detaches the bar from flow entirely; it stays
+   pinned to the top-left of the viewport at the same coordinates
+   no matter how far the body scrolls. The body then needs
+   padding-top equal to the bar's height so content isn't hidden
+   under it. */
+.udcShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.udcStickyTop {
+  position: fixed;
+  top: 12px;
+  /* Span the entire right region, starting just past the sidebar (--sidebar-width = 272px) */
+  left: calc(var(--sidebar-width) + 12px);
+  right: 12px;
+  z-index: 50;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+/* Plain-flow language row, sits in document order right below the
+   floating connection bar. No position property — it scrolls away
+   naturally with the page, exactly like normal content. */
+.udcLangRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--s-3) 0;
+  margin-bottom: var(--s-4);
+}
+.udcShellBody {
+  flex: 1 1 auto;
+  padding-top: 88px; /* 12px float offset + bar height + breathing room */
+}
+
+/* ===== Camera capture ===== */
+.cameraStage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--white);
+  padding: var(--s-4);
+  min-height: 320px;
+}
+.cameraStage h3 { margin: 0; color: var(--white); }
+.cameraViewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border: 1px solid #444;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  color: #888;
+}
+.cameraReticle {
+  position: absolute;
+  inset: 16px;
+  border: 2px dashed rgba(255,255,255,0.6);
+  pointer-events: none;
+}
+.cameraReticle::before, .cameraReticle::after {
+  content: "";
+  position: absolute;
+  width: 24px; height: 24px;
+  border: 2px solid var(--yellow);
+}
+.cameraReticle::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.cameraReticle::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.cameraScanLine {
+  position: absolute;
+  left: 16px; right: 16px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+  animation: scan 2.4s linear infinite;
+  pointer-events: none;
+}
+@keyframes scan {
+  0%   { top: 16px; }
+  50%  { top: calc(100% - 18px); }
+  100% { top: 16px; }
+}
+.cameraCaptured {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #1a1a1a; color: var(--white); font-family: monospace;
+}
+
+.cameraControls { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.cameraControls button { min-height: 44px; }
+
+.qualityPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  border: 1px solid var(--line);
+  padding: var(--s-4);
+  background: var(--white);
+}
+.qualityChecklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.qualityChecklist li { display: flex; align-items: center; gap: 8px; font-size: var(--t-small); }
+.qualityChecklist li.fail { color: var(--red); }
+.qualityChecklist li.pass { color: var(--green); }
+.qualityChecklist li.warn { color: #b8830b; }
+
+.qualityScore {
+  display: flex; align-items: baseline; gap: var(--s-2);
+  font-family: monospace;
+}
+.qualityScoreNum { font-size: 32px; font-weight: var(--weight-bold); }
+.qualityScore.ok { color: var(--green); }
+.qualityScore.warn { color: #b8830b; }
+.qualityScore.fail { color: var(--red); }
+
+.thumbStrip { display: flex; gap: var(--s-3); flex-wrap: wrap; }
+.thumb {
+  width: 100px; height: 75px;
+  border: 2px solid var(--line);
+  background: var(--ink); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--t-label); font-family: monospace;
+  cursor: pointer;
+}
+.thumb.active { border-color: var(--yellow); }
+.thumb.bad    { border-color: var(--red); }
+.thumb.good   { border-color: var(--green); }
+
+/* ===== Status visit + letter access ===== */
+.tokenScopePill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px; border: 1px solid var(--line); font-size: var(--t-label);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tokenScopeMinimal   { border-color: var(--gray); color: var(--gray); }
+.tokenScopeAssisted  { border-color: var(--ink); color: var(--ink); }
+.tokenScopeLetter    { border-color: var(--red); color: var(--red); }
+
+.dialPad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  max-width: 220px;
+}
+.dialPad button {
+  min-height: 56px; min-width: 56px;
+  font: inherit; font-size: 22px;
+  border: 1px solid var(--line); background: var(--white); cursor: pointer;
+}
+.dialPad button:hover { background: var(--off-white); }
+.dialPad button:active { background: var(--ink); color: var(--white); }
+.dialDisplay {
+  font-family: monospace; font-size: 22px; letter-spacing: 0.5em;
+  padding: var(--s-3); border: 1px solid var(--line); min-height: 44px;
+  background: var(--black); color: var(--yellow);
+  display: flex; align-items: center; justify-content: center;
 }

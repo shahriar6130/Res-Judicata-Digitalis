@@ -26,7 +26,6 @@ import {
 } from "@/lib/shakkho";
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
-import { NetworkBar } from "../primitives/network-bar";
 import styles from "../udc.module.css";
 
 interface Props {
@@ -45,7 +44,9 @@ export function UdcIntakeWorkspacePanel({ temporaryId, role = "udc" }: Props) {
   const initial: AssistedIntake | undefined = useMemo(() => {
     const seeded = envelope.assistedIntakes?.find((a) => a.temporaryId === temporaryId);
     if (seeded) return AssistedIntakeService.ensure(temporaryId, seeded);
-    const draft = envelope.offlineDrafts?.find((d) => d.temporaryId === temporaryId);
+    const draft = Array.isArray(envelope.offlineDrafts)
+      ? envelope.offlineDrafts.find((d) => d.temporaryId === temporaryId)
+      : undefined;
     if (draft) {
       return AssistedIntakeService.ensure(temporaryId, {
         applicantName: (draft.payload as Record<string, unknown>).applicant_name as string,
@@ -98,7 +99,8 @@ export function UdcIntakeWorkspacePanel({ temporaryId, role = "udc" }: Props) {
     );
   }
 
-  return <UdcIntakeWorkspaceBody initial={initial} role={role} offlineDrafts={offline.drafts ?? []} />;
+  const safeDrafts: OfflineDraft[] = Array.isArray(offline.drafts) ? offline.drafts : [];
+  return <UdcIntakeWorkspaceBody initial={initial} role={role} offlineDrafts={safeDrafts} />;
 }
 
 function UdcIntakeWorkspaceBody({
@@ -113,9 +115,10 @@ function UdcIntakeWorkspaceBody({
   const { lang } = useI18n();
   const [intake, setIntake] = useState<AssistedIntake>(initial);
   const [transcript, setTranscript] = useState<TranslationEvent[]>(initial.translations);
-  const [draftStatus, setDraftStatus] = useState<OfflineDraft["syncStatus"]>(
-    offlineDrafts.find((d) => d.temporaryId === initial.temporaryId)?.syncStatus ?? "local_draft",
-  );
+  const [draftStatus, setDraftStatus] = useState<OfflineDraft["syncStatus"]>(() => {
+    const list = Array.isArray(offlineDrafts) ? offlineDrafts : [];
+    return list.find((d) => d.temporaryId === initial.temporaryId)?.syncStatus ?? "local_draft";
+  });
 
   useEffect(() => {
     ensureSeeded();
@@ -229,7 +232,6 @@ function UdcIntakeWorkspaceBody({
             {lang === "bn" ? "অস্থায়ী UUID" : "Temporary UUID"}: {intake.temporaryId} ·{" "}
             {lang === "bn" ? "কেস আইডি তৈরি হবে শুধু সিঙ্কের পরে" : "Case ID is minted only after sync"}
           </p>
-          <NetworkBar lang={lang} />
           <p className={styles.bannerInfo}>
             {lang === "bn" ? "সম্প্রসারণ অবস্থা" : "Current state"}: <strong>{intake.state}</strong> ·{" "}
             {lang === "bn" ? "স্থানীয় সংস্করণ" : "Local version"}: {intake.localVersion}

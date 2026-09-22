@@ -51,6 +51,41 @@ import { DocumentCaptureService } from "./services/document-capture.service";
 import { DocumentQualityService } from "./services/document-quality.service";
 import { UdcAuthorizationService } from "./services/udc-authorization.service";
 import { AssistedIntakeService } from "./services/assisted-intake.service";
+import { StatusVisitService, LetterAccessService } from "./services/status-visit.service";
+
+/* Phase 7 — Referral workflow + sensitive evidence + jurisdiction escalation. */
+import { DemoTimeService } from "./services/demo-time.service";
+import { DeadlineService } from "./services/deadline.service";
+import { AuthorityDirectoryService } from "./services/authority-directory.service";
+import { LegalBasisRegistryService } from "./services/legal-basis-registry.service";
+import { RoutingRecommendationService } from "./services/routing-recommendation.service";
+import { SensitiveEvidenceService } from "./services/sensitive-evidence.service";
+import { ReferralService } from "./services/referral.service";
+import { EscalationService } from "./services/escalation.service";
+import { SafeNotificationService } from "./services/safe-notification.service";
+import { publishReferralInboxItem, useReferralInbox, clearReferralInbox } from "./bridges/referral-inbox.bridge";
+
+/* Phase 8 — Lawyer workflow + accountability. */
+import { PanelLawyerDirectoryService } from "./services/panel-lawyer-directory.service";
+import { LawyerAvailabilityService } from "./services/lawyer-availability.service";
+import { LawyerAssignmentService } from "./services/lawyer-assignment.service";
+import { LawyerWorklistService } from "./services/lawyer-worklist.service";
+import { CaseProgressService } from "./services/case-progress.service";
+import { HearingService } from "./services/hearing.service";
+import { RequiredUpdateService } from "./services/required-update.service";
+import { LawyerChangeRequestService } from "./services/lawyer-change-request.service";
+import { ReassignmentService } from "./services/reassignment.service";
+import { CaseHandoverService } from "./services/case-handover.service";
+import { InactivityPatternService, PATTERN_THRESHOLD } from "./services/inactivity-pattern.service";
+import { FeeScheduleRegistryService } from "./services/fee-schedule-registry.service";
+import { PaymentReconciliationService } from "./services/payment-reconciliation.service";
+import { ContactReliabilityService } from "./services/contact-reliability.service";
+import { CitizenStatusService } from "./services/citizen-status.service";
+import { TravelChecklistService } from "./services/travel-checklist.service";
+import { ReportingService } from "./services/reporting.service";
+import { LawyerAuditService } from "./services/lawyer-audit.service";
+import { VoiceStatusService } from "./services/voice-status.service";
+import { DlaoTaskService } from "./services/dlao-task.service";
 
 export * from "./types";
 export { useHelplineStore, read, write, resetScenario };
@@ -94,6 +129,45 @@ export {
   DocumentQualityService,
   UdcAuthorizationService,
   AssistedIntakeService,
+  StatusVisitService,
+  LetterAccessService,
+
+  /* Phase 7 */
+  DemoTimeService,
+  DeadlineService,
+  AuthorityDirectoryService,
+  LegalBasisRegistryService,
+  RoutingRecommendationService,
+  SensitiveEvidenceService,
+  ReferralService,
+  EscalationService,
+  SafeNotificationService,
+  publishReferralInboxItem,
+  useReferralInbox,
+  clearReferralInbox,
+
+  /* Phase 8 */
+  PanelLawyerDirectoryService,
+  LawyerAvailabilityService,
+  LawyerAssignmentService,
+  LawyerWorklistService,
+  CaseProgressService,
+  HearingService,
+  RequiredUpdateService,
+  LawyerChangeRequestService,
+  ReassignmentService,
+  CaseHandoverService,
+  InactivityPatternService,
+  PATTERN_THRESHOLD,
+  FeeScheduleRegistryService,
+  PaymentReconciliationService,
+  ContactReliabilityService,
+  CitizenStatusService,
+  TravelChecklistService,
+  ReportingService,
+  LawyerAuditService,
+  VoiceStatusService,
+  DlaoTaskService,
 };
 
 /* Ensures the seed runs once per browser. Call from the workspace

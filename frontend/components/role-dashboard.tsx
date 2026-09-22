@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { CaseDetail } from "@/components/case-detail";
 import { ComplaintModal } from "@/components/complaint-modal";
+import { AssistedIntake } from "@/components/assisted-intake";
 import { CoverageNavigator } from "@/components/coverage-navigator";
 import { HomeDashboard } from "@/components/home-dashboard";
 import { NotificationList } from "@/components/notification-list";
@@ -70,6 +71,7 @@ function CitizenDashboard() {
   //   #home               → home
   //   #notifications      → notification feed
   //   #complaint          → complaint wizard
+  //   #intake             → assisted-intake wizard (new case)
   //   #cases              → case list
   //   #cases/<id>         → case detail
   //   #udc                → UDC overview
@@ -82,6 +84,7 @@ function CitizenDashboard() {
     | "home"
     | "notifications"
     | "complaint"
+    | "intake"
     | "cases"
     | "udc";
   const [section, setSection] = useState<Section>("home");
@@ -94,6 +97,9 @@ function CitizenDashboard() {
       const [head, rest] = raw.split("/");
       if (head === "complaint") {
         setSection("complaint");
+        setActiveCaseId(null);
+      } else if (head === "intake") {
+        setSection("intake");
         setActiveCaseId(null);
       } else if (head === "udc") {
         setSection("udc");
@@ -146,6 +152,17 @@ function CitizenDashboard() {
           aria-label={t("navLodgeComplaint")}
         >
           <ComplaintModal />
+        </section>
+      ) : null}
+
+      {section === "intake" ? (
+        <section
+          id="intake"
+          key="intake"
+          role="region"
+          aria-label={t("navIntake")}
+        >
+          <AssistedIntake />
         </section>
       ) : null}
 

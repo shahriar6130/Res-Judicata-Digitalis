@@ -82,6 +82,11 @@ export type ProvenanceSource =
   | "ripon_confirmed"
   | "human_corrected"
   | "moyuri_pending"
+  | "field_officer"
+  | "helpline"
+  | "dlao"
+  | "lawyer"
+  | "applicant"
   | "moyuri_confirmed"
   | "moyuri_corrected"
   | "moyuri_disputed"
@@ -287,7 +292,7 @@ export interface IntakeSession {
 }
 
 export interface SimulationMetadata {
-  kind: "voice" | "sms" | "ivr" | "officer_lookup";
+  kind: "voice" | "sms" | "ivr" | "officer_lookup" | "system";
   note?: { bn: string; en: string };
   simulatedAt: string;
 }
@@ -295,7 +300,7 @@ export interface SimulationMetadata {
 export interface AuditEvent {
   id: string;
   subject: string;
-  subjectKind: "application" | "intake" | "representation" | "verification" | "handoff" | "communication" | "system" | "assisted_intake" | "document" | "sync_operation" | "sync_conflict" | "integrity" | "udc_session";
+  subjectKind: "application" | "intake" | "representation" | "verification" | "handoff" | "communication" | "system" | "assisted_intake" | "document" | "sync_operation" | "sync_conflict" | "integrity" | "udc_session" | "referral" | "evidence" | "escalation" | "panel_lawyer" | "lawyer_assignment" | "lawyer_availability" | "hearing" | "case_progress" | "required_update" | "lawyer_change" | "reassignment" | "case_handover" | "inactivity_pattern" | "payment_reconciliation" | "fee_schedule" | "contact_attempt" | "voice_session";
   action: string;
   actor: string;
   occurredAt: string;
@@ -305,6 +310,8 @@ export interface AuditEvent {
 
 export interface ApplicationRecord {
   applicationId: string;
+  /** Minted once when a panel-lawyer assignment is created or on seed for long-running cases. Preserved through reassignment. */
+  caseId?: string;
   status: ApplicationStatus;
   channel: ApplicationChannel;
   office: string;
@@ -319,6 +326,8 @@ export interface ApplicationRecord {
   audit: string[];
   createdAt: string;
   submittedAt?: string;
+  /** Prompt 8 — current case-stage label, owned by the lawyer + DLAO pair. */
+  caseStage?: CaseStage;
 }
 
 export interface StoreEnvelope {
@@ -354,6 +363,53 @@ export interface StoreEnvelope {
   idMappings?: TemporaryToAuthoritativeIdMap[];
   /** Phase 5 — last-known PWA capability snapshot. */
   pwaCapability?: PwaCapability;
+  /** Prompt 7 — referrals (one per workflow object, keyed to the same applicationId). */
+  referrals: Referral[];
+  /** Prompt 7 — sensitive evidence store (per applicationId). */
+  sensitiveEvidence: SensitiveEvidenceStore;
+  /** Prompt 7 — authority directory (configured receiving bodies). */
+  authorityDirectory: AuthorityDirectoryEntry[];
+  /** Prompt 7 — versioned legal-basis registry. */
+  legalBasis: LegalBasisEntry[];
+  /** Prompt 7 — routing recommendations emitted by the routing service. */
+  routingRecommendations: RoutingRecommendation[];
+  /** Prompt 7 — delivery operations log. */
+  deliveryOperations: DeliveryOperation[];
+  /** Prompt 7 — escalation tasks (incl. jurisdiction tug-of-war). */
+  escalationTasks: EscalationTask[];
+  /** Prompt 7 — citizen-safe notification drafts. */
+  citizenSafeStatuses: CitizenSafeStatus[];
+  /** Prompt 7 — inbox projections (derived; mirrors for cross-tab updates). */
+  referralInbox?: ReferralInboxItem[];
+  escalationInbox?: EscalationInboxItem[];
+  deliveryInbox?: DeliveryInboxItem[];
+  /** Prompt 7 — sent reminders for overdue referrals. */
+  referralReminders?: ReferralReminderItem[];
+  /** Prompt 7 — demo time offset (ms added to wall clock). Used to fast-forward past deadlines. */
+  demoTimeOffsetMs?: number;
+
+  /* Prompt 8 — Long-running case, panel-lawyer workflow, accountability. */
+  panelLawyers: PanelLawyer[];
+  lawyerAvailabilities: LawyerAvailability[];
+  lawyerAssignments: LawyerAssignment[];
+  lawyerAssignmentResponses: AssignmentResponse[];
+  caseHearings: CaseHearing[];
+  caseProgressUpdates: CaseProgressUpdate[];
+  requiredUpdates: RequiredUpdate[];
+  updateReminders: UpdateReminder[];
+  contactReliabilities: ContactReliability[];
+  contactAttempts: ContactAttempt[];
+  lawyerChangeRequests: LawyerChangeRequest[];
+  lawyerChangeReviews: LawyerChangeReview[];
+  reassignments: Reassignment[];
+  caseHandovers: CaseHandover[];
+  inactivityPatterns: InactivityPattern[];
+  patternReviews: { reviewId: string; patternId: string; decision: PatternReviewDecision; recordedAt: string }[];
+  feeSchedules: FeeSchedule[];
+  paymentStages: PaymentStage[];
+  paymentReconciliations: PaymentReconciliation[];
+  voiceStatusSessions: VoiceStatusSession[];
+  dlaoTaskItems: DlaoTaskItem[];
 }
 
 export interface ActiveCallBarState {
@@ -437,7 +493,8 @@ export type ConsentMethod =
   | "oral_with_readback"
   | "applicant_action_on_accessible_control"
   | "witnessed_confirmation"
-  | "other_recorded_assisted_method";
+  | "other_recorded_assisted_method"
+  | "video_consent_capture";
 
 export interface AssistanceConsent {
   id: string;
@@ -912,3 +969,1146 @@ export interface UdcAuthorization {
 }
 
 /* ----- Audit extension is handled by the merged AuditEvent above ----- */
+
+/* ====================================================================
+ *  Phase 6: Status visit + letter access (per prompt §11)
+ * ==================================================================== */
+
+/** A scheduled in-person 4 PM status visit at the UDC. */
+export type StatusVisitState =
+  | "presence_recorded"
+  | "awaiting_applicant_auth"
+  | "verified"
+  | "ended"
+  | "expired";
+
+export interface StatusVisitSession {
+  id: string;
+  applicationId: string;
+  udcEntrepreneurId: string;
+  applicantDisplayName: string;
+  applicantPresent: boolean;
+  presenceMethod: "in_person_udc" | "video_call" | "ivr_16699";
+  startedAt: string;
+  endedAt?: string;
+  expiresAt: string;
+  state: StatusVisitState;
+}
+
+/** Single-session, purpose-bound token — NEVER opens letters. */
+export interface StatusVisitToken {
+  id: string;
+  sessionId: string;
+  applicationId: string;
+  scope: "APPLICANT_ASSISTED_VIEW";
+  purpose: "status_check" | "document_help" | "letter_help";
+  issuedAt: string;
+  expiresAt: string;
+  authorizationMethod: "applicant_pin_ivr" | "biometric_local" | "human_alternative";
+  /** Non-reversible identifier fingerprint — never the PIN itself. */
+  applicantIdentifierHash: string;
+  revoked: boolean;
+}
+
+/** Separate token that unlocks exactly one letter — never broader content. */
+export interface LetterAccessToken {
+  id: string;
+  sessionId: string;
+  applicationId: string;
+  letterId: string;
+  scope: "LETTER_ACCESS";
+  purpose: "letter_read";
+  issuedAt: string;
+  expiresAt: string;
+  authorizationMethod: "ivr_pin" | "human_alternative";
+  revoked: boolean;
+}
+
+/** Audit-only record of an IVR/PIN attempt. The PIN itself is NEVER stored. */
+export interface LetterAccessAttempt {
+  id: string;
+  applicationId: string;
+  letterId: string;
+  ivrCallId: string;
+  at: string;
+  outcome: "verified" | "mismatch" | "locked_out" | "human_alternative_used";
+}
+
+/* ====================================================================
+ *  Prompt 7 — Referral workflow, sensitive evidence vault, jurisdiction escalation.
+ *
+ *  All types here plug into the existing StoreEnvelope + AuditTrailService.
+ *  A referral is a workflow object attached to the same ApplicationRecord
+ *  (or accepted Case ID) — never a second case record.
+ * ==================================================================== */
+
+export type ReferralType =
+  | "sensitive_evidence_review"
+  | "jurisdiction_transfer"
+  | "specialist_assessment"
+  | "external_authority";
+
+export type ReferralPriority = "standard" | "urgent" | "overdue";
+
+export type ReferralSensitivity = "standard" | "sensitive" | "highly_sensitive";
+
+export type ReferralState =
+  | "draft"
+  | "package_review"
+  | "authorized"
+  | "sending"
+  | "delivered"
+  | "awaiting_acknowledgment"
+  | "acknowledged"
+  | "accepted"
+  | "action_in_progress"
+  | "completed"
+  | "delivery_failed"
+  | "information_requested"
+  | "returned"
+  | "overdue_acknowledgment"
+  | "overdue_action"
+  | "escalation_required"
+  | "escalated"
+  | "superseded"
+  | "withdrawn_by_authorized_user";
+
+export type ReferralReasonCategory =
+  | "another_competent_authority_required"
+  | "specialist_service_required"
+  | "jurisdiction_dispute"
+  | "sensitive_evidence_review"
+  | "missing_information"
+  | "external_deadline";
+
+export type ReferralReturnReason =
+  | "required_information_missing"
+  | "required_document_missing"
+  | "document_unreadable"
+  | "package_corrupted"
+  | "receiving_office_outside_route"
+  | "duplicate_referral"
+  | "existing_responsible_office"
+  | "legal_basis_verification_required"
+  | "other";
+
+export interface ReferralDeadline {
+  acknowledgmentDeadline: string;
+  actionDeadline: string;
+  escalationDeadline: string;
+  /** ISO timestamps are real wall-clock + StoreEnvelope.demoTimeOffsetMs. */
+  computedAt: string;
+}
+
+export interface ReferralParty {
+  role: "sending_officer" | "receiving_officer" | "assigned_receiving_officer" | "responsible_officer";
+  name: string;
+  office: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface ReferralDocumentSelection {
+  documentId: string;
+  /** "original" = the source-of-truth file; "derivative" = a redaction. */
+  kind: "original" | "derivative";
+  derivativeId?: string;
+  sensitivity: ReferralSensitivity;
+  /** Receiving role permitted to view this document. */
+  receivingRolePermission: "sending_officer" | "receiving_officer" | "assigned_receiving_officer" | "reviewer";
+  /** Why this document is included in the package. */
+  purpose: string;
+  integrityHash: string;
+  included: boolean;
+}
+
+export interface ReferralHistoryItem {
+  id: string;
+  occurredAt: string;
+  actor: string;
+  role: string;
+  action: string;
+  fromState?: ReferralState;
+  toState?: ReferralState;
+  reason?: string;
+  relatedTaskId?: string;
+  auditEventId?: string;
+  rulesetVersion?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface ReferralPackage {
+  referralId: string;
+  applicationId: string;
+  /** "DLAS-..." once the application has been accepted into a case. */
+  caseId?: string;
+  type: ReferralType;
+  reasonCategory: ReferralReasonCategory;
+  reason: string;
+  expectedAction: string;
+  priority: ReferralPriority;
+  sensitivity: ReferralSensitivity;
+  sendingOffice: string;
+  receivingOffice: string;
+  /** Authority directory entry referenced. */
+  authorityDirectoryEntryId?: string;
+  /** Routing recommendation issued at draft time. */
+  routingRecommendationId?: string;
+  /** History items. */
+  history: ReferralHistoryItem[];
+  /** Document selections (subset of original case documents). */
+  documentSelections: ReferralDocumentSelection[];
+  /** Selected case history entries from the shared record. */
+  selectedHistoryIds: string[];
+  /** Safe-contact rule applied. */
+  safeContactRuleIds: string[];
+  /** Applicant-notification rule applied. */
+  applicantNotificationRule?: "no_contact" | "safe_follow_up" | "in_person_only";
+  /** Sending officer. */
+  sendingOfficer: ReferralParty;
+  /** Receiving officer (assigned later). */
+  receivingOfficer?: ReferralParty;
+  /** Deadlines. */
+  deadline: ReferralDeadline;
+  /** Escalation path. */
+  escalationOwner: string;
+  /** State machine. */
+  state: ReferralState;
+  /** Operation id for delivery (idempotency). */
+  operationId?: string;
+  /** Acknowledgment. */
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  /** Acceptance (separate from acknowledgment). */
+  acceptedAt?: string;
+  acceptedBy?: string;
+  /** Return — most recent. */
+  returnedAt?: string;
+  returnedBy?: string;
+  returnReason?: ReferralReturnReason;
+  returnNote?: string;
+  /** Missing info request. */
+  missingInformationRequest?: {
+    requestedAt: string;
+    requestedBy: string;
+    note: string;
+    resolvedAt?: string;
+  };
+  /** First action recorded by receiving office. */
+  firstAction?: {
+    recordedAt: string;
+    recordedBy: string;
+    note: string;
+  };
+  /** Last action deadline compliance. */
+  completedAt?: string;
+  /** Escalation task reference. */
+  escalationTaskId?: string;
+  /** Superseded by another referral. */
+  supersededByReferralId?: string;
+  /** Withdrawn by an authorized user. */
+  withdrawnAt?: string;
+  withdrawnBy?: string;
+  withdrawalReason?: string;
+  /** Integrity hash of the package as sent. */
+  integrityHash?: string;
+  /** Audit reference. */
+  auditReference?: string;
+  /** Creation/sent timestamps. */
+  createdAt: string;
+  sentAt?: string;
+  deliveredAt?: string;
+  /** Human priority decision. */
+  humanPriorityDecision?: {
+    decidedAt: string;
+    decidedBy: string;
+    decision: ReferralPriority;
+    reason: string;
+    informationReliedUpon: string;
+    safetyAction: string;
+    responsiblePerson: string;
+    reviewDeadline: string;
+    systemRecommendation: ReferralPriority;
+    override: boolean;
+    overrideReason?: string;
+  };
+  /** Reminder attempts. */
+  remindersSent: { at: string; by: string; outcome: "sent" | "delivered" | "undeliverable" }[];
+  /** Delivery attempts (idempotency). */
+  deliveryAttempts: { operationId: string; at: string; outcome: string }[];
+}
+
+export interface Referral {
+  referralId: string;
+  /** Always equals the source ApplicationRecord.applicationId. */
+  applicationId: string;
+  /** Snapshot of the current state machine position. */
+  package: ReferralPackage;
+}
+
+export interface SensitiveEvidenceItem {
+  evidenceId: string;
+  applicationId: string;
+  /** "image" | "screenshot" | "message_export" | "document". */
+  kind: "image" | "screenshot" | "message_export" | "document" | "audio";
+  fileType: string;
+  bytes: number;
+  submittedBy: string;
+  subject: string;
+  sourceChannel: string;
+  originalFilename?: string;
+  capturedAt?: string;
+  uploadedAt: string;
+  version: number;
+  hash: string;
+  accessClassification: "standard" | "restricted" | "highly_restricted";
+  verificationStatus: "received" | "verified" | "corrupted";
+  sharingStatus: "private" | "shared_with_referral" | "redacted_derivative_created";
+  retentionStatus: "active" | "scheduled_for_deletion";
+}
+
+export interface EvidenceDerivative {
+  derivativeId: string;
+  parentEvidenceId: string;
+  transformation: "redaction" | "compression" | "crop" | "transcription";
+  newHash: string;
+  responsibleActor: string;
+  createdAt: string;
+  note?: string;
+}
+
+export interface EvidenceAccessPurpose {
+  code:
+    | "urgency_review"
+    | "referral_package_preparation"
+    | "applicant_requested_correction"
+    | "authorized_legal_review"
+    | "receiving_authority_review";
+  labelBn: string;
+  labelEn: string;
+}
+
+export const EVIDENCE_ACCESS_PURPOSES: EvidenceAccessPurpose[] = [
+  {
+    code: "urgency_review",
+    labelBn: "জরুরি পর্যালোচনা",
+    labelEn: "Urgency review",
+  },
+  {
+    code: "referral_package_preparation",
+    labelBn: "রেফারেল প্যাকেজ প্রস্তুতি",
+    labelEn: "Referral-package preparation",
+  },
+  {
+    code: "applicant_requested_correction",
+    labelBn: "আবেদনকারী-অনুরোধিত সংশোধন",
+    labelEn: "Applicant-requested correction",
+  },
+  {
+    code: "authorized_legal_review",
+    labelBn: "অনুমোদিত আইনি পর্যালোচনা",
+    labelEn: "Authorized legal review",
+  },
+  {
+    code: "receiving_authority_review",
+    labelBn: "প্রাপ্তিস্থান কর্তৃপক্ষের পর্যালোচনা",
+    labelEn: "Receiving-authority review",
+  },
+];
+
+export interface EvidenceAccessGrant {
+  grantId: string;
+  evidenceId: string;
+  applicationId: string;
+  purpose: EvidenceAccessPurpose["code"];
+  grantedTo: string;
+  grantedBy: string;
+  grantedAt: string;
+  expiresAt: string;
+  reauthMethod: "pin_ivr" | "biometric_local" | "human_alternative" | "officer_supervisor_attestation";
+  revokedAt?: string;
+  revokedBy?: string;
+  minimumNecessary: boolean;
+}
+
+export interface EvidenceAccessEvent {
+  eventId: string;
+  evidenceId: string;
+  applicationId: string;
+  grantId?: string;
+  actor: string;
+  role: string;
+  purpose: EvidenceAccessPurpose["code"];
+  action: "viewed" | "downloaded" | "shared_with_referral" | "redacted" | "denied" | "grant_created" | "grant_revoked";
+  occurredAt: string;
+  version: number;
+  relatedTaskId?: string;
+  auditEventId: string;
+}
+
+export interface SensitiveEvidenceStore {
+  items: SensitiveEvidenceItem[];
+  derivatives: EvidenceDerivative[];
+  grants: EvidenceAccessGrant[];
+  events: EvidenceAccessEvent[];
+}
+
+export interface AuthorityDirectoryEntry {
+  entryId: string;
+  displayNameBn: string;
+  displayNameEn: string;
+  type:
+    | "district_legal_aid_office"
+    | "labour_legal_aid_cell"
+    | "authorized_legal_aid_unit"
+    | "court_or_tribunal"
+    | "other_competent_authority";
+  geographicCoverage: string[];
+  subjectCoverage: string[];
+  intakeChannel: "secure_digital" | "paper" | "ivr" | "email";
+  secureIntegration: "connected" | "planned" | "manual_only";
+  acknowledgmentMethod: "secure_api" | "paper" | "ivr" | "manual";
+  workingHours?: string;
+  emergencyRoute?: string;
+  requiredReferralFields: string[];
+  acceptedDocumentTypes: string[];
+  acknowledgmentDeadlineHours: number;
+  escalationContact?: string;
+  effectiveDate: string;
+  expiryDate?: string;
+  reviewDate: string;
+  sourceOfAuthority: string;
+  verificationStatus: "verified" | "unverified" | "expired";
+  verifiedBy?: string;
+  lastReviewedAt?: string;
+  notes?: { bn: string; en: string };
+}
+
+export interface LegalBasisEntry {
+  basisId: string;
+  instrument: string;
+  reference: string;
+  effectiveDate: string;
+  area: string;
+  matterCategory: string;
+  receivingAuthorityType: AuthorityDirectoryEntry["type"];
+  requiredDocuments: string[];
+  timeRequirement: string;
+  humanReviewRequired: boolean;
+  officialSource: string;
+  verificationStatus: "verified" | "unverified" | "superseded";
+  verifiedBy?: string;
+  lastReviewedAt?: string;
+  rulesetVersion: string;
+  supersededByBasisId?: string;
+  notes?: { bn: string; en: string };
+}
+
+export interface RoutingRecommendation {
+  recommendationId: string;
+  applicationId: string;
+  generatedAt: string;
+  recommendedDestination: { entryId: string; displayName: string; type: AuthorityDirectoryEntry["type"] };
+  confidence:
+    | "sufficient_for_human_review"
+    | "incomplete"
+    | "conflicting"
+    | "no_verified_route";
+  reasons: { bn: string; en: string }[];
+  sourceFields: string[];
+  missingOrUncertain: { bn: string; en: string }[];
+  conflicts: { bn: string; en: string }[];
+  rulesetVersion: string;
+  /** Human override recorded. */
+  humanDecision?: {
+    decidedAt: string;
+    decidedBy: string;
+    accepted: boolean;
+    modifiedDestinationEntryId?: string;
+    reason: string;
+    authorityForDecision: string;
+  };
+}
+
+export interface DeliveryOperation {
+  operationId: string;
+  referralId: string;
+  initiatedAt: string;
+  initiatedBy: string;
+  outcome:
+    | "delivered_successfully"
+    | "delivery_delayed"
+    | "endpoint_unavailable"
+    | "authentication_failure"
+    | "duplicate_attempt"
+    | "package_integrity_mismatch"
+    | "delivered_acknowledgment_pending";
+  message?: string;
+  completedAt?: string;
+}
+
+export interface EscalationTask {
+  escalationId: string;
+  /** Either referralId or applicationId. */
+  referralId?: string;
+  applicationId: string;
+  caseId?: string;
+  reason:
+    | "overdue_acknowledgment"
+    | "overdue_action"
+    | "repeated_transfer"
+    | "missing_return_reason"
+    | "expired_authority_entry"
+    | "unverified_legal_basis";
+  state:
+    | "first_transfer"
+    | "first_return"
+    | "second_transfer"
+    | "second_return"
+    | "repeat_detected"
+    | "human_review_required"
+    | "human_decision_recorded"
+    | "route_assigned"
+    | "receiving_authority_acknowledged";
+  history: { at: string; from: EscalationTask["state"]; to: EscalationTask["state"]; actor: string; reason: string }[];
+  responsibleReviewer?: string;
+  createdAt: string;
+  resolvedAt?: string;
+  humanDecision?: HumanRoutingDecision;
+}
+
+export interface HumanRoutingDecision {
+  decisionId: string;
+  escalationId: string;
+  applicationId: string;
+  decidedAt: string;
+  decidedBy: string;
+  decision: "select_final_route" | "return_to_sender" | "request_clarification" | "retain_temporarily" | "direct_coordinated_action";
+  destinationEntryId?: string;
+  reason: string;
+  authorityForDecision: string;
+  nextDeadline?: string;
+  nextResponsibleOffice?: string;
+  relatedReferralId?: string;
+}
+
+export interface CitizenSafeStatus {
+  notificationId: string;
+  applicationId: string;
+  recordId: string;
+  generatedAt: string;
+  safeMessageBn: string;
+  safeMessageEn: string;
+  nextSafeAction?: string;
+  approvedContactMethod: "phone" | "sms" | "in_person";
+  clearedBy: string;
+}
+
+/* The StoreEnvelope extension — new top-level arrays. */
+declare module "./types" {
+  // intentionally empty; type augmentation lives below
+}
+
+export interface ReferralInboxItem {
+  itemId: string;
+  referralId: string;
+  forOffice: string;
+  state: ReferralState;
+  createdAt: string;
+  reason: string;
+}
+
+export interface EscalationInboxItem {
+  itemId: string;
+  escalationId: string;
+  forReviewer: string;
+  state: EscalationTask["state"];
+  createdAt: string;
+  reason: string;
+}
+
+export interface DeliveryInboxItem {
+  itemId: string;
+  operationId: string;
+  referralId: string;
+  forOffice: string;
+  outcome: DeliveryOperation["outcome"];
+  createdAt: string;
+}
+
+export interface ReferralReminderItem {
+  itemId: string;
+  referralId: string;
+  attemptNumber: number;
+  channel: "sms" | "voice" | "in_app";
+  createdAt: string;
+  outcome: "sent" | "delivered" | "undeliverable";
+  recipientOffice: string;
+}
+
+/* ============================================================== *
+ *  PROMPT 8 — Long-running case, panel-lawyer, accountability
+ * ============================================================== */
+
+export type CaseStage =
+  | "intake"
+  | "panel_assignment"
+  | "lawyer_engagement"
+  | "fact_gathering"
+  | "filing"
+  | "hearing_preparation"
+  | "hearing_in_progress"
+  | "order_received"
+  | "adjourned"
+  | "compliance"
+  | "outcome_reported"
+  | "case_closed"
+  | "reassignment_pending"
+  | "stayed";
+
+export interface PanelLawyer {
+  lawyerId: string;
+  fullNameBn: string;
+  fullNameEn: string;
+  enrollmentNumber: string;
+  barAssociation: string;
+  panelStatus: "approved" | "unverified" | "expired" | "removed";
+  courtEligibility: string[];
+  matterCategories: string[];
+  languages: ("bn" | "en")[];
+  /** Self-reported, never treated as a guarantee. */
+  availability: LawyerAvailabilityStatus;
+  activeCaseCount: number;
+  upcomingHearingCount: number;
+  overdueRequiredUpdateCount: number;
+  lastAssignmentAt?: string;
+  conflictCheckCompleted?: boolean;
+  joinedPanelAt: string;
+  notes?: string;
+}
+
+export type LawyerAvailabilityStatus =
+  | "available"
+  | "busy"
+  | "temporarily_unavailable"
+  | "on_approved_leave"
+  | "not_accepting_new";
+
+export interface LawyerAvailability {
+  availabilityId: string;
+  lawyerId: string;
+  status: LawyerAvailabilityStatus;
+  effectiveAt: string;
+  expectedReturnAt?: string;
+  optionalCapacity?: "low" | "medium" | "high";
+  reasonCategory?: "leave" | "illness" | "personal" | "training" | "court_duty" | "system_outage" | "other";
+  reasonNote?: string;
+  lastConfirmedAt: string;
+  source: "self_report" | "dlao_recorded" | "system_detected";
+}
+
+export type AssignmentState =
+  | "prepared"
+  | "offered"
+  | "awaiting_response"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "active"
+  | "handover_required"
+  | "reassigned"
+  | "completed"
+  | "ended";
+
+export type AssignmentDeclineReason =
+  | "conflict_of_interest"
+  | "unavailable_during_critical_date"
+  | "matter_outside_panel_scope"
+  | "capacity_limitation"
+  | "incomplete_assignment_package"
+  | "other";
+
+export interface LawyerAssignment {
+  assignmentId: string;
+  applicationId: string;
+  caseId: string;
+  lawyerId: string;
+  state: AssignmentState;
+  preparedBy: string;
+  preparedAt: string;
+  offeredAt?: string;
+  responseDeadline?: string;
+  reasonForAssignment: string;
+  applicantPreferenceConsidered: boolean;
+  conflictCheckCompleted: boolean;
+  workloadReviewed: boolean;
+  requiredFirstAction: string;
+  acceptedAt?: string;
+  declinedAt?: string;
+  declineReason?: AssignmentDeclineReason;
+  declineNote?: string;
+  becameActiveAt?: string;
+  endedAt?: string;
+  endedReason?: string;
+  /** Set when a successor assignment is created; original history is preserved. */
+  supersededByAssignmentId?: string;
+  history: AssignmentHistoryItem[];
+  auditEventIds: string[];
+}
+
+export interface AssignmentHistoryItem {
+  at: string;
+  actor: string;
+  fromState?: AssignmentState;
+  toState: AssignmentState;
+  reason?: string;
+  note?: string;
+  auditEventId?: string;
+}
+
+export interface AssignmentResponse {
+  responseId: string;
+  assignmentId: string;
+  lawyerId: string;
+  decision: "accepted" | "declined" | "request_clarification";
+  at: string;
+  declineReason?: AssignmentDeclineReason;
+  note?: string;
+  clarificationRequest?: string;
+}
+
+export interface CaseHearing {
+  hearingId: string;
+  caseId: string;
+  court: string;
+  hearingDate: string;
+  hearingTime?: string;
+  source: "court_cause_list" | "lawyer_recorded" | "dlao_recorded" | "applicant_reported" | "other";
+  sourceDocument?: string;
+  sourceNote?: string;
+  verificationStatus: "reported" | "awaiting_verification" | "verified" | "rescheduled" | "cancelled" | "completed" | "result_overdue";
+  attendanceRequirement: "must_attend" | "may_attend" | "no_attendance_required" | "unknown";
+  responsibleLawyerId?: string;
+  reminderSchedule: { at: string; channel: "sms" | "voice" | "in_app" }[];
+  hearingResult?: HearingResult;
+  nextHearingId?: string;
+  lastUpdatedBy?: string;
+  versionHistory: HearingVersionEntry[];
+  createdAt: string;
+}
+
+export interface HearingVersionEntry {
+  version: number;
+  changedAt: string;
+  changedBy: string;
+  previousDate?: string;
+  newDate?: string;
+  reason: string;
+}
+
+export interface HearingResult {
+  recordedAt: string;
+  recordedBy: string;
+  outcome: "hearing_held" | "adjourned" | "order_received" | "withdrawn" | "other";
+  summary: string;
+  orderReceived?: boolean;
+  orderSummary?: string;
+  nextHearingDate?: string;
+}
+
+export type ProgressUpdateType =
+  | "assignment_accepted"
+  | "client_contact_attempted"
+  | "client_contact_completed"
+  | "document_reviewed"
+  | "filing_prepared"
+  | "filing_submitted"
+  | "hearing_attended"
+  | "hearing_adjourned"
+  | "order_received"
+  | "next_hearing_recorded"
+  | "additional_information_required"
+  | "case_stage_changed"
+  | "outcome_reported"
+  | "unable_to_continue"
+  | "other";
+
+export interface CaseProgressUpdate {
+  updateId: string;
+  caseId: string;
+  lawyerId: string;
+  updateType: ProgressUpdateType;
+  eventDate: string;
+  submissionDate: string;
+  caseStageAtUpdate?: CaseStage;
+  courtOrLocation?: string;
+  summary: string;
+  source?: string;
+  supportingDocumentId?: string;
+  nextHearingId?: string;
+  nextAction?: string;
+  responsibleActor?: string;
+  citizenVisibleSummary?: string;
+  internalNote?: string;
+  confirmationStatus: "draft" | "submitted" | "verified" | "disputed";
+  auditEventId?: string;
+}
+
+export type RequiredUpdateTrigger =
+  | "assignment_acceptance"
+  | "upcoming_hearing"
+  | "completed_hearing"
+  | "received_order"
+  | "case_stage"
+  | "dlao_request"
+  | "periodic_reporting";
+
+export type RequiredUpdateState =
+  | "scheduled"
+  | "upcoming"
+  | "due"
+  | "reminded"
+  | "overdue"
+  | "explanation_received"
+  | "completed"
+  | "waived"
+  | "escalated";
+
+export interface RequiredUpdate {
+  requirementId: string;
+  caseId: string;
+  lawyerId: string;
+  trigger: RequiredUpdateTrigger;
+  requiredUpdateType: ProgressUpdateType;
+  createdAt: string;
+  dueAt: string;
+  reminderSchedule: { at: string; channel: "sms" | "voice" | "in_app" }[];
+  state: RequiredUpdateState;
+  completedByUpdateId?: string;
+  exception?: UpdateException;
+  escalationRuleId?: string;
+  notes?: string;
+}
+
+export interface UpdateException {
+  exceptionId: string;
+  reason: "approved_leave" | "system_outage" | "waived_by_officer" | "case_stayed" | "alternative_channel_submission";
+  notedBy: string;
+  notedAt: string;
+  note: string;
+}
+
+export interface UpdateReminder {
+  reminderId: string;
+  requirementId: string;
+  sentAt: string;
+  channel: "sms" | "voice" | "in_app";
+  outcome: "sent" | "delivered" | "undeliverable" | "failed_delivery";
+  recipientLawyerId: string;
+  templateVersion: string;
+  note?: string;
+}
+
+export type LawyerChangeReasonCategory =
+  | "unable_to_contact_lawyer"
+  | "no_case_update_received"
+  | "hearing_information_not_provided"
+  | "communication_accessibility_problem"
+  | "safety_or_trust_concern"
+  | "conflict_concern"
+  | "lawyer_reported_inability_to_continue"
+  | "other";
+
+export type LawyerChangeRequestState =
+  | "submitted"
+  | "triage"
+  | "under_review"
+  | "lawyer_response_requested"
+  | "continuity_decision"
+  | "approved_for_reassignment"
+  | "retained_with_action"
+  | "clarification_required"
+  | "escalated"
+  | "handover"
+  | "new_lawyer_acceptance"
+  | "completed";
+
+export interface LawyerChangeRequest {
+  requestId: string;
+  caseId: string;
+  applicationId: string;
+  applicantName: string;
+  submittedAt: string;
+  submittedThrough: "self" | "helpline_assisted" | "dlao_assisted" | "voice_ivr" | "field_officer" | "other";
+  submittedBy: string;
+  reasonCategory: LawyerChangeReasonCategory;
+  reasonNote: string;
+  supportingInfo?: string;
+  safeContactInstruction?: string;
+  urgency: "low" | "medium" | "high";
+  requestedOutcome?: string;
+  state: LawyerChangeRequestState;
+  responsibleReviewer?: string;
+  dueAt?: string;
+  history: LawyerChangeHistoryItem[];
+  auditEventIds: string[];
+}
+
+export interface LawyerChangeHistoryItem {
+  at: string;
+  actor: string;
+  fromState?: LawyerChangeRequestState;
+  toState: LawyerChangeRequestState;
+  reason?: string;
+  note?: string;
+}
+
+export type LawyerChangeDecision =
+  | "keep_lawyer_corrective_action"
+  | "request_immediate_update"
+  | "arrange_communication_support"
+  | "temporarily_assign_backup_support"
+  | "reassign_lawyer"
+  | "return_for_clarification"
+  | "escalate_for_authorized_review"
+  | "other";
+
+export interface LawyerChangeReview {
+  reviewId: string;
+  requestId: string;
+  decidedAt: string;
+  decidedBy: string;
+  decision: LawyerChangeDecision;
+  reason: string;
+  evidenceConsidered: string;
+  effectiveDate?: string;
+  nextAction?: string;
+  nextReviewDate?: string;
+}
+
+export interface Reassignment {
+  reassignmentId: string;
+  requestId: string;
+  caseId: string;
+  fromLawyerId: string;
+  toLawyerId?: string;
+  recordedAt: string;
+  recordedBy: string;
+  decision: LawyerChangeReview;
+  continuityOwnerLawyerId?: string;
+  freezePriorAssignment: boolean;
+  handoverPackageId?: string;
+  newLawyerAcceptanceDeadline?: string;
+  history: { at: string; actor: string; note: string }[];
+  auditEventIds: string[];
+}
+
+export interface CaseHandover {
+  handoverId: string;
+  reassignmentId: string;
+  caseId: string;
+  builtAt: string;
+  builtBy: string;
+  currentStage: CaseStage;
+  upcomingHearing?: CaseHearing;
+  criticalDeadlines: { at: string; label: string }[];
+  clientSafeContact: string;
+  documents: string[];
+  previousFilings: string[];
+  orders: string[];
+  lastVerifiedUpdate?: CaseProgressUpdate;
+  outstandingTasks: string[];
+  risks: string[];
+  requiredFirstAction: string;
+  handoverAuthor: string;
+  packageVersion: number;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  finalHandoverStatement?: string;
+  finalStatementAt?: string;
+}
+
+export type InactivityPatternState =
+  | "threshold_reached"
+  | "data_validation"
+  | "human_review"
+  | "explanation_requested"
+  | "resolved_operationally"
+  | "formal_review_recommended"
+  | "dismissed"
+  | "monitoring";
+
+export interface InactivityPattern {
+  patternId: string;
+  lawyerId: string;
+  threshold: { overdueUpdates: number; missedPostHearingReports: number; daysSinceLastActivity: number; crossCaseCount: number };
+  contributingCaseIds: string[];
+  contributingEventIds: string[];
+  exceptions: string[];
+  state: InactivityPatternState;
+  history: InactivityPatternHistoryItem[];
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  resolutionNote?: string;
+}
+
+export interface InactivityPatternHistoryItem {
+  at: string;
+  actor: string;
+  fromState?: InactivityPatternState;
+  toState: InactivityPatternState;
+  reason?: string;
+  note?: string;
+}
+
+export interface PatternReviewDecision {
+  decision: "dismiss_with_reason" | "request_explanations" | "correct_data" | "exclude_invalid_event" | "create_support_training_task" | "adjust_workload" | "initiate_formal_review" | "refer_to_authorized_committee" | "record_other_outcome";
+  reason: string;
+  decidedBy: string;
+  decidedAt: string;
+  nextReviewAt?: string;
+}
+
+export type FeeScheduleStatus = "verified" | "unverified" | "expired" | "superseded";
+
+export interface FeeSchedule {
+  scheduleId: string;
+  officialInstrument: string;
+  reference: string;
+  effectiveDate: string;
+  expiryDate?: string;
+  matterType: string;
+  courtOrServiceType: string;
+  stage: string;
+  authorizedAmount: number;
+  currency: "BDT";
+  requiredSupportingRecords: string[];
+  approvalAuthority: string;
+  officialSource: string;
+  verifiedBy?: string;
+  verificationDate?: string;
+  status: FeeScheduleStatus;
+  supersededByScheduleId?: string;
+  notes?: string;
+  rulesetVersion: string;
+}
+
+export type PaymentReconciliationState =
+  | "not_started"
+  | "worksheet_prepared"
+  | "evidence_review"
+  | "human_decision"
+  | "approved"
+  | "adjusted"
+  | "returned"
+  | "rejected"
+  | "external_payment_pending"
+  | "paid_or_closed";
+
+export interface PaymentStage {
+  stageId: string;
+  caseId: string;
+  scheduleId: string;
+  stage: string;
+  claimedAmount: number;
+  verifiedAmount: number;
+  approvedAmount: number;
+  paidAmount: number;
+  status: "not_claimed" | "draft_claim" | "submitted" | "evidence_required" | "under_review" | "eligible_stage_verified" | "approved" | "returned_for_clarification" | "partially_approved" | "rejected_with_reason" | "sent_to_external_payment" | "paid_externally" | "reconciliation_required";
+  notes?: string;
+}
+
+export interface PaymentReconciliation {
+  reconciliationId: string;
+  caseId: string;
+  state: PaymentReconciliationState;
+  triggeredBy: "reassignment" | "dlao_review" | "lawyer_request" | "routine_cycle" | "exception";
+  preparedAt: string;
+  preparedBy: string;
+  evidence: string[];
+  humanDecision?: {
+    decidedAt: string;
+    decidedBy: string;
+    outcome: "approved" | "adjusted" | "returned" | "rejected";
+    reason: string;
+    stageDecisions: { stageId: string; decision: "approved" | "adjusted" | "returned" | "rejected"; amount: number; note?: string }[];
+  };
+  externalPaymentStatus?: "sent" | "pending" | "paid" | "rejected";
+  history: { at: string; actor: string; fromState: PaymentReconciliationState; toState: PaymentReconciliationState; reason?: string }[];
+  auditEventIds: string[];
+  disclaimerShown: boolean;
+}
+
+export interface ContactReliability {
+  contactId: string;
+  caseId: string;
+  applicantId: string;
+  number: string;
+  numberOwner: "applicant" | "family" | "neighbor" | "shop" | "workplace" | "unknown" | "other";
+  relationshipToApplicant?: string;
+  channel: "phone" | "sms" | "voice_ivr" | "in_person" | "usd" | "other";
+  safeToUse: boolean;
+  permittedMessageType: "neutral_callback" | "safe_follow_up" | "in_person_only" | "none";
+  mayMentionLegalAid: boolean;
+  reliability: "high" | "medium" | "low" | "unknown";
+  lastSuccessfulContactAt?: string;
+  preferredTime?: string;
+  reviewDate?: string;
+  source: "applicant" | "field_officer" | "helpline" | "dlao" | "system" | "other";
+  confirmationStatus: "confirmed" | "unconfirmed" | "disputed";
+  notes?: string;
+}
+
+export interface ContactAttempt {
+  attemptId: string;
+  contactId: string;
+  caseId: string;
+  attemptedAt: string;
+  channel: ContactReliability["channel"];
+  outcome: "answered_by_applicant" | "answered_by_other" | "no_answer" | "voicemail" | "sms_delivered" | "sms_failed" | "in_person_completed" | "other";
+  whoAnswered?: string;
+  note?: string;
+  attemptedBy: string;
+}
+
+export interface VoiceStatusSession {
+  sessionId: string;
+  caseId: string;
+  startedAt: string;
+  endedAt?: string;
+  channel: "voice_ivr" | "telephony" | "app_audio";
+  language: "bn" | "en";
+  promptsPlayed: { at: string; key: VoiceStatusKey; playedText: string }[];
+  keysPressed: { at: string; key: VoiceStatusKey }[];
+  travelWarningPlayed: boolean;
+  followUpTaskId?: string;
+  endedReason?: "user_exit" | "human_handoff" | "connection_loss" | "completed";
+}
+
+export type VoiceStatusKey = "repeat" | "slower" | "back" | "human" | "exit" | "next" | "previous" | "play_status" | "play_next_step" | "play_responsible" | "play_callback";
+
+export interface DlaoTaskItem {
+  taskId: string;
+  caseId?: string;
+  applicationId?: string;
+  type:
+    | "assignment_preparation"
+    | "lawyer_change_review"
+    | "reassignment_continuity"
+    | "verification_task_hearing_date"
+    | "verification_task_update"
+    | "pattern_review"
+    | "payment_reconciliation"
+    | "overdue_alert"
+    | "other";
+  title: string;
+  detail: string;
+  state: "queued" | "in_progress" | "completed" | "cancelled";
+  priority: "low" | "medium" | "high" | "urgent";
+  createdAt: string;
+  dueAt?: string;
+  assignedTo?: string;
+  relatedSubjectId?: string;
+  auditEventIds: string[];
+}

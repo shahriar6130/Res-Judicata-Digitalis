@@ -670,7 +670,523 @@ export type MessageKey =
   | "helplineScenarioA1T59"
   | "helplineScenarioA1Readback"
   | "helplineScenarioA1NextRepOutOfScope"
-  | "helplineScenarioA1NextRepConfirm";
+  | "helplineScenarioA1NextRepConfirm"
+  /* --- assisted intake (offline-first, 5-step wizard) --- */
+  | "navIntake"
+  | "intakeTitle"
+  | "intakeIntro"
+  | "intakeStepOf"
+  | "intakeProgress1"
+  | "intakeProgress2"
+  | "intakeProgress3"
+  | "intakeProgress4"
+  | "intakeProgress5"
+  | "intakeStep1Headline"
+  | "intakeStep1Sub"
+  | "intakeStep2Headline"
+  | "intakeStep2Question"
+  | "intakeStep2Sub"
+  | "intakeStep3Headline"
+  | "intakeStep3Sub"
+  | "intakeStep3PartyHeadline"
+  | "intakeStep3PartySub"
+  | "intakeStep4Headline"
+  | "intakeStep4Sub"
+  | "intakeStep5Headline"
+  | "intakeStep5Sub"
+  | "intakeStep5Confirm"
+  | "intakeMatterFamily"
+  | "intakeMatterFamilyEyebrow"
+  | "intakeMatterFamilySub"
+  | "intakeMatterLand"
+  | "intakeMatterLandEyebrow"
+  | "intakeMatterLandSub"
+  | "intakeMatterCivil"
+  | "intakeMatterCivilEyebrow"
+  | "intakeMatterCivilSub"
+  | "intakeMatterCriminal"
+  | "intakeMatterCriminalEyebrow"
+  | "intakeMatterCriminalSub"
+  | "intakeMatterLabour"
+  | "intakeMatterLabourEyebrow"
+  | "intakeMatterLabourSub"
+  | "intakeMatterOther"
+  | "intakeMatterOtherEyebrow"
+  | "intakeMatterOtherSub"
+  | "intakePartyLabel"
+  | "intakePartyNameLabel"
+  | "intakePartyNamePlaceholder"
+  | "intakePartyAddressLabel"
+  | "intakePartyAddressPlaceholder"
+  | "intakeDescLabel"
+  | "intakeDescPlaceholder"
+  | "intakeVoiceMicStory"
+  | "intakeVoiceSavedHint"
+  | "intakeDocsHeading"
+  | "intakeDocsBody"
+  | "intakeDocsDropHint"
+  | "intakeDocsBrowseBtn"
+  | "intakeDocsEmpty"
+  | "intakeDocsFileSize"
+  | "intakeDocsRemoveBtn"
+  | "intakeDocsQualityHint"
+  | "intakeOfflineBanner"
+  | "intakeOfflineBannerSub"
+  | "intakePreviewHeading"
+  | "intakePreviewEmpty"
+  | "intakePreviewApplicant"
+  | "intakePreviewMatter"
+  | "intakePreviewParty"
+  | "intakePreviewDocs"
+  | "intakePreviewContact"
+  | "intakePreviewConsent"
+  | "intakeHelpTitle"
+  | "intakeHelp1Title"
+  | "intakeHelp1Body"
+  | "intakeHelp2Title"
+  | "intakeHelp2Body"
+  | "intakeHelp3Title"
+  | "intakeHelp3Body"
+  | "intakeSuccessTitle"
+  | "intakeSuccessBody"
+  | "intakeSuccessOfflineTitle"
+  | "intakeSuccessOfflineBody"
+  | "intakeSuccessOfflineHint"
+  | "intakeSuccessNext1"
+  | "intakeSuccessNext2"
+  | "intakeSuccessNext3"
+  | "intakeDraftBtn"
+  | "intakeErrMatter"
+  | "intakeErrPartyName"
+  | "intakeErrDescription"
+  | "intakeErrConsent"
+  | "intakeStorageQuota"
+  /* --- UDC sidebar redesign (4 sections, expandable Intake) --- */
+  | "udcNavIntake"
+  | "udcNavIntakeNew"
+  | "udcNavIntakeResume"
+  | "udcNavIntakeConsent"
+  | "udcNavIntakeDocuments"
+  | "udcNavIntakeTranslation"
+  | "udcNavSyncCentre"
+  | "udcNavConflictReview"
+  | "udcNavApplications"
+  | "udcNavExpand"
+  | "udcNavCollapse"
+  | "udcPanelTranslationTitle"
+  | "udcPanelTranslationIntro"
+  | "udcPanelTranslationEmpty"
+  /* --- Public verifier (Prompt 6, /verify/[certNumber]) --- */
+  | "verifierEyebrow"
+  | "verifierTitle"
+  | "verifierIntro"
+  | "verifierBanner"
+  | "verifierBannerSub"
+  | "verifierCertNumber"
+  | "verifierCertifiedBy"
+  | "verifierMatter"
+  | "verifierCategory"
+  | "verifierFrozenAt"
+  | "verifierPolicyVersion"
+  | "verifierDocumentHash"
+  | "verifierDocumentHashExplain"
+  | "verifierPartiesHeading"
+  | "verifierPartyRole"
+  | "verifierPartyName"
+  | "verifierPartySelfSig"
+  | "verifierPartySignedAt"
+  | "verifierPartyOffline"
+  | "verifierPartyOnline"
+  | "verifierClausesHeading"
+  | "verifierLegalBasisHeading"
+  | "verifierLegalBasisAct"
+  | "verifierLegalBasisSection"
+  | "verifierVerifyAction"
+  | "verifierVerifyIdle"
+  | "verifierVerifyRunning"
+  | "verifierVerifyOk"
+  | "verifierVerifyFail"
+  | "verifierVerifyTamperedHint"
+  | "verifierCopyLink"
+  | "verifierCopied"
+  | "verifierResetTamper"
+  | "verifierFooter"
+  | "verifierShakkhoBranding"
+  | "verifierRoleApplicant"
+  | "verifierRoleRespondent"
+  | "verifierRoleMediator"
+  | "verifierCatMaintenance"
+  | "verifierCatProperty"
+  | "verifierCatLabour"
+  | "verifierAssuranceBadgeDemo"
+  | "verifierAssuranceBadgeProto"
+  | "verifierAssuranceBadgeProd"
+  | "verifierAssuranceBadgeExplain"
+  /* Prompt 7 — Referral workflow + sensitive evidence + escalation. */
+  | "referralDashboardTitle"
+  | "referralDashboardIntro"
+  | "referralOpenUrgent"
+  | "referralOpenJurisdiction"
+  | "referralKpiAwaitingAck"
+  | "referralKpiAckAwaitingAction"
+  | "referralKpiReturned"
+  | "referralKpiOverdueAck"
+  | "referralKpiOverdueAction"
+  | "referralKpiDrafts"
+  | "referralKpiEscalated"
+  | "referralKpiCompleted"
+  | "referralQueueHeader"
+  | "referralQueueRecordId"
+  | "referralQueueApplicant"
+  | "referralQueueSendingOffice"
+  | "referralQueueReceivingOffice"
+  | "referralQueueReason"
+  | "referralQueueState"
+  | "referralQueueOwner"
+  | "referralQueueAckDeadline"
+  | "referralQueueActionDeadline"
+  | "referralQueueAge"
+  | "referralQueueNextAction"
+  | "referralQueueOpen"
+  | "referralFiltersHeading"
+  | "referralFilterAll"
+  | "referralFilterPriority"
+  | "referralFilterSensitivity"
+  | "referralFilterState"
+  | "referralFilterOverdue"
+  | "referralFilterOffice"
+  | "referralNewTitle"
+  | "referralNewPickRecord"
+  | "referralNewPickContinue"
+  | "referralPackageTitle"
+  | "referralPackageStep1"
+  | "referralPackageStep2"
+  | "referralPackageStep3"
+  | "referralPackageStep4"
+  | "referralPackageStep5"
+  | "referralPackageStep6"
+  | "referralPackageReason"
+  | "referralPackageExpectedAction"
+  | "referralPackagePriority"
+  | "referralPackageDeadline"
+  | "referralPackageReceivingOffice"
+  | "referralPackageSendingOfficer"
+  | "referralPackageResponsibility"
+  | "referralPackageAckDeadline"
+  | "referralPackageActionDeadline"
+  | "referralPackageEscalationOwner"
+  | "referralPackageNotifyApplicant"
+  | "referralPackageConfirmDestination"
+  | "referralPackageConfirmMinNecessary"
+  | "referralPackageConfirmSensitive"
+  | "referralPackageConfirmLegalBasis"
+  | "referralPackageConfirmExpected"
+  | "referralPackageConfirmDeadline"
+  | "referralPackageConfirmSafeComms"
+  | "referralPackageSend"
+  | "referralPackageSent"
+  | "referralPackageIncomplete"
+  | "referralDocumentsHeading"
+  | "referralDocumentsIncluded"
+  | "referralDocumentsExcluded"
+  | "referralDocumentsKind"
+  | "referralDocumentsPurpose"
+  | "referralDocumentsPermission"
+  | "referralDeliveryTitle"
+  | "referralDeliverySimulatorLabel"
+  | "referralDeliveryStable"
+  | "referralDeliveryOutcomes"
+  | "referralDeliveryOutcomeSuccess"
+  | "referralDeliveryOutcomeDelayed"
+  | "referralDeliveryOutcomeUnavailable"
+  | "referralDeliveryOutcomeAuth"
+  | "referralDeliveryOutcomeDuplicate"
+  | "referralDeliveryOutcomeMismatch"
+  | "referralDeliveryOutcomeAckPending"
+  | "referralDeliveryRun"
+  | "referralDeliveryDuplicateRefused"
+  | "referralDeliveryResult"
+  | "referralTimelineTitle"
+  | "referralTimelineEmpty"
+  | "referralAccessTitle"
+  | "referralAccessEmpty"
+  | "referralReceivingTitle"
+  | "referralAcknowledgeAction"
+  | "referralAcceptAction"
+  | "referralReturnAction"
+  | "referralReturnReasonLabel"
+  | "referralReturnNoteLabel"
+  | "referralMissingInfoAction"
+  | "referralMissingInfoNote"
+  | "referralAssignOfficer"
+  | "referralRecordFirstAction"
+  | "referralCompleteAction"
+  | "referralWithdrawnAction"
+  | "referralReturnReasonMissingInfo"
+  | "referralReturnReasonDocMissing"
+  | "referralReturnReasonDocUnreadable"
+  | "referralReturnReasonCorrupted"
+  | "referralReturnReasonOutsideRoute"
+  | "referralReturnReasonDuplicate"
+  | "referralReturnReasonExistingOffice"
+  | "referralReturnReasonLegalBasis"
+  | "referralReturnReasonOther"
+  | "referralReturnedTitle"
+  | "referralOverdueTitle"
+  | "referralSimulateNoAck"
+  | "referralSimulateNoAckHint"
+  | "referralAckSimulated"
+  | "referralAdvanceTime"
+  | "referralResetTime"
+  | "referralDemoTimeNote"
+  | "referralEscalationsTitle"
+  | "referralEscalationRepeated"
+  | "referralEscalationTransferCount"
+  | "referralEscalationReturnCount"
+  | "referralEscalationDestinations"
+  | "referralEscalationReasons"
+  | "referralEscalationRouting"
+  | "referralEscalationLegalBasis"
+  | "referralEscalationConflict"
+  | "referralEscalationDecision"
+  | "referralEscalationFinalRoute"
+  | "referralEscalationAuthority"
+  | "referralEscalationDeadline"
+  | "referralEscalationConfirm"
+  | "referralEscalationRecorded"
+  | "referralEscalationNoDecision"
+  | "referralNoJurisdictionDecision"
+  | "referralUrgencyHeading"
+  | "referralUrgencyIndicators"
+  | "referralUrgencyRecommendation"
+  | "referralUrgencyDecision"
+  | "referralUrgencyOverride"
+  | "referralUrgencyReason"
+  | "referralUrgencyInfo"
+  | "referralUrgencySafety"
+  | "referralUrgencyResponsible"
+  | "referralUrgencyReviewDeadline"
+  | "referralUrgencySave"
+  | "referralSensitiveVaultTitle"
+  | "referralSensitiveList"
+  | "referralSensitiveRequestAccess"
+  | "referralSensitivePurpose"
+  | "referralSensitiveReauth"
+  | "referralSensitiveMinNecessary"
+  | "referralSensitiveGrant"
+  | "referralSensitiveActive"
+  | "referralSensitiveViewed"
+  | "referralSensitiveDownload"
+  | "referralSensitiveDerivative"
+  | "referralSensitiveSafeMetadata"
+  | "referralSensitiveIntegrity"
+  | "referralSensitiveSection65B"
+  | "referralSensitiveNoContent"
+  | "referralSensitiveIntegrityNotice"
+  | "referralRoutingHeading"
+  | "referralRoutingRecommended"
+  | "referralRoutingConfidence"
+  | "referralRoutingSufficient"
+  | "referralRoutingIncomplete"
+  | "referralRoutingConflicting"
+  | "referralRoutingNoVerified"
+  | "referralRoutingNoVerifiedLong"
+  | "referralRoutingAccept"
+  | "referralRoutingModify"
+  | "referralRoutingReject"
+  | "referralRoutingReason"
+  | "referralRoutingAuthority"
+  | "referralAuthorityDirectoryTitle"
+  | "referralAuthorityWarning"
+  | "referralAuthorityVerified"
+  | "referralAuthorityUnverified"
+  | "referralAuthorityExpired"
+  | "referralAuthorityMarkExpired"
+  | "referralAuthorityMarkVerified"
+  | "referralLegalBasisTitle"
+  | "referralLegalBasisVerified"
+  | "referralLegalBasisUnverified"
+  | "referralLegalBasisSuperseded"
+  | "referralLegalBasisMarkVerified"
+  | "referralLegalBasisSupersede"
+  | "referralCitizenTitle"
+  | "referralCitizenSafe"
+  | "referralCitizenContact"
+  | "referralCitizenNextAction"
+  | "referralCitizenReminder"
+  | "referralStateDraft"
+  | "referralStatePackageReview"
+  | "referralStateAuthorized"
+  | "referralStateSending"
+  | "referralStateDelivered"
+  | "referralStateAwaitingAck"
+  | "referralStateAcknowledged"
+  | "referralStateAccepted"
+  | "referralStateActionInProgress"
+  | "referralStateCompleted"
+  | "referralStateDeliveryFailed"
+  | "referralStateInfoRequested"
+  | "referralStateReturned"
+  | "referralStateOverdueAck"
+  | "referralStateOverdueAction"
+  | "referralStateEscalationRequired"
+  | "referralStateEscalated"
+  | "referralStateSuperseded"
+  | "referralStateWithdrawn"
+  | "referralPriorityStandard"
+  | "referralPriorityUrgent"
+  | "referralPriorityOverdue"
+  | "referralSensitivityStandard"
+  | "referralSensitivitySensitive"
+  | "referralSensitivityHighlySensitive"
+  | "referralReasonCategoryAuthority"
+  | "referralReasonCategorySpecialist"
+  | "referralReasonCategoryJurisdiction"
+  | "referralReasonCategorySensitive"
+  | "referralReasonCategoryMissing"
+  | "referralReasonCategoryDeadline"
+  | "referralCaseReferralsTitle"
+  | "referralCaseReferralsSub"
+  | "referralEscalationWorkspaceTitle"
+  | "referralHumanRoutingDecisionHeading"
+  | "referralOverdueAckTitle"
+  | "referralOverdueActionTitle"
+  | "referralRecordId"
+  | "referralSendingOffice"
+  | "referralReceivingOffice"
+  | "referralState"
+  | "referralDeadline"
+  | "referralNextAction"
+  | "referralResponsible"
+  | "referralOpenReferral"
+  | "referralOpenApplication"
+  | "referralOpenCase"
+  | "referralAck"
+  | "referralAccept"
+  | "referralReturn"
+  | "referralWithdraw"
+  | "lawyerDashboardTitle"
+  | "lawyerDashboardSubtitle"
+  | "lawyerKpiAwaiting"
+  | "lawyerKpiActive"
+  | "lawyerKpiHearingsToday"
+  | "lawyerKpiHearingsWeek"
+  | "lawyerKpiDueUpdates"
+  | "lawyerKpiOverdue"
+  | "lawyerKpiHandover"
+  | "lawyerKpiCompleted"
+  | "lawyerWorklistTitle"
+  | "lawyerWorklistEmpty"
+  | "lawyerOpenCase"
+  | "lawyerAssignmentAccept"
+  | "lawyerAssignmentDecline"
+  | "lawyerAssignmentSubmit"
+  | "lawyerAssignmentDeclineReason"
+  | "lawyerAssignmentDeclineNote"
+  | "lawyerCaseWorkspace"
+  | "lawyerCaseUpdateNew"
+  | "lawyerCaseUpdateType"
+  | "lawyerCaseUpdateSummary"
+  | "lawyerCaseUpdateEventDate"
+  | "lawyerCaseUpdateCourt"
+  | "lawyerCaseUpdateCitizenVisible"
+  | "lawyerCaseUpdateInternal"
+  | "lawyerCaseUpdateSubmit"
+  | "lawyerHearingsTitle"
+  | "lawyerHearingMarkVerified"
+  | "lawyerHearingRecordResult"
+  | "lawyerHearingReschedule"
+  | "lawyerHearingCancel"
+  | "lawyerHearingResultSummary"
+  | "lawyerDocumentsTitle"
+  | "lawyerTasksTitle"
+  | "lawyerAvailabilityTitle"
+  | "lawyerAvailabilitySetStatus"
+  | "lawyerAvailabilityCurrent"
+  | "lawyerAvailabilityExpectedReturn"
+  | "lawyerAvailabilityNote"
+  | "dlaoLawyersTitle"
+  | "dlaoLawyerProfileTitle"
+  | "dlaoLawyerActiveCases"
+  | "dlaoLawyerUpcomingHearings"
+  | "dlaoLawyerOverdueUpdates"
+  | "dlaoAssignmentsTitle"
+  | "dlaoAssignmentWorkspaceTitle"
+  | "dlaoAssignmentRecordDecision"
+  | "dlaoAssignmentSelectedLawyer"
+  | "dlaoAssignmentResponseDeadline"
+  | "dlaoAssignmentRequiredFirstAction"
+  | "dlaoAssignmentReasons"
+  | "dlaoAssignmentApplicantConsidered"
+  | "dlaoAssignmentConflictCheck"
+  | "dlaoAssignmentWorkloadReviewed"
+  | "dlaoAssignmentPrepare"
+  | "dlaoAssignmentOffer"
+  | "dlaoOverdueTitle"
+  | "dlaoOverdueRow"
+  | "dlaoOverdueDays"
+  | "dlaoOverdueAlert"
+  | "dlaoChangeRequestsTitle"
+  | "dlaoChangeRequestWorkspaceTitle"
+  | "dlaoChangeRequestApplicant"
+  | "dlaoChangeRequestReason"
+  | "dlaoChangeRequestLawyerExplanation"
+  | "dlaoChangeRequestDecision"
+  | "dlaoChangeRequestDecisionReassign"
+  | "dlaoChangeRequestDecisionRetain"
+  | "dlaoChangeRequestDecisionClarify"
+  | "dlaoChangeRequestDecisionEscalate"
+  | "dlaoChangeRequestDecisionNote"
+  | "dlaoReassignmentTitle"
+  | "dlaoReassignmentNewLawyer"
+  | "dlaoReassignmentEffectiveDate"
+  | "dlaoReassignmentNextAction"
+  | "dlaoReassignmentHandoverDeadline"
+  | "dlaoInactivityTitle"
+  | "dlaoInactivityRow"
+  | "dlaoInactivityContributing"
+  | "delaInactivityExceptions"
+  | "dlaoInactivityExceptions"
+  | "dlaoInactivityDecision"
+  | "dlaoInactivityDecisionDismiss"
+  | "dlaoInactivityDecisionResolved"
+  | "dlaoInactivityDecisionFormal"
+  | "dlaoInactivityDecisionMonitor"
+  | "dlaoPaymentTitle"
+  | "dlaoPaymentDisclaimer"
+  | "citizenStatusTitle"
+  | "citizenStatusSafeIntro"
+  | "citizenStatusNextHearing"
+  | "citizenStatusAssignedLawyer"
+  | "citizenStatusLastUpdate"
+  | "citizenStatusTravelAdvisory"
+  | "citizenLawyerChangeTitle"
+  | "citizenLawyerChangeReason"
+  | "citizenLawyerChangeStatement"
+  | "citizenLawyerChangeAssistedBy"
+  | "citizenLawyerChangeSubmit"
+  | "voiceStatusTitle"
+  | "voiceStatusPrompt"
+  | "voiceStatusRepeat"
+  | "voiceStatusSlower"
+  | "voiceStatusBack"
+  | "voiceStatusHuman"
+  | "voiceStatusExit"
+  | "voiceStatusConnectionLost"
+  | "adminFeeSchedulesTitle"
+  | "adminFeeSchedulesNew"
+  | "adminFeeSchedulesMarkVerified"
+  | "adminFeeSchedulesSupersede"
+  | "adminUpdateRequirementsTitle"
+  | "adminUpdateRequirementsTrigger"
+  | "adminUpdateRequirementsDueDays"
+  | "adminUpdateRequirementsReminderDays"
+  | "adminUpdateRequirementsEscalation"
+  | "adminUpdateRequirementsExceptions"
+  | "demoAdvance24h"
+  | "demoAdvance72h"
+  | "demoResetLawyerAvailability"
+  | "demoResetRequiredSchedule";
 
 type Messages = Record<Lang, Record<MessageKey, string>>;
 
@@ -1386,6 +1902,558 @@ export const messages: Messages = {
       "রিপন প্রতিনিধি হিসেবে রিপোর্ট করেছেন — নিশ্চিতকরণ প্রয়োজন। 'Submit anyway' ক্লিক করলে RepresentationOutOfScopeError হবে।",
     helplineScenarioA1NextRepConfirm:
       "পরবর্তী ধাপ: DLAO নিরাপদ সময়ে যোগাযোগ করবেন, প্রতিনিধির নিশ্চিতকরণ নেওয়া হবে।",
+    /* --- assisted intake --- */
+    navIntake: "সহায়িতা গ্রহণ",
+    intakeTitle: "সহায়িতা গ্রহণ — নতুন মামলা শুরু করুন",
+    intakeIntro:
+      "ধাপে ধাপে আপনার তথ্য দিন, প্রয়োজনীয় কাগজপত্র সংযুক্ত করুন। ইন্টারনেট না থাকলেও সংরক্ষিত থাকবে; নেটওয়ার্ক ফিরে এলে কর্তৃপক্ষের সার্ভারে পাঠানো হবে।",
+    intakeStepOf: "এর মধ্যে",
+    intakeProgress1: "পরিচয়",
+    intakeProgress2: "মামলার ধরন",
+    intakeProgress3: "পক্ষ ও বিবরণ",
+    intakeProgress4: "কাগজপত্র",
+    intakeProgress5: "যোগাযোগ ও সম্মতি",
+    intakeStep1Headline: "আবেদনকারীর পরিচয়",
+    intakeStep1Sub:
+      "আপনার নাম ও মোবাইল নম্বর দিন। অন্যের হয়ে আবেদন করলে সেটিও জানাতে পারবেন।",
+    intakeStep2Headline: "মামলার ধরন",
+    intakeStep2Question: "আপনার বিষয়টি কোন ধরনের?",
+    intakeStep2Sub:
+      "একটি বিভাগ বেছে নিন। ধরন পরিবর্তন হলে অফিস পরে সহায়তা করবে।",
+    intakeStep3Headline: "আপনার বিবরণ",
+    intakeStep3Sub:
+      "বিরোধী পক্ষের নাম ও ঠিকানা দিন এবং ঘটনার সংক্ষিপ্ত বিবরণ লিখুন বা বলুন।",
+    intakeStep3PartyHeadline: "বিরোধী পক্ষের তথ্য",
+    intakeStep3PartySub: "যতটুকু জানেন ততটুকু দিন — অসম্পূর্ণ হলে পরে যোগ করা যাবে।",
+    intakeStep4Headline: "কাগজপত্র সংযুক্ত করুন",
+    intakeStep4Sub:
+      "জাতীয় পরিচয়পত্র, দলিল, নোটিশ বা অন্যান্য কাগজের ছবি/পিডিএফ এখানে যুক্ত করুন।",
+    intakeStep5Headline: "যোগাযোগের নিরাপদ সময় ও সম্মতি",
+    intakeStep5Sub:
+      "কখন ফোন করলে নিরাপদ — সেটি জানান এবং সম্মতি দিন।",
+    intakeStep5Confirm:
+      "আমি নিশ্চিত করছি যে উপরের সব তথ্য আমার জানামতে সত্য।",
+    intakeMatterFamily: "পারিবারিক বিষয়",
+    intakeMatterFamilyEyebrow: "পারিবারিক",
+    intakeMatterFamilySub: "ভরণপোষণ, দেনমোহর, সন্তানের অভিভাবকত্ব",
+    intakeMatterLand: "ভূমি বিরোধ",
+    intakeMatterLandEyebrow: "ভূমি",
+    intakeMatterLandSub: "জমির সীমানা, দলিল, খতিয়ান সংক্রান্ত",
+    intakeMatterCivil: "দেওয়ানি মামলা",
+    intakeMatterCivilEyebrow: "দেওয়ানি",
+    intakeMatterCivilSub: "ঋণ, চুক্তি, সম্পত্তি ফেরত",
+    intakeMatterCriminal: "ফৌজদারি অভিযোগ",
+    intakeMatterCriminalEyebrow: "ফৌজদারি",
+    intakeMatterCriminalSub: "চুরি, প্রতারণা, হয়রানি",
+    intakeMatterLabour: "শ্রম বিরোধ",
+    intakeMatterLabourEyebrow: "শ্রম",
+    intakeMatterLabourSub: "বেতন, চাকরি থেকে অব্যাহতি",
+    intakeMatterOther: "অন্যান্য",
+    intakeMatterOtherEyebrow: "অন্য",
+    intakeMatterOtherSub: "উপরের কোনোটি না হলে",
+    intakePartyLabel: "বিরোধী পক্ষের নাম",
+    intakePartyNameLabel: "বিরোধী পক্ষের নাম",
+    intakePartyNamePlaceholder: "নাম লিখুন (যতটুকু জানেন)",
+    intakePartyAddressLabel: "বিরোধী পক্ষের ঠিকানা",
+    intakePartyAddressPlaceholder: "গ্রাম/এলাকা, উপজেলা, জেলা",
+    intakeDescLabel: "ঘটনার সংক্ষিপ্ত বিবরণ",
+    intakeDescPlaceholder:
+      "কী ঘটেছে, কখন ঘটেছে, আপনি কী চান — সংক্ষেপে লিখুন",
+    intakeVoiceMicStory: "বিবরণ বলুন",
+    intakeVoiceSavedHint: "বলা শেষ হলে এখানে লেখা হবে",
+    intakeDocsHeading: "কাগজপত্র",
+    intakeDocsBody:
+      "জাতীয় পরিচয়পত্র, দলিল, নোটিশ, ছবি, পিডিএফ — সব ধরনের ফাইল এখানে যুক্ত করতে পারবেন।",
+    intakeDocsDropHint:
+      "ফাইল এখানে টেনে আনুন অথবা নিচের বোতামে ক্লিক করুন।",
+    intakeDocsBrowseBtn: "ফাইল নির্বাচন করুন",
+    intakeDocsEmpty: "এখনো কোনো কাগজপত্র সংযুক্ত করা হয়নি।",
+    intakeDocsFileSize: "আকার",
+    intakeDocsRemoveBtn: "সরান",
+    intakeDocsQualityHint:
+      "স্পষ্ট ছবি আপলোড করুন — নাম, স্বাক্ষর ও তারিখ যেন পড়া যায়।",
+    intakeOfflineBanner: "আপনি এখন অফলাইনে",
+    intakeOfflineBannerSub:
+      "তথ্য আপনার ডিভাইসে সংরক্ষিত হচ্ছে; নেটওয়ার্ক ফিরে এলে স্বয়ংক্রিয়ভাবে পাঠানো হবে।",
+    intakePreviewHeading: "লাইভ প্রিভিউ",
+    intakePreviewEmpty: "ধাপগুলো পূরণ করলে এখানে দেখা যাবে।",
+    intakePreviewApplicant: "আবেদনকারী",
+    intakePreviewMatter: "মামলার ধরন",
+    intakePreviewParty: "বিরোধী পক্ষ",
+    intakePreviewDocs: "কাগজপত্র",
+    intakePreviewContact: "যোগাযোগের সময়",
+    intakePreviewConsent: "সম্মতি",
+    intakeHelpTitle: "কীভাবে কাজ করে",
+    intakeHelp1Title: "১। ধাপে ধাপে পূরণ",
+    intakeHelp1Body:
+      "প্রতিটি ধাপে শুধু জিজ্ঞাসিত তথ্য দিন। পরে ফিরে এসে সংশোধন করতে পারবেন।",
+    intakeHelp2Title: "২। অফলাইনে সংরক্ষণ",
+    intakeHelp2Body:
+      "ইন্টারনেট না থাকলেও আবেদন আপনার ডিভাইসে সংরক্ষিত থাকবে।",
+    intakeHelp3Title: "৩। নেটওয়ার্ক ফিরলে পাঠানো",
+    intakeHelp3Body:
+      "নেটওয়ার্ক ফিরে আসার সাথে সাথে আবেদন কর্তৃপক্ষের কাছে পৌঁছে যাবে।",
+    intakeSuccessTitle: "আবেদন সংরক্ষিত হয়েছে",
+    intakeSuccessBody:
+      "একজন কর্মকর্তা শীঘ্রই নিরাপদ সময়ে যোগাযোগ করবেন। নিচে আপনার অস্থায়ী রসিদ দেওয়া হলো।",
+    intakeSuccessOfflineTitle: "আবেদন অফলাইনে সংরক্ষিত",
+    intakeSuccessOfflineBody:
+      "ইন্টারনেট ফিরে আসার পর এটি স্বয়ংক্রিয়ভাবে আমলে পাঠানো হবে। নিচে অস্থায়ী রসিদ দেওয়া হলো।",
+    intakeSuccessOfflineHint:
+      "আপনি এখন নিরাপদে বন্ধ করতে পারেন — সব আপনার ডিভাইসে সংরক্ষিত আছে।",
+    intakeSuccessNext1: "আপনার মামলার নম্বর: অস্থায়ী রসিদ হিসেবে সংরক্ষিত।",
+    intakeSuccessNext2: "কর্তৃপক্ষ আপনার বাছাই করা সময়ে যোগাযোগ করবে।",
+    intakeSuccessNext3: "প্রয়োজনে আবার নতুন করে শুরু করতে পারবেন।",
+    intakeDraftBtn: "খসড়া হিসেবে সংরক্ষণ",
+    intakeErrMatter: "একটি মামলার ধরন বেছে নিন।",
+    intakeErrPartyName: "বিরোধী পক্ষের নাম লিখুন।",
+    intakeErrDescription: "ঘটনার বিবরণ সংক্ষেপে লিখুন।",
+    intakeErrConsent: "সম্মতি না দিলে আবেদন গ্রহণ করা যাবে না।",
+    intakeStorageQuota:
+      "ডিভাইসে জায়গা শেষ — পুরনো খসড়া মুছে আবার চেষ্টা করুন।",
+
+    /* UDC sidebar — bn */
+    udcNavIntake: "ইনটেক",
+    udcNavIntakeNew: "নতুন সহায়তা শুরু",
+    udcNavIntakeResume: "ইনটেক পুনরায় শুরু",
+    udcNavIntakeConsent: "সম্মতি রেকর্ড",
+    udcNavIntakeDocuments: "নথি ক্যাপচার",
+    udcNavIntakeTranslation: "অনুবাদ",
+    udcNavSyncCentre: "সিঙ্ক সেন্টার",
+    udcNavConflictReview: "কনফ্লিক্ট পর্যালোচনা",
+    udcNavApplications: "আবেদনসমূহ",
+    udcNavExpand: "প্রসারিত করুন",
+    udcNavCollapse: "সংকুচিত করুন",
+    udcPanelTranslationTitle: "অনুবাদ শৃঙ্খল",
+    udcPanelTranslationIntro:
+      "অনুবাদ প্রতিটি ইনটেকের ভেতরে পরিচালিত হয়। এই দৃশ্যমান সারসংক্ষেপ।",
+    udcPanelTranslationEmpty: "কোনো অনুবাদ রেকর্ড নেই।",
+
+    /* Public verifier (Prompt 6) — bn */
+    verifierEyebrow: "সাক্ষ্য · স্বতন্ত্র যাচাই",
+    verifierTitle: "চুক্তি যাচাইকরণ",
+    verifierIntro:
+      "একটি স্থিরভাবে সংরক্ষিত মধ্যস্থতা চুক্তির হ্যাশ এবং স্বাক্ষরের প্রমাণ। লগইন প্রয়োজন নেই।",
+    verifierBanner: "ডেমো সতর্কতা",
+    verifierBannerSub:
+      "এই পৃষ্ঠাটি একটি প্রোটোটাইপ। এটি আইনি পরামর্শ নয় এবং বাংলাদেশ সরকার বা ই-গভর্নেন্স সার্টিফাইং অথরিটি অনুমোদিত নয়।",
+    verifierCertNumber: "সার্টিফিকেট নম্বর",
+    verifierCertifiedBy: "প্রত্যয়নকারী",
+    verifierMatter: "ম্যাটার",
+    verifierCategory: "বিভাগ",
+    verifierFrozenAt: "হিমায়িত হয়েছে",
+    verifierPolicyVersion: "টি৭ নীতি সংস্করণ",
+    verifierDocumentHash: "নথির হ্যাশ (SHA-256)",
+    verifierDocumentHashExplain:
+      "পুনরায় গণনা করতে 'যাচাই করুন' বোতাম চাপুন। প্রতিটি ধারার হ্যাশ আলাদাভাবে যাচাই হবে।",
+    verifierPartiesHeading: "পক্ষগণ ও স্ব-স্বাক্ষর",
+    verifierPartyRole: "ভূমিকা",
+    verifierPartyName: "নাম",
+    verifierPartySelfSig: "স্ব-স্বাক্ষর হ্যাশ",
+    verifierPartySignedAt: "স্বাক্ষরের সময়",
+    verifierPartyOffline: "অফলাইনে",
+    verifierPartyOnline: "অনলাইনে",
+    verifierClausesHeading: "চুক্তির ধারাসমূহ",
+    verifierLegalBasisHeading: "আইনি ভিত্তি (রেজিস্ট্রি উদ্ধৃতি)",
+    verifierLegalBasisAct: "আইন",
+    verifierLegalBasisSection: "ধারা",
+    verifierVerifyAction: "পুনরায় হ্যাশ গণনা করে যাচাই করুন",
+    verifierVerifyIdle: "যাচাইকরণ চালু হয়নি",
+    verifierVerifyRunning: "পুনরায় গণনা চলছে…",
+    verifierVerifyOk: "✓ সব মিলেছে — চুক্তিটি অক্ষত।",
+    verifierVerifyFail: "✗ মিল নেই — চুক্তিতে পরিবর্তন আনা হয়েছে।",
+    verifierVerifyTamperedHint:
+      "পরীক্ষামূলকভাবে একটি ধারার বিষয়বস্তু পরিবর্তন করে দেখুন। 'ডেমো রিসেট' বোতাম চাপলে ফিরে আসবে।",
+    verifierCopyLink: "যাচাই লিংক কপি করুন",
+    verifierCopied: "কপি হয়েছে",
+    verifierResetTamper: "ডেমো রিসেট",
+    verifierFooter:
+      "সাক্ষ্য প্রোটোটাইপ · কোনো সত্যিকারের সরকারি প্রত্যয়ন নয়। গবেষণামূলক প্রদর্শনী।",
+    verifierShakkhoBranding: "সাক্ষ্য · Verified Legal Aid Operations",
+    verifierRoleApplicant: "আবেদনকারী",
+    verifierRoleRespondent: "সাড়াদাতা",
+    verifierRoleMediator: "মধ্যস্থতাকারী",
+    verifierCatMaintenance: "ভরণপোষণ",
+    verifierCatProperty: "সম্পত্তি",
+    verifierCatLabour: "শ্রম",
+    verifierAssuranceBadgeDemo: "ডেমো স্বীকৃতি",
+    verifierAssuranceBadgeProto: "প্রোটোটাইপ ক্রিপ্টোগ্রাফিক",
+    verifierAssuranceBadgeProd: "উৎপাদন সার্টিফিকেট",
+    verifierAssuranceBadgeExplain:
+      "বর্তমানে: প্রোটোটাইপ স্তর। সার্টিফিকেট-ব্যাকড স্তরে পৌঁছাতে বাস্তব সার্টিফাইং অথরিটি প্রয়োজন।",
+    /* Prompt 7 — Referral workflow + sensitive evidence + escalation. */
+    referralDashboardTitle: "রেফারেল ড্যাশবোর্ড",
+    referralDashboardIntro:
+      "DLAO কর্মকর্তাদের জন্য পেশাদার রেফারেল পরিচালনা ওয়ার্কস্পেস।",
+    referralOpenUrgent: "জরুরি রেফারেল খুলুন",
+    referralOpenJurisdiction: "এখতিয়ার যুদ্ধ দেখুন",
+    referralKpiAwaitingAck: "স্বীকৃতির অপেক্ষায়",
+    referralKpiAckAwaitingAction: "স্বীকৃত — পদক্ষেপ অপেক্ষায়",
+    referralKpiReturned: "ফেরত পাঠানো",
+    referralKpiOverdueAck: "স্বীকৃতি সময়সীমা অতিক্রান্ত",
+    referralKpiOverdueAction: "পদক্ষেপ সময়সীমা অতিক্রান্ত",
+    referralKpiDrafts: "খসড়া প্যাকেজ",
+    referralKpiEscalated: "এসকেলেশন চলমান",
+    referralKpiCompleted: "সম্পন্ন",
+    referralQueueHeader: "রেফারেল সারি",
+    referralQueueRecordId: "রেকর্ড আইডি",
+    referralQueueApplicant: "আবেদনকারী",
+    referralQueueSendingOffice: "প্রেরণকারী",
+    referralQueueReceivingOffice: "প্রাপক",
+    referralQueueReason: "কারণ",
+    referralQueueState: "অবস্থা",
+    referralQueueOwner: "দায়িত্বপ্রাপ্ত",
+    referralQueueAckDeadline: "স্বীকৃতি সময়সীমা",
+    referralQueueActionDeadline: "পদক্ষেপ সময়সীমা",
+    referralQueueAge: "বয়স",
+    referralQueueNextAction: "পরবর্তী পদক্ষেপ",
+    referralQueueOpen: "খুলুন",
+    referralFiltersHeading: "ফিল্টার",
+    referralFilterAll: "সব",
+    referralFilterPriority: "অগ্রাধিকার",
+    referralFilterSensitivity: "সংবেদনশীলতা",
+    referralFilterState: "অবস্থা",
+    referralFilterOverdue: "সময়সীমা অতিক্রান্ত",
+    referralFilterOffice: "কার্যালয়",
+    referralNewTitle: "নতুন রেফারেল শুরু করুন",
+    referralNewPickRecord: "রেকর্ড নির্বাচন করুন",
+    referralNewPickContinue: "প্যাকেজ বিল্ডারে যান",
+    referralPackageTitle: "রেফারেল প্যাকেজ বিল্ডার",
+    referralPackageStep1: "ধাপ ১ — উদ্দেশ্য",
+    referralPackageStep2: "ধাপ ২ — ন্যূনতম প্রয়োজনীয় ইতিহাস",
+    referralPackageStep3: "ধাপ ৩ — নথি নির্বাচন",
+    referralPackageStep4: "ধাপ ৪ — নিরাপত্তা ও গোপনীয়তা",
+    referralPackageStep5: "ধাপ ৫ — দায়িত্ব",
+    referralPackageStep6: "ধাপ ৬ — মানব অনুমোদন",
+    referralPackageReason: "রেফারেল কারণ",
+    referralPackageExpectedAction: "প্রত্যাশিত পদক্ষেপ",
+    referralPackagePriority: "অগ্রাধিকার",
+    referralPackageDeadline: "সময়সীমা",
+    referralPackageReceivingOffice: "প্রাপক কার্যালয়",
+    referralPackageSendingOfficer: "প্রেরণকারী কর্মকর্তা",
+    referralPackageResponsibility: "দায়িত্ব",
+    referralPackageAckDeadline: "স্বীকৃতির সময়সীমা",
+    referralPackageActionDeadline: "পদক্ষেপের সময়সীমা",
+    referralPackageEscalationOwner: "এসকেলেশন দায়িত্বপ্রাপ্ত",
+    referralPackageNotifyApplicant: "আবেদনকারীকে জানানোর নিয়ম",
+    referralPackageConfirmDestination: "প্রাপক যাচাই করা হয়েছে",
+    referralPackageConfirmMinNecessary: "ন্যূনতম প্রয়োজনীয় তথ্য নির্বাচিত",
+    referralPackageConfirmSensitive: "সংবেদনশীল উপাদান সীমাবদ্ধ",
+    referralPackageConfirmLegalBasis: "আইনি ভিত্তি পরীক্ষিত",
+    referralPackageConfirmExpected: "প্রত্যাশিত পদক্ষেপ স্পষ্ট",
+    referralPackageConfirmDeadline: "সময়সীমা যথাযথ",
+    referralPackageConfirmSafeComms: "নিরাপদ যোগাযোগ নির্ধারিত",
+    referralPackageSend: "রেফারেল পাঠান",
+    referralPackageSent: "রেফারেল পাঠানো হয়েছে",
+    referralPackageIncomplete: "অনুমোদন সম্পূর্ণ নয়",
+    referralDocumentsHeading: "নথি নির্বাচন",
+    referralDocumentsIncluded: "অন্তর্ভুক্ত",
+    referralDocumentsExcluded: "বাদ",
+    referralDocumentsKind: "ধরন",
+    referralDocumentsPurpose: "উদ্দেশ্য",
+    referralDocumentsPermission: "প্রাপকের অনুমতি",
+    referralDeliveryTitle: "ডেলিভারি সিমুলেটর",
+    referralDeliverySimulatorLabel: "সিকিউর রেফারেল এক্সচেঞ্জ সিমুলেটর (লেবেলযুক্ত)",
+    referralDeliveryStable: "স্থিতিশীল অপারেশন আইডি — পুনরায় চেষ্টা করলে নকল তৈরি হয় না।",
+    referralDeliveryOutcomes: "সম্ভাব্য ফলাফল",
+    referralDeliveryOutcomeSuccess: "সফলভাবে ডেলিভার",
+    referralDeliveryOutcomeDelayed: "ডেলিভারিতে বিলম্ব",
+    referralDeliveryOutcomeUnavailable: "এন্ডপয়েন্ট অনুপলব্ধ",
+    referralDeliveryOutcomeAuth: "প্রমাণীকরণ ব্যর্থ",
+    referralDeliveryOutcomeDuplicate: "নকল প্রচেষ্টা",
+    referralDeliveryOutcomeMismatch: "প্যাকেজ অখণ্ডতা মিল নেই",
+    referralDeliveryOutcomeAckPending: "ডেলিভার হয়েছে — স্বীকৃতি অপেক্ষমান",
+    referralDeliveryRun: "ডেলিভারি সিমুলেট করুন",
+    referralDeliveryDuplicateRefused: "নকল প্রচেষ্টা — রেফারেল তৈরি হয়নি।",
+    referralDeliveryResult: "ডেলিভারি ফলাফল",
+    referralTimelineTitle: "রেফারেল টাইমলাইন",
+    referralTimelineEmpty: "কোনো ইতিহাস নেই",
+    referralAccessTitle: "অ্যাক্সেস ইতিহাস",
+    referralAccessEmpty: "কোনো অ্যাক্সেস নেই",
+    referralReceivingTitle: "প্রাপক ড্যাশবোর্ড — ইনবক্স",
+    referralAcknowledgeAction: "প্রাপ্তি স্বীকার করুন",
+    referralAcceptAction: "দায়িত্ব গ্রহণ করুন",
+    referralReturnAction: "কারণসহ ফেরত পাঠান",
+    referralReturnReasonLabel: "ফেরতের কারণ",
+    referralReturnNoteLabel: "বিস্তারিত",
+    referralMissingInfoAction: "অতিরিক্ত তথ্য চান",
+    referralMissingInfoNote: "কী তথ্য প্রয়োজন",
+    referralAssignOfficer: "দায়িত্বপ্রাপ্ত কর্মকর্তা নিযুক্ত করুন",
+    referralRecordFirstAction: "প্রথম পদক্ষেপ রেকর্ড করুন",
+    referralCompleteAction: "সম্পন্ন",
+    referralWithdrawnAction: "অনুমোদিত প্রত্যাহার",
+    referralReturnReasonMissingInfo: "প্রয়োজনীয় তথ্য অনুপস্থিত",
+    referralReturnReasonDocMissing: "প্রয়োজনীয় নথি অনুপস্থিত",
+    referralReturnReasonDocUnreadable: "নথি পাঠযোগ্য নয়",
+    referralReturnReasonCorrupted: "প্যাকেজ ক্ষতিগ্রস্ত",
+    referralReturnReasonOutsideRoute: "প্রাপক কার্যালয় প্রযোজ্য রুটের বাইরে",
+    referralReturnReasonDuplicate: "নকল রেফারেল",
+    referralReturnReasonExistingOffice: "ইতিমধ্যে দায়িত্বপ্রাপ্ত কার্যালয় আছে",
+    referralReturnReasonLegalBasis: "আইনি ভিত্তি যাচাই প্রয়োজন",
+    referralReturnReasonOther: "অন্য — ব্যাখ্যা প্রয়োজন",
+    referralReturnedTitle: "ফেরত পাঠানো রেফারেল",
+    referralOverdueTitle: "সময়সীমা অতিক্রান্ত রেফারেল",
+    referralSimulateNoAck: "স্বীকৃতি অনুপস্থিত সিমুলেট করুন",
+    referralSimulateNoAckHint: "ডেমো: সিমুলেটেড রিসিভিং কার্যালয় স্বীকৃতি দিচ্ছে না।",
+    referralAckSimulated: "স্বীকৃতি (সিমুলেটেড)",
+    referralAdvanceTime: "ডেমো সময় এগিয়ে নিন",
+    referralResetTime: "ডেমো সময় রিসেট",
+    referralDemoTimeNote: "ডেমো সময় সরানো হলে সময়সীমা অতিক্রান্ত গণনা পুনরায় হবে।",
+    referralEscalationsTitle: "এসকেলেশন ওয়ার্কস্পেস",
+    referralEscalationRepeated: "পুনরাবৃত্ত স্থানান্তর শনাক্ত — অনুমোদিত রাউটিং সিদ্ধান্ত প্রয়োজন।",
+    referralEscalationTransferCount: "স্থানান্তর সংখ্যা",
+    referralEscalationReturnCount: "ফেরত সংখ্যা",
+    referralEscalationDestinations: "প্রাপক কার্যালয়সমূহ",
+    referralEscalationReasons: "ফেরতের কারণসমূহ",
+    referralEscalationRouting: "রাউটিং সুপারিশ",
+    referralEscalationLegalBasis: "আইনি ভিত্তি",
+    referralEscalationConflict: "দ্বন্দ্বসমূহ",
+    referralEscalationDecision: "মানব রাউটিং সিদ্ধান্ত",
+    referralEscalationFinalRoute: "চূড়ান্ত রুট নির্বাচন",
+    referralEscalationAuthority: "সিদ্ধান্তের কর্তৃত্ব",
+    referralEscalationDeadline: "পরবর্তী সময়সীমা",
+    referralEscalationConfirm: "মানব সিদ্ধান্ত রেকর্ড করুন",
+    referralEscalationRecorded: "সিদ্ধান্ত রেকর্ড করা হয়েছে",
+    referralEscalationNoDecision: "এখতিয়ার নির্ধারণ করা হয়নি।",
+    referralNoJurisdictionDecision: "সিস্টেম এখতিয়ার সিদ্ধান্ত দেয় না।",
+    referralUrgencyHeading: "জরুরি পর্যালোচনা প্যানেল",
+    referralUrgencyIndicators: "সূচকসমূহ",
+    referralUrgencyRecommendation: "সিস্টেমের সুপারিশ",
+    referralUrgencyDecision: "চূড়ান্ত সিদ্ধান্ত",
+    referralUrgencyOverride: "সুপারিশ পরিবর্তন",
+    referralUrgencyReason: "কারণ",
+    referralUrgencyInfo: "নির্ভর করা তথ্য",
+    referralUrgencySafety: "নিরাপত্তা পদক্ষেপ",
+    referralUrgencyResponsible: "দায়িত্বপ্রাপ্ত ব্যক্তি",
+    referralUrgencyReviewDeadline: "পরবর্তী পর্যালোচনা সময়সীমা",
+    referralUrgencySave: "মানব সিদ্ধান্ত রক্ষণাবেক্ষণ",
+    referralSensitiveVaultTitle: "সংবেদনশীল প্রমাণ ভল্ট",
+    referralSensitiveList: "নিরাপদ মেটাডেটা",
+    referralSensitiveRequestAccess: "অ্যাক্সেস অনুরোধ",
+    referralSensitivePurpose: "অ্যাক্সেসের উদ্দেশ্য",
+    referralSensitiveReauth: "পুনঃপ্রমাণীকরণ পদ্ধতি",
+    referralSensitiveMinNecessary: "ন্যূনতম প্রয়োজনীয় অ্যাক্সেস",
+    referralSensitiveGrant: "অ্যাক্সেস মঞ্জুর",
+    referralSensitiveActive: "সক্রিয় মঞ্জুরি",
+    referralSensitiveViewed: "দেখা হয়েছে",
+    referralSensitiveDownload: "ডাউনলোড",
+    referralSensitiveDerivative: "রিডাক্টেড কপি তৈরি",
+    referralSensitiveSafeMetadata: "নিরাপদ মেটাডেটা দেখাচ্ছে — কোনো কন্টেন্ট নয়।",
+    referralSensitiveIntegrity: "অখণ্ডতা মেটাডেটা",
+    referralSensitiveSection65B: "ভবিষ্যৎ প্রমাণ আইন §65B প্রস্তুতি",
+    referralSensitiveNoContent: "এই দৃশ্যে কোনো কন্টেন্ট প্রদর্শিত হয় না।",
+    referralSensitiveIntegrityNotice:
+      "অখণ্ডতা মেটাডেটা কেবল ট্রেসেবিলিটি সমর্থন করে। এটি এককভাবে সত্যতা, গ্রহণযোগ্যতা, পরিচয়, রচয়িতা বা অভিযোগের সত্যতা প্রতিষ্ঠিত করে না।",
+    referralRoutingHeading: "রাউটিং সুপারিশ",
+    referralRoutingRecommended: "প্রস্তাবিত গন্তব্য",
+    referralRoutingConfidence: "আত্মবিশ্বাস",
+    referralRoutingSufficient: "মানব পর্যালোচনার জন্য যথেষ্ট",
+    referralRoutingIncomplete: "অসম্পূর্ণ",
+    referralRoutingConflicting: "দ্বন্দ্বপূর্ণ",
+    referralRoutingNoVerified: "কোনো যাচাইকৃত রুট নেই",
+    referralRoutingNoVerifiedLong: "কোনো যাচাইকৃত রাউটিং নিয়ম পাওয়া যায়নি। মানব আইনি পর্যালোচনা প্রয়োজন।",
+    referralRoutingAccept: "গ্রহণ",
+    referralRoutingModify: "পরিবর্তন",
+    referralRoutingReject: "প্রত্যাখ্যান",
+    referralRoutingReason: "সিদ্ধান্তের কারণ",
+    referralRoutingAuthority: "সিদ্ধান্তের কর্তৃত্ব",
+    referralAuthorityDirectoryTitle: "কর্তৃপক্ষ ডিরেক্টরি",
+    referralAuthorityWarning:
+      "রাউটিং তথ্য রেফারেলের আগে অনুমোদিত কর্মকর্তা কর্তৃক যাচাই করতে হবে।",
+    referralAuthorityVerified: "যাচাইকৃত",
+    referralAuthorityUnverified: "অযাচাইকৃত",
+    referralAuthorityExpired: "মেয়াদোত্তীর্ণ",
+    referralAuthorityMarkExpired: "মেয়াদোত্তীর্ণ চিহ্নিত করুন",
+    referralAuthorityMarkVerified: "যাচাইকৃত চিহ্নিত করুন",
+    referralLegalBasisTitle: "আইনি ভিত্তি রেজিস্ট্রি",
+    referralLegalBasisVerified: "যাচাইকৃত",
+    referralLegalBasisUnverified: "অযাচাইকৃত",
+    referralLegalBasisSuperseded: "প্রতিস্থাপিত",
+    referralLegalBasisMarkVerified: "যাচাই হিসেবে চিহ্নিত করুন",
+    referralLegalBasisSupersede: "প্রতিস্থাপন করুন",
+    referralCitizenTitle: "নিরাপদ রেফারেল অবস্থা",
+    referralCitizenSafe: "নিরাপদ বার্তা",
+    referralCitizenContact: "অনুমোদিত যোগাযোগ",
+    referralCitizenNextAction: "পরবর্তী নিরাপদ পদক্ষেপ",
+    referralCitizenReminder: "প্রত্যাহারের অনুরোধ করবেন না — প্রক্রিয়া চলমান।",
+    referralStateDraft: "খসড়া",
+    referralStatePackageReview: "প্যাকেজ পর্যালোচনা",
+    referralStateAuthorized: "অনুমোদিত",
+    referralStateSending: "প্রেরণ চলছে",
+    referralStateDelivered: "ডেলিভার হয়েছে",
+    referralStateAwaitingAck: "স্বীকৃতি অপেক্ষমান",
+    referralStateAcknowledged: "স্বীকৃত",
+    referralStateAccepted: "গৃহীত",
+    referralStateActionInProgress: "পদক্ষেপ চলছে",
+    referralStateCompleted: "সম্পন্ন",
+    referralStateDeliveryFailed: "ডেলিভারি ব্যর্থ",
+    referralStateInfoRequested: "অতিরিক্ত তথ্য চাওয়া হয়েছে",
+    referralStateReturned: "ফেরত পাঠানো",
+    referralStateOverdueAck: "স্বীকৃতি সময়সীমা অতিক্রান্ত",
+    referralStateOverdueAction: "পদক্ষেপ সময়সীমা অতিক্রান্ত",
+    referralStateEscalationRequired: "এসকেলেশন প্রয়োজন",
+    referralStateEscalated: "এসকেলেটেড",
+    referralStateSuperseded: "প্রতিস্থাপিত",
+    referralStateWithdrawn: "অনুমোদিত প্রত্যাহার",
+    referralPriorityStandard: "সাধারণ",
+    referralPriorityUrgent: "জরুরি",
+    referralPriorityOverdue: "সময়সীমা অতিক্রান্ত",
+    referralSensitivityStandard: "সাধারণ",
+    referralSensitivitySensitive: "সংবেদনশীল",
+    referralSensitivityHighlySensitive: "অত্যন্ত সংবেদনশীল",
+    referralReasonCategoryAuthority: "অন্য দায়িত্বপ্রাপ্ত কর্তৃপক্ষ প্রয়োজন",
+    referralReasonCategorySpecialist: "বিশেষজ্ঞ সেবা প্রয়োজন",
+    referralReasonCategoryJurisdiction: "এখতিয়ার বিরোধ",
+    referralReasonCategorySensitive: "সংবেদনশীল প্রমাণ পর্যালোচনা",
+    referralReasonCategoryMissing: "অনুপস্থিত তথ্য",
+    referralReasonCategoryDeadline: "বাহ্যিক সময়সীমা",
+    referralRecordId: "রেকর্ড আইডি",
+    referralSendingOffice: "প্রেরণকারী",
+    referralReceivingOffice: "প্রাপক",
+    referralState: "অবস্থা",
+    referralDeadline: "সময়সীমা",
+    referralNextAction: "পরবর্তী পদক্ষেপ",
+    referralResponsible: "দায়িত্বপ্রাপ্ত",
+    referralOpenReferral: "রেফারেল খুলুন",
+    referralOpenApplication: "আবেদন দেখুন",
+    referralOpenCase: "কেস দেখুন",
+    referralAck: "স্বীকৃতি",
+    referralAccept: "গ্রহণ",
+    referralReturn: "ফেরত",
+    referralWithdraw: "প্রত্যাহার",
+    referralCaseReferralsTitle: "কেস আইডি অনুযায়ী রেফারেল",
+    referralCaseReferralsSub: "একই কেস আইডিতে সব রেফারেল — Golden Thread G1",
+    referralEscalationWorkspaceTitle: "এসকেলেশন ওয়ার্কস্পেস",
+    referralHumanRoutingDecisionHeading: "মানব রাউটিং সিদ্ধান্ত",
+    referralOverdueAckTitle: "স্বীকৃতির সময়সীমা অতিক্রান্ত",
+    referralOverdueActionTitle: "পদক্ষেপের সময়সীমা অতিক্রান্ত",
+
+    lawyerDashboardTitle: "আইনজীবী ড্যাশবোর্ড",
+    lawyerDashboardSubtitle: "আপনার সক্রিয় কেসগুলির একটি সমন্বিত কর্মতালিকা।",
+    lawyerKpiAwaiting: "আপনার সাড়া অপেক্ষমান",
+    lawyerKpiActive: "সক্রিয় কেস",
+    lawyerKpiHearingsToday: "আজকের শুনানি",
+    lawyerKpiHearingsWeek: "পরবর্তী ৭ দিনের শুনানি",
+    lawyerKpiDueUpdates: "মেয়াদী আপডেট",
+    lawyerKpiOverdue: "বিলম্বিত আপডেট",
+    lawyerKpiHandover: "হ্যান্ডওভার প্রয়োজন",
+    lawyerKpiCompleted: "সম্পন্ন",
+    lawyerWorklistTitle: "সক্রিয় কর্মতালিকা",
+    lawyerWorklistEmpty: "কোন সক্রিয় কেস নেই।",
+    lawyerOpenCase: "কেস ওয়ার্কস্পেস খুলুন",
+    lawyerAssignmentAccept: "নিয়োগ গ্রহণ",
+    lawyerAssignmentDecline: "প্রত্যাখ্যান",
+    lawyerAssignmentSubmit: "সিদ্ধান্ত জমা দিন",
+    lawyerAssignmentDeclineReason: "কারণ",
+    lawyerAssignmentDeclineNote: "নোট (ঐচ্ছিক)",
+    lawyerCaseWorkspace: "কেস ওয়ার্কস্পেস",
+    lawyerCaseUpdateNew: "অগ্রগতি আপডেট জমা দিন",
+    lawyerCaseUpdateType: "আপডেট ধরন",
+    lawyerCaseUpdateSummary: "সারাংশ",
+    lawyerCaseUpdateEventDate: "ঘটনার তারিখ",
+    lawyerCaseUpdateCourt: "আদালত / স্থান",
+    lawyerCaseUpdateCitizenVisible: "নাগরিক-দৃশ্যমান সারাংশ",
+    lawyerCaseUpdateInternal: "অভ্যন্তরীণ নোট (কেবল কর্মকর্তা)",
+    lawyerCaseUpdateSubmit: "আপডেট রেকর্ড করুন",
+    lawyerHearingsTitle: "শুনানিসমূহ",
+    lawyerHearingMarkVerified: "যাচাই হিসেবে চিহ্নিত করুন",
+    lawyerHearingRecordResult: "ফলাফল রেকর্ড করুন",
+    lawyerHearingReschedule: "পুনঃনির্ধারণ",
+    lawyerHearingCancel: "বাতিল",
+    lawyerHearingResultSummary: "ফলাফলের সারাংশ",
+    lawyerDocumentsTitle: "অনুমোদিত নথি",
+    lawyerTasksTitle: "নির্ধারিত কাজ",
+    lawyerAvailabilityTitle: "আমার প্রাপ্যতা",
+    lawyerAvailabilitySetStatus: "প্রাপ্যতা আপডেট করুন",
+    lawyerAvailabilityCurrent: "বর্তমান অবস্থা",
+    lawyerAvailabilityExpectedReturn: "প্রত্যাবর্তনের আনুমানিক তারিখ",
+    lawyerAvailabilityNote: "নোট",
+
+    dlaoLawyersTitle: "অনুমোদিত প্যানেল",
+    dlaoLawyerProfileTitle: "আইনজীবীর প্রোফাইল",
+    dlaoLawyerActiveCases: "সক্রিয় কেস",
+    dlaoLawyerUpcomingHearings: "আসন্ন শুনানি",
+    dlaoLawyerOverdueUpdates: "বিলম্বিত আপডেট",
+    dlaoAssignmentsTitle: "নিয়োগ প্রস্তুতি",
+    dlaoAssignmentWorkspaceTitle: "নিয়োগ ওয়ার্কস্পেস",
+    dlaoAssignmentRecordDecision: "নিয়োগের সিদ্ধান্ত রেকর্ড করুন",
+    dlaoAssignmentSelectedLawyer: "নির্বাচিত আইনজীবী",
+    dlaoAssignmentResponseDeadline: "আইনজীবীর সাড়ার সময়সীমা",
+    dlaoAssignmentRequiredFirstAction: "প্রয়োজনীয় প্রথম পদক্ষেপ",
+    dlaoAssignmentReasons: "কারণসমূহ",
+    dlaoAssignmentApplicantConsidered: "আবেদনকারীর পছন্দ বিবেচিত",
+    dlaoAssignmentConflictCheck: "সংঘাত পরীক্ষা সম্পন্ন",
+    dlaoAssignmentWorkloadReviewed: "কর্মভার পর্যালোচিত",
+    dlaoAssignmentPrepare: "নিয়োগ প্রস্তুত করুন",
+    dlaoAssignmentOffer: "আইনজীবীকে প্রস্তাব",
+    dlaoOverdueTitle: "বিলম্বিত আইনজীবী আপডেট",
+    dlaoOverdueRow: "কেস",
+    dlaoOverdueDays: "বিলম্বের দিন",
+    dlaoOverdueAlert: "প্রয়োজনীয় আপডেট মিস হয়েছে — {days} দিন বিলম্বিত",
+    dlaoChangeRequestsTitle: "আইনজীবী পরিবর্তন অনুরোধ",
+    dlaoChangeRequestWorkspaceTitle: "পরিবর্তন অনুরোধ পর্যালোচনা",
+    dlaoChangeRequestApplicant: "আবেদনকারীর বিবৃতি",
+    dlaoChangeRequestReason: "কারণের ধরন",
+    dlaoChangeRequestLawyerExplanation: "আইনজীবীর ব্যাখ্যা",
+    dlaoChangeRequestDecision: "সিদ্ধান্ত",
+    dlaoChangeRequestDecisionReassign: "পুনঃনিয়োগ অনুমোদন",
+    dlaoChangeRequestDecisionRetain: "বহাল রেখে পদক্ষেপ",
+    dlaoChangeRequestDecisionClarify: "স্পষ্টীকরণ অনুরোধ",
+    dlaoChangeRequestDecisionEscalate: "এসকেলেট",
+    dlaoChangeRequestDecisionNote: "সিদ্ধান্তের কারণ",
+    dlaoReassignmentTitle: "পুনঃনিয়োগ ওয়ার্কস্পেস",
+    dlaoReassignmentNewLawyer: "নতুন আইনজীবী",
+    dlaoReassignmentEffectiveDate: "কার্যকর তারিখ",
+    dlaoReassignmentNextAction: "পরবর্তী পদক্ষেপ",
+    dlaoReassignmentHandoverDeadline: "হ্যান্ডওভারের সময়সীমা",
+    dlaoInactivityTitle: "নিষ্ক্রিয়তার ধরন পর্যালোচনা",
+    dlaoInactivityRow: "আইনজীবী",
+    dlaoInactivityContributing: "অবদানকারী কেস",
+    delaInactivityExceptions: "মূল্যায়িত ব্যতিক্রম",
+    dlaoInactivityExceptions: "মূল্যায়িত ব্যতিক্রম",
+    dlaoInactivityDecision: "ধরন সংক্রান্ত সিদ্ধান্ত",
+    dlaoInactivityDecisionDismiss: "খারিজ",
+    dlaoInactivityDecisionResolved: "কার্যতরিকভাবে সমাধান",
+    dlaoInactivityDecisionFormal: "আনুষ্ঠানিক পর্যালোচনায় প্রেরণ",
+    dlaoInactivityDecisionMonitor: "পর্যবেক্ষণ অব্যাহত",
+    dlaoPaymentTitle: "অর্থ পরিশোধন",
+    dlaoPaymentDisclaimer: "সিমুলেটেড — প্রকৃত সরকারি পেমেন্ট সিস্টেমের সাথে সংযুক্ত নয়। এখানকার সমন্বয় প্রকৃত অর্থ প্রদান শুরু করে না।",
+
+    citizenStatusTitle: "কেসের অবস্থা",
+    citizenStatusSafeIntro: "নাগরিক-নিরাপদ দৃশ্য। সংবেদনশীল বিবরণ প্রদর্শনের আগে ফিল্টার করা হয়।",
+    citizenStatusNextHearing: "পরবর্তী শুনানি",
+    citizenStatusAssignedLawyer: "নিযুক্ত আইনজীবী",
+    citizenStatusLastUpdate: "সর্বশেষ যাচাইকৃত আপডেট",
+    citizenStatusTravelAdvisory: "ভ্রমণের আগে আইনি সহায়তা কার্যালয়ের সাথে নিশ্চিত হোন। একটি ফলো-আপ অনুরোধ তৈরি করা হয়েছে।",
+    citizenLawyerChangeTitle: "আইনজীবী পরিবর্তনের অনুরোধ",
+    citizenLawyerChangeReason: "কারণের ধরন",
+    citizenLawyerChangeStatement: "সাধারণ ভাষায় বিবৃতি",
+    citizenLawyerChangeAssistedBy: "সহায়তাকারী (ঐচ্ছিক)",
+    citizenLawyerChangeSubmit: "অনুরোধ জমা দিন",
+    voiceStatusTitle: "ভয়েস স্ট্যাটাস (বাংলা / English)",
+    voiceStatusPrompt: "পুনরায় শুনতে ১, ধীরে শুনতে ২, মানব সহায়তার জন্য ৯, বের হতে ০ চাপুন।",
+    voiceStatusRepeat: "পুনরায়",
+    voiceStatusSlower: "ধীরে",
+    voiceStatusBack: "পিছনে",
+    voiceStatusHuman: "মানব সহায়তা",
+    voiceStatusExit: "বের হোন",
+    voiceStatusConnectionLost: "সংযোগ বিচ্ছিন্ন — পুনঃসংযোগ হচ্ছে…",
+
+    adminFeeSchedulesTitle: "ফি সূচি রেজিস্ট্রি",
+    adminFeeSchedulesNew: "নতুন সূচি যোগ করুন",
+    adminFeeSchedulesMarkVerified: "যাচাই হিসেবে চিহ্নিত",
+    adminFeeSchedulesSupersede: "প্রতিস্থাপন",
+    adminUpdateRequirementsTitle: "প্রয়োজনীয় আপডেট নিয়ম",
+    adminUpdateRequirementsTrigger: "ট্রিগার",
+    adminUpdateRequirementsDueDays: "মেয়াদের দিন",
+    adminUpdateRequirementsReminderDays: "মেয়াদের আগে রিমাইন্ডারের দিন",
+    adminUpdateRequirementsEscalation: "এসকেলেশন নিয়ম",
+    adminUpdateRequirementsExceptions: "ব্যতিক্রম তালিকা",
+
+    demoAdvance24h: "ডেমো সময় +২৪ ঘণ্টা এগিয়ে নিন",
+    demoAdvance72h: "ডেমো সময় +৭২ ঘণ্টা এগিয়ে নিন",
+    demoResetLawyerAvailability: "আইনজীবীর প্রাপ্যতা রিসেট করুন",
+    demoResetRequiredSchedule: "প্রয়োজনীয় আপডেট সময়সূচি রিসেট করুন",
   },
   en: {
     tagline: "Verified legal aid operations",
@@ -2112,6 +3180,570 @@ export const messages: Messages = {
       "Ripon reported as representative — explicit confirmation required. Clicking 'Submit anyway' now raises RepresentationOutOfScopeError; state stays 'reported', never auto-confirmed.",
     helplineScenarioA1NextRepConfirm:
       "Next: DLAO will call at the safe time; representative confirmation is taken with the applicant directly.",
+    /* --- assisted intake --- */
+    navIntake: "Assisted intake",
+    intakeTitle: "Assisted intake — start a new case",
+    intakeIntro:
+      "Step through your details, attach the documents you have. If the network drops, your progress stays on this device — it will push to the case system the moment you are back online.",
+    intakeStepOf: "of",
+    intakeProgress1: "Identity",
+    intakeProgress2: "Matter",
+    intakeProgress3: "Parties & story",
+    intakeProgress4: "Documents",
+    intakeProgress5: "Contact & consent",
+    intakeStep1Headline: "Applicant identity",
+    intakeStep1Sub:
+      "Share your name and mobile number. You can also indicate if you are applying on behalf of someone.",
+    intakeStep2Headline: "Type of matter",
+    intakeStep2Question: "What kind of case is this?",
+    intakeStep2Sub:
+      "Pick one category. The office can refine it with you later if needed.",
+    intakeStep3Headline: "Your story",
+    intakeStep3Sub:
+      "Add the opposing party's name and address, and write or speak a short description of what happened.",
+    intakeStep3PartyHeadline: "Opposing party",
+    intakeStep3PartySub: "Share what you know — incomplete is fine, the office can follow up.",
+    intakeStep4Headline: "Attach supporting documents",
+    intakeStep4Sub:
+      "Drop NID, deeds, notices, photos, PDFs — any document that helps the officer understand the matter.",
+    intakeStep5Headline: "Safe contact time and consent",
+    intakeStep5Sub:
+      "Tell us when it is safe to call and confirm you are happy to submit.",
+    intakeStep5Confirm:
+      "I confirm the information above is true to the best of my knowledge.",
+    intakeMatterFamily: "Family matter",
+    intakeMatterFamilyEyebrow: "Family",
+    intakeMatterFamilySub: "Maintenance, dower, child custody",
+    intakeMatterLand: "Land dispute",
+    intakeMatterLandEyebrow: "Land",
+    intakeMatterLandSub: "Boundary, deed, record-of-rights",
+    intakeMatterCivil: "Civil case",
+    intakeMatterCivilEyebrow: "Civil",
+    intakeMatterCivilSub: "Debt, contract, recovery",
+    intakeMatterCriminal: "Criminal complaint",
+    intakeMatterCriminalEyebrow: "Criminal",
+    intakeMatterCriminalSub: "Theft, fraud, harassment",
+    intakeMatterLabour: "Labour dispute",
+    intakeMatterLabourEyebrow: "Labour",
+    intakeMatterLabourSub: "Wages, unfair dismissal",
+    intakeMatterOther: "Something else",
+    intakeMatterOtherEyebrow: "Other",
+    intakeMatterOtherSub: "If none of the above fits",
+    intakePartyLabel: "Opposing party",
+    intakePartyNameLabel: "Opposing party's name",
+    intakePartyNamePlaceholder: "Name (as much as you know)",
+    intakePartyAddressLabel: "Opposing party's address",
+    intakePartyAddressPlaceholder: "Village/area, upazila, district",
+    intakeDescLabel: "What happened (short)",
+    intakeDescPlaceholder:
+      "What happened, when, and what you want — short description",
+    intakeVoiceMicStory: "Speak your story",
+    intakeVoiceSavedHint: "Your words will appear here when you stop speaking",
+    intakeDocsHeading: "Documents",
+    intakeDocsBody:
+      "NID, deeds, notices, photos, PDFs — any file type is accepted.",
+    intakeDocsDropHint: "Drag files here, or click the button below.",
+    intakeDocsBrowseBtn: "Choose files",
+    intakeDocsEmpty: "No documents attached yet.",
+    intakeDocsFileSize: "Size",
+    intakeDocsRemoveBtn: "Remove",
+    intakeDocsQualityHint:
+      "Make sure the name, signature, and date are readable in each image.",
+    intakeOfflineBanner: "You are offline",
+    intakeOfflineBannerSub:
+      "Your entries are being saved on this device. They will push automatically when the network returns.",
+    intakePreviewHeading: "Live preview",
+    intakePreviewEmpty: "Fill the steps to see your case take shape here.",
+    intakePreviewApplicant: "Applicant",
+    intakePreviewMatter: "Matter",
+    intakePreviewParty: "Opposing party",
+    intakePreviewDocs: "Documents",
+    intakePreviewContact: "Safe contact",
+    intakePreviewConsent: "Consent",
+    intakeHelpTitle: "How it works",
+    intakeHelp1Title: "1. Step-by-step",
+    intakeHelp1Body:
+      "Answer only what is asked. You can jump back to any step and edit.",
+    intakeHelp2Title: "2. Saved offline",
+    intakeHelp2Body:
+      "Even without internet, your draft stays on this device.",
+    intakeHelp3Title: "3. Auto-pushed online",
+    intakeHelp3Body:
+      "As soon as the network returns, your case is pushed to the office.",
+    intakeSuccessTitle: "Case saved",
+    intakeSuccessBody:
+      "An officer will contact you at the safe time you selected. Your temporary receipt is below.",
+    intakeSuccessOfflineTitle: "Case saved offline",
+    intakeSuccessOfflineBody:
+      "It will be pushed automatically when the network returns. Your temporary receipt is below.",
+    intakeSuccessOfflineHint:
+      "Feel free to close — everything is stored safely on this device.",
+    intakeSuccessNext1: "Your case number is held as a temporary receipt.",
+    intakeSuccessNext2: "The office will call at the time you chose.",
+    intakeSuccessNext3: "You can start another intake whenever you need.",
+    intakeDraftBtn: "Save as draft",
+    intakeErrMatter: "Please pick a matter type.",
+    intakeErrPartyName: "Please add the opposing party's name.",
+    intakeErrDescription: "Please write a short description.",
+    intakeErrConsent: "Consent is required to submit.",
+    intakeStorageQuota:
+      "Device storage is full — clear an old draft and try again.",
+
+    /* UDC sidebar — en */
+    udcNavIntake: "Intake",
+    udcNavIntakeNew: "Start New Assisted Intake",
+    udcNavIntakeResume: "Resume Intake",
+    udcNavIntakeConsent: "Consent Record",
+    udcNavIntakeDocuments: "Document Capture",
+    udcNavIntakeTranslation: "Translation",
+    udcNavSyncCentre: "Sync Center",
+    udcNavConflictReview: "Conflict Review",
+    udcNavApplications: "Application List",
+    udcNavExpand: "Expand section",
+    udcNavCollapse: "Collapse section",
+    udcPanelTranslationTitle: "Translation chain",
+    udcPanelTranslationIntro:
+      "Translation happens inside each intake. This is a read-only summary.",
+    udcPanelTranslationEmpty: "No translation recorded yet.",
+
+    /* Public verifier (Prompt 6) — en */
+    verifierEyebrow: "Shakkho · Independent Verification",
+    verifierTitle: "Settlement verification",
+    verifierIntro:
+      "Cryptographic proof of a frozen mediation settlement and its signatures. No login required.",
+    verifierBanner: "Demo notice",
+    verifierBannerSub:
+      "This page is a prototype. It is not legal advice and is not endorsed by the Government of Bangladesh or any e-Governance Certifying Authority.",
+    verifierCertNumber: "Certificate number",
+    verifierCertifiedBy: "Certified by",
+    verifierMatter: "Matter",
+    verifierCategory: "Category",
+    verifierFrozenAt: "Frozen at",
+    verifierPolicyVersion: "T7 policy version",
+    verifierDocumentHash: "Document hash (SHA-256)",
+    verifierDocumentHashExplain:
+      "Press 'Verify' to recompute every clause hash and confirm none has been altered.",
+    verifierPartiesHeading: "Parties and self-signatures",
+    verifierPartyRole: "Role",
+    verifierPartyName: "Name",
+    verifierPartySelfSig: "Self-signature hash",
+    verifierPartySignedAt: "Signed at",
+    verifierPartyOffline: "Offline",
+    verifierPartyOnline: "Online",
+    verifierClausesHeading: "Clauses of the settlement",
+    verifierLegalBasisHeading: "Legal basis (registry excerpts)",
+    verifierLegalBasisAct: "Act",
+    verifierLegalBasisSection: "Section",
+    verifierVerifyAction: "Recompute hashes and verify",
+    verifierVerifyIdle: "Verification not yet run",
+    verifierVerifyRunning: "Recomputing hashes…",
+    verifierVerifyOk: "✓ All clauses match — the settlement is intact.",
+    verifierVerifyFail: "✗ Mismatch detected — at least one clause has been altered.",
+    verifierVerifyTamperedHint:
+      "Try editing one clause body. Press 'Reset demo' to restore the original.",
+    verifierCopyLink: "Copy verification link",
+    verifierCopied: "Copied",
+    verifierResetTamper: "Reset demo",
+    verifierFooter:
+      "Shakkho prototype · Not a real government certificate. Research demonstration only.",
+    verifierShakkhoBranding: "Shakkho · Verified Legal Aid Operations",
+    verifierRoleApplicant: "Applicant",
+    verifierRoleRespondent: "Respondent",
+    verifierRoleMediator: "Mediator",
+    verifierCatMaintenance: "Maintenance",
+    verifierCatProperty: "Property",
+    verifierCatLabour: "Labour",
+    verifierAssuranceBadgeDemo: "Demo acknowledgment",
+    verifierAssuranceBadgeProto: "Prototype cryptographic",
+    verifierAssuranceBadgeProd: "Production certificate",
+    verifierAssuranceBadgeExplain:
+      "Currently at: prototype level. Reaching production requires a real Certifying Authority integration.",
+    /* Prompt 7 — Referral workflow + sensitive evidence + escalation. */
+    referralDashboardTitle: "Referral dashboard",
+    referralDashboardIntro:
+      "Operational referral workspace for DLAO officers.",
+    referralOpenUrgent: "Open urgent referral",
+    referralOpenJurisdiction: "Open jurisdiction escalation",
+    referralKpiAwaitingAck: "Awaiting acknowledgment",
+    referralKpiAckAwaitingAction: "Acknowledged — awaiting action",
+    referralKpiReturned: "Returned",
+    referralKpiOverdueAck: "Acknowledgment overdue",
+    referralKpiOverdueAction: "Action overdue",
+    referralKpiDrafts: "Draft packages",
+    referralKpiEscalated: "Escalations",
+    referralKpiCompleted: "Completed",
+    referralQueueHeader: "Referral queue",
+    referralQueueRecordId: "Record ID",
+    referralQueueApplicant: "Applicant",
+    referralQueueSendingOffice: "Sending",
+    referralQueueReceivingOffice: "Receiving",
+    referralQueueReason: "Reason",
+    referralQueueState: "State",
+    referralQueueOwner: "Owner",
+    referralQueueAckDeadline: "Ack deadline",
+    referralQueueActionDeadline: "Action deadline",
+    referralQueueAge: "Age",
+    referralQueueNextAction: "Next action",
+    referralQueueOpen: "Open",
+    referralFiltersHeading: "Filters",
+    referralFilterAll: "All",
+    referralFilterPriority: "Priority",
+    referralFilterSensitivity: "Sensitivity",
+    referralFilterState: "State",
+    referralFilterOverdue: "Overdue",
+    referralFilterOffice: "Office",
+    referralNewTitle: "Start a new referral",
+    referralNewPickRecord: "Choose a record",
+    referralNewPickContinue: "Open package builder",
+    referralPackageTitle: "Referral package builder",
+    referralPackageStep1: "Step 1 — Purpose",
+    referralPackageStep2: "Step 2 — Minimum-necessary history",
+    referralPackageStep3: "Step 3 — Document selection",
+    referralPackageStep4: "Step 4 — Safety and privacy",
+    referralPackageStep5: "Step 5 — Responsibility",
+    referralPackageStep6: "Step 6 — Human authorization",
+    referralPackageReason: "Referral reason",
+    referralPackageExpectedAction: "Expected action",
+    referralPackagePriority: "Priority",
+    referralPackageDeadline: "Deadline",
+    referralPackageReceivingOffice: "Receiving office",
+    referralPackageSendingOfficer: "Sending officer",
+    referralPackageResponsibility: "Responsibility",
+    referralPackageAckDeadline: "Acknowledgment deadline",
+    referralPackageActionDeadline: "Action deadline",
+    referralPackageEscalationOwner: "Escalation owner",
+    referralPackageNotifyApplicant: "Applicant-notification rule",
+    referralPackageConfirmDestination: "Destination reviewed",
+    referralPackageConfirmMinNecessary: "Minimum necessary selected",
+    referralPackageConfirmSensitive: "Sensitive material restricted",
+    referralPackageConfirmLegalBasis: "Legal basis checked",
+    referralPackageConfirmExpected: "Expected action is clear",
+    referralPackageConfirmDeadline: "Deadline appropriate",
+    referralPackageConfirmSafeComms: "Safe citizen communication configured",
+    referralPackageSend: "Send referral",
+    referralPackageSent: "Referral sent",
+    referralPackageIncomplete: "Authorization incomplete",
+    referralDocumentsHeading: "Document selection",
+    referralDocumentsIncluded: "Included",
+    referralDocumentsExcluded: "Excluded",
+    referralDocumentsKind: "Kind",
+    referralDocumentsPurpose: "Purpose",
+    referralDocumentsPermission: "Receiving permission",
+    referralDeliveryTitle: "Delivery simulator",
+    referralDeliverySimulatorLabel: "Secure Referral Exchange Simulator (labelled)",
+    referralDeliveryStable: "Stable operation ID — retries never duplicate.",
+    referralDeliveryOutcomes: "Possible outcomes",
+    referralDeliveryOutcomeSuccess: "Delivered successfully",
+    referralDeliveryOutcomeDelayed: "Delivery delayed",
+    referralDeliveryOutcomeUnavailable: "Endpoint unavailable",
+    referralDeliveryOutcomeAuth: "Authentication failure",
+    referralDeliveryOutcomeDuplicate: "Duplicate attempt",
+    referralDeliveryOutcomeMismatch: "Package integrity mismatch",
+    referralDeliveryOutcomeAckPending: "Delivered — acknowledgment pending",
+    referralDeliveryRun: "Simulate delivery",
+    referralDeliveryDuplicateRefused: "Duplicate attempt — referral not created.",
+    referralDeliveryResult: "Delivery outcome",
+    referralTimelineTitle: "Referral timeline",
+    referralTimelineEmpty: "No history yet",
+    referralAccessTitle: "Access history",
+    referralAccessEmpty: "No access yet",
+    referralReceivingTitle: "Receiving-office inbox",
+    referralAcknowledgeAction: "Acknowledge receipt",
+    referralAcceptAction: "Accept responsibility",
+    referralReturnAction: "Return with reason",
+    referralReturnReasonLabel: "Return reason",
+    referralReturnNoteLabel: "Details",
+    referralMissingInfoAction: "Request missing information",
+    referralMissingInfoNote: "What information is needed",
+    referralAssignOfficer: "Assign receiving officer",
+    referralRecordFirstAction: "Record first action",
+    referralCompleteAction: "Complete",
+    referralWithdrawnAction: "Authorized withdrawal",
+    referralReturnReasonMissingInfo: "Required information missing",
+    referralReturnReasonDocMissing: "Required document missing",
+    referralReturnReasonDocUnreadable: "Document unreadable",
+    referralReturnReasonCorrupted: "Package corrupted",
+    referralReturnReasonOutsideRoute: "Receiving office outside route",
+    referralReturnReasonDuplicate: "Duplicate referral",
+    referralReturnReasonExistingOffice: "Existing responsible office",
+    referralReturnReasonLegalBasis: "Legal-basis verification required",
+    referralReturnReasonOther: "Other — explanation needed",
+    referralReturnedTitle: "Returned referrals",
+    referralOverdueTitle: "Overdue referrals",
+    referralSimulateNoAck: "Simulate no acknowledgment",
+    referralSimulateNoAckHint:
+      "Demo: the simulated receiving office does not acknowledge.",
+    referralAckSimulated: "Acknowledgment (simulated)",
+    referralAdvanceTime: "Advance demo time",
+    referralResetTime: "Reset demo time",
+    referralDemoTimeNote:
+      "Resetting demo time recomputes overdue comparisons.",
+    referralEscalationsTitle: "Escalation workspace",
+    referralEscalationRepeated:
+      "Repeated transfer detected — authorized routing decision required.",
+    referralEscalationTransferCount: "Transfers",
+    referralEscalationReturnCount: "Returns",
+    referralEscalationDestinations: "Destinations",
+    referralEscalationReasons: "Return reasons",
+    referralEscalationRouting: "Routing recommendations",
+    referralEscalationLegalBasis: "Legal basis",
+    referralEscalationConflict: "Conflicts",
+    referralEscalationDecision: "Human routing decision",
+    referralEscalationFinalRoute: "Final route",
+    referralEscalationAuthority: "Authority for decision",
+    referralEscalationDeadline: "Next deadline",
+    referralEscalationConfirm: "Record human decision",
+    referralEscalationRecorded: "Decision recorded",
+    referralEscalationNoDecision: "Jurisdiction has not been decided.",
+    referralNoJurisdictionDecision:
+      "The system does not decide jurisdiction.",
+    referralUrgencyHeading: "Urgency review panel",
+    referralUrgencyIndicators: "Indicators",
+    referralUrgencyRecommendation: "System recommendation",
+    referralUrgencyDecision: "Final decision",
+    referralUrgencyOverride: "Override recommendation",
+    referralUrgencyReason: "Reason",
+    referralUrgencyInfo: "Information relied upon",
+    referralUrgencySafety: "Safety action",
+    referralUrgencyResponsible: "Responsible person",
+    referralUrgencyReviewDeadline: "Next review deadline",
+    referralUrgencySave: "Save human decision",
+    referralSensitiveVaultTitle: "Sensitive evidence vault",
+    referralSensitiveList: "Safe metadata",
+    referralSensitiveRequestAccess: "Request access",
+    referralSensitivePurpose: "Access purpose",
+    referralSensitiveReauth: "Reauthentication method",
+    referralSensitiveMinNecessary: "Minimum-necessary access",
+    referralSensitiveGrant: "Grant access",
+    referralSensitiveActive: "Active grant",
+    referralSensitiveViewed: "Viewed",
+    referralSensitiveDownload: "Download",
+    referralSensitiveDerivative: "Create redacted copy",
+    referralSensitiveSafeMetadata:
+      "Showing safe metadata only — no content.",
+    referralSensitiveIntegrity: "Integrity metadata",
+    referralSensitiveSection65B: "Future Evidence Act §65B preparation",
+    referralSensitiveNoContent:
+      "No content is rendered in this view.",
+    referralSensitiveIntegrityNotice:
+      "Integrity metadata supports traceability only. It does not by itself establish authenticity, admissibility, identity, authorship, or the truth of the allegation.",
+    referralRoutingHeading: "Routing recommendation",
+    referralRoutingRecommended: "Recommended destination",
+    referralRoutingConfidence: "Confidence",
+    referralRoutingSufficient: "Sufficient for human review",
+    referralRoutingIncomplete: "Incomplete",
+    referralRoutingConflicting: "Conflicting",
+    referralRoutingNoVerified: "No verified route",
+    referralRoutingNoVerifiedLong:
+      "No verified routing rule is available. Human legal review is required.",
+    referralRoutingAccept: "Accept",
+    referralRoutingModify: "Modify",
+    referralRoutingReject: "Reject",
+    referralRoutingReason: "Decision reason",
+    referralRoutingAuthority: "Authority for decision",
+    referralAuthorityDirectoryTitle: "Authority directory",
+    referralAuthorityWarning:
+      "Routing information must be verified by an authorized officer before referral.",
+    referralAuthorityVerified: "Verified",
+    referralAuthorityUnverified: "Unverified",
+    referralAuthorityExpired: "Expired",
+    referralAuthorityMarkExpired: "Mark expired",
+    referralAuthorityMarkVerified: "Mark verified",
+    referralLegalBasisTitle: "Legal basis registry",
+    referralLegalBasisVerified: "Verified",
+    referralLegalBasisUnverified: "Unverified",
+    referralLegalBasisSuperseded: "Superseded",
+    referralLegalBasisMarkVerified: "Mark verified",
+    referralLegalBasisSupersede: "Supersede",
+    referralCitizenTitle: "Safe referral status",
+    referralCitizenSafe: "Safe message",
+    referralCitizenContact: "Approved contact",
+    referralCitizenNextAction: "Next safe action",
+    referralCitizenReminder:
+      "Do not withdraw your request — the process is ongoing.",
+    referralStateDraft: "Draft",
+    referralStatePackageReview: "Package review",
+    referralStateAuthorized: "Authorized",
+    referralStateSending: "Sending",
+    referralStateDelivered: "Delivered",
+    referralStateAwaitingAck: "Awaiting acknowledgment",
+    referralStateAcknowledged: "Acknowledged",
+    referralStateAccepted: "Accepted",
+    referralStateActionInProgress: "Action in progress",
+    referralStateCompleted: "Completed",
+    referralStateDeliveryFailed: "Delivery failed",
+    referralStateInfoRequested: "Information requested",
+    referralStateReturned: "Returned",
+    referralStateOverdueAck: "Acknowledgment overdue",
+    referralStateOverdueAction: "Action overdue",
+    referralStateEscalationRequired: "Escalation required",
+    referralStateEscalated: "Escalated",
+    referralStateSuperseded: "Superseded",
+    referralStateWithdrawn: "Authorized withdrawal",
+    referralPriorityStandard: "Standard",
+    referralPriorityUrgent: "Urgent",
+    referralPriorityOverdue: "Overdue",
+    referralSensitivityStandard: "Standard",
+    referralSensitivitySensitive: "Sensitive",
+    referralSensitivityHighlySensitive: "Highly sensitive",
+    referralReasonCategoryAuthority: "Another competent authority required",
+    referralReasonCategorySpecialist: "Specialist service required",
+    referralReasonCategoryJurisdiction: "Jurisdiction dispute",
+    referralReasonCategorySensitive: "Sensitive evidence review",
+    referralReasonCategoryMissing: "Missing information",
+    referralReasonCategoryDeadline: "External deadline",
+    referralRecordId: "Record ID",
+    referralSendingOffice: "Sending",
+    referralReceivingOffice: "Receiving",
+    referralState: "State",
+    referralDeadline: "Deadline",
+    referralNextAction: "Next action",
+    referralResponsible: "Owner",
+    referralOpenReferral: "Open referral",
+    referralOpenApplication: "Open application",
+    referralOpenCase: "Open case",
+    referralAck: "Acknowledgment",
+    referralAccept: "Acceptance",
+    referralReturn: "Return",
+    referralWithdraw: "Withdraw",
+    referralCaseReferralsTitle: "Referrals on this case",
+    referralCaseReferralsSub: "Every referral on the same Case ID — Golden Thread G1",
+    referralEscalationWorkspaceTitle: "Escalation workspace",
+    referralHumanRoutingDecisionHeading: "Human routing decision",
+    referralOverdueAckTitle: "Overdue acknowledgments",
+    referralOverdueActionTitle: "Overdue actions",
+
+    /* Prompt 8 — lawyer workspace + accountability */
+    lawyerDashboardTitle: "Lawyer dashboard",
+    lawyerDashboardSubtitle: "One unified worklist across your active cases.",
+    lawyerKpiAwaiting: "Awaiting your response",
+    lawyerKpiActive: "Active cases",
+    lawyerKpiHearingsToday: "Hearings today",
+    lawyerKpiHearingsWeek: "Hearings (7 days)",
+    lawyerKpiDueUpdates: "Updates due",
+    lawyerKpiOverdue: "Overdue updates",
+    lawyerKpiHandover: "Handover required",
+    lawyerKpiCompleted: "Recently completed",
+    lawyerWorklistTitle: "Active worklist",
+    lawyerWorklistEmpty: "No active cases.",
+    lawyerOpenCase: "Open case workspace",
+    lawyerAssignmentAccept: "Accept assignment",
+    lawyerAssignmentDecline: "Decline",
+    lawyerAssignmentSubmit: "Submit decision",
+    lawyerAssignmentDeclineReason: "Reason",
+    lawyerAssignmentDeclineNote: "Note (optional)",
+    lawyerCaseWorkspace: "Case workspace",
+    lawyerCaseUpdateNew: "Submit progress update",
+    lawyerCaseUpdateType: "Update type",
+    lawyerCaseUpdateSummary: "Summary",
+    lawyerCaseUpdateEventDate: "Event date",
+    lawyerCaseUpdateCourt: "Court / location",
+    lawyerCaseUpdateCitizenVisible: "Citizen-visible summary",
+    lawyerCaseUpdateInternal: "Internal note (officer-only)",
+    lawyerCaseUpdateSubmit: "Record update",
+    lawyerHearingsTitle: "Hearings",
+    lawyerHearingMarkVerified: "Mark verified",
+    lawyerHearingRecordResult: "Record result",
+    lawyerHearingReschedule: "Reschedule",
+    lawyerHearingCancel: "Cancel",
+    lawyerHearingResultSummary: "Result summary",
+    lawyerDocumentsTitle: "Permitted documents",
+    lawyerTasksTitle: "Assigned tasks",
+    lawyerAvailabilityTitle: "My availability",
+    lawyerAvailabilitySetStatus: "Update availability",
+    lawyerAvailabilityCurrent: "Current status",
+    lawyerAvailabilityExpectedReturn: "Expected return date",
+    lawyerAvailabilityNote: "Note",
+
+    /* DLAO workspace */
+    dlaoLawyersTitle: "Approved panel",
+    dlaoLawyerProfileTitle: "Lawyer profile",
+    dlaoLawyerActiveCases: "Active cases",
+    dlaoLawyerUpcomingHearings: "Upcoming hearings",
+    dlaoLawyerOverdueUpdates: "Overdue updates",
+    dlaoAssignmentsTitle: "Assignment preparation",
+    dlaoAssignmentWorkspaceTitle: "Assignment workspace",
+    dlaoAssignmentRecordDecision: "Record assignment decision",
+    dlaoAssignmentSelectedLawyer: "Selected lawyer",
+    dlaoAssignmentResponseDeadline: "Lawyer response deadline",
+    dlaoAssignmentRequiredFirstAction: "Required first action",
+    dlaoAssignmentReasons: "Reasons",
+    dlaoAssignmentApplicantConsidered: "Applicant preference considered",
+    dlaoAssignmentConflictCheck: "Conflict check completed",
+    dlaoAssignmentWorkloadReviewed: "Workload reviewed",
+    dlaoAssignmentPrepare: "Prepare assignment",
+    dlaoAssignmentOffer: "Offer to lawyer",
+    dlaoOverdueTitle: "Overdue lawyer updates",
+    dlaoOverdueRow: "Case",
+    dlaoOverdueDays: "Days overdue",
+    dlaoOverdueAlert: "Required update missed — overdue {days} days",
+    dlaoChangeRequestsTitle: "Lawyer-change requests",
+    dlaoChangeRequestWorkspaceTitle: "Change-request review",
+    dlaoChangeRequestApplicant: "Applicant statement",
+    dlaoChangeRequestReason: "Reason category",
+    dlaoChangeRequestLawyerExplanation: "Lawyer explanation",
+    dlaoChangeRequestDecision: "Decision",
+    dlaoChangeRequestDecisionReassign: "Approve reassignment",
+    dlaoChangeRequestDecisionRetain: "Retain with action",
+    dlaoChangeRequestDecisionClarify: "Request clarification",
+    dlaoChangeRequestDecisionEscalate: "Escalate",
+    dlaoChangeRequestDecisionNote: "Decision reason",
+    dlaoReassignmentTitle: "Reassignment workspace",
+    dlaoReassignmentNewLawyer: "New lawyer",
+    dlaoReassignmentEffectiveDate: "Effective date",
+    dlaoReassignmentNextAction: "Next action",
+    dlaoReassignmentHandoverDeadline: "Handover deadline",
+    dlaoInactivityTitle: "Inactivity pattern reviews",
+    dlaoInactivityRow: "Lawyer",
+    dlaoInactivityContributing: "Contributing cases",
+    dlaoInactivityExceptions: "Exceptions evaluated",
+    delaInactivityExceptions: "Exceptions evaluated",
+    dlaoInactivityDecision: "Pattern decision",
+    dlaoInactivityDecisionDismiss: "Dismiss",
+    dlaoInactivityDecisionResolved: "Resolve operationally",
+    dlaoInactivityDecisionFormal: "Refer for formal review",
+    dlaoInactivityDecisionMonitor: "Continue monitoring",
+    dlaoPaymentTitle: "Payment reconciliation",
+    dlaoPaymentDisclaimer: "Simulated — not connected to the real government payment system. Adjustments here do NOT trigger an actual disbursement.",
+
+    /* Citizen workspace + voice */
+    citizenStatusTitle: "Case status",
+    citizenStatusSafeIntro: "Citizen-safe view. Sensitive details are filtered out before display.",
+    citizenStatusNextHearing: "Next hearing",
+    citizenStatusAssignedLawyer: "Assigned lawyer",
+    citizenStatusLastUpdate: "Last verified update",
+    citizenStatusTravelAdvisory: "Please confirm with the legal-aid office before travelling. A follow-up request has been created.",
+    citizenLawyerChangeTitle: "Request a lawyer change",
+    citizenLawyerChangeReason: "Reason category",
+    citizenLawyerChangeStatement: "Plain-language statement",
+    citizenLawyerChangeAssistedBy: "Assisted by (optional)",
+    citizenLawyerChangeSubmit: "Submit request",
+    voiceStatusTitle: "Voice status (Bangla / English)",
+    voiceStatusPrompt: "Press 1 to repeat, 2 for slower, 9 for human, 0 to exit.",
+    voiceStatusRepeat: "Repeat",
+    voiceStatusSlower: "Slower",
+    voiceStatusBack: "Back",
+    voiceStatusHuman: "Human",
+    voiceStatusExit: "Exit",
+    voiceStatusConnectionLost: "Connection lost — reconnecting…",
+
+    /* Admin */
+    adminFeeSchedulesTitle: "Fee schedule registry",
+    adminFeeSchedulesNew: "Add new schedule",
+    adminFeeSchedulesMarkVerified: "Mark verified",
+    adminFeeSchedulesSupersede: "Supersede",
+    adminUpdateRequirementsTitle: "Required-update rules",
+    adminUpdateRequirementsTrigger: "Trigger",
+    adminUpdateRequirementsDueDays: "Due days",
+    adminUpdateRequirementsReminderDays: "Reminder days before due",
+    adminUpdateRequirementsEscalation: "Escalation rule",
+    adminUpdateRequirementsExceptions: "Exception list",
+
+    /* Demo controls */
+    demoAdvance24h: "Advance demo time +24 hours",
+    demoAdvance72h: "Advance demo time +72 hours",
+    demoResetLawyerAvailability: "Reset lawyer availability",
+    demoResetRequiredSchedule: "Reset required-update schedule",
   },
 };
 

@@ -13,7 +13,6 @@ import {
 } from "@/lib/shakkho";
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
-import { NetworkBar } from "../primitives/network-bar";
 import styles from "../udc.module.css";
 
 const STATUS_PILL: Record<OfflineDraft["syncStatus"], string> = {
@@ -39,9 +38,9 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
     void PwaCapabilityService.refresh();
   }, []);
 
-  const drafts: OfflineDraft[] = offline.drafts?.length
+  const drafts: OfflineDraft[] = (Array.isArray(offline.drafts) && offline.drafts.length)
     ? offline.drafts
-    : envelope.offlineDrafts ?? [];
+    : (Array.isArray(envelope.offlineDrafts) ? envelope.offlineDrafts : []);
 
   const conflicts = envelope.syncConflicts ?? [];
   const integrity = envelope.integrityVerifications ?? [];
@@ -82,7 +81,6 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
               ? "নুচিং মারমা সহায়-গ্রহণযোগ্য অন-অফলাইন সেবা — সবকিছু একই DLAS রেকর্ডে সংরক্ষিত।"
               : "Assisted intake for Nuching Marma and others — on- and offline — all stored in the same DLAS record."}
           </p>
-          <NetworkBar lang={lang} />
         </header>
 
         {/* KPI strip */}
@@ -175,6 +173,24 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
             href={`/dashboard/${role}/sync-centre`}
           />
           <Card
+            title={lang === "bn" ? "আবেদন তালিকা" : "Applications list"}
+            desc={
+              lang === "bn"
+                ? "এই UDC-এর সহায়তা করা আবেদনগুলো — সার্ভার-অনুমোদিত, স্কোপ-ফিল্টার করা।"
+                : "Applications this UDC assisted — server-authorized, scope-filtered."
+            }
+            href={`/dashboard/${role}/applications`}
+          />
+          <Card
+            title={lang === "bn" ? "নির্ধারিত ৪:০০ পরিদর্শন" : "Scheduled 4 PM visit"}
+            desc={
+              lang === "bn"
+                ? "আবেদনকারী উপস্থিতিতে APPLICANT_ASSISTED_VIEW সেশন শুরু করুন।"
+                : "Start an APPLICANT_ASSISTED_VIEW session while the applicant is present."
+            }
+            href={`/dashboard/${role}/status-visit`}
+          />
+          <Card
             title={lang === "bn" ? "স্পষ্টীকরণ কার্যসূচি" : "Clarification tasks"}
             desc={
               lang === "bn"
@@ -242,7 +258,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 <span className={`${styles.statusPill} ${STATUS_PILL[d.syncStatus] ?? ""}`}>
                   {d.syncStatus}
                 </span>
-                <Link href={`/dashboard/${role}/intake/${d.temporaryId}`}>Open</Link>
+                <Link href={`/dashboard/${role}#intake/${d.temporaryId}`}>Open</Link>
               </li>
             ))}
           </ul>
@@ -261,7 +277,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 <span className={`${styles.statusPill} ${styles.statusPillConflict}`}>
                   {c.resolution ? "resolved" : "needs review"}
                 </span>
-                <Link href={`/dashboard/${role}/sync-centre/conflicts/${c.id}`}>Open</Link>
+                <Link href={`/dashboard/${role}#conflict/${c.id}`}>Open</Link>
               </li>
             ))}
             {integrity.map((i) => (
@@ -271,7 +287,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 <span className={`${styles.statusPill} ${i.result === "pass" ? styles.statusPillSynced : styles.statusPillIntegrity}`}>
                   {i.result}
                 </span>
-                <Link href={`/dashboard/${role}/sync-centre`}>Open</Link>
+                <Link href={`/dashboard/${role}#sync-centre`}>Open</Link>
               </li>
             ))}
           </ul>

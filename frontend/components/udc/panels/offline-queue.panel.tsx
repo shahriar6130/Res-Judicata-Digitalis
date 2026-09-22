@@ -12,7 +12,6 @@ import {
 } from "@/lib/shakkho";
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
-import { NetworkBar } from "../primitives/network-bar";
 import styles from "../udc.module.css";
 
 const STATUS_PILL: Record<OfflineDraft["syncStatus"], string> = {
@@ -32,9 +31,9 @@ export function UdcOfflineQueuePanel({ role = "udc" }: { role?: string }) {
   const { lang } = useI18n();
   const envelope = useHelplineStore();
   const offline = useOfflineStore();
-  const drafts: OfflineDraft[] = offline.drafts?.length
+  const drafts: OfflineDraft[] = (Array.isArray(offline.drafts) && offline.drafts.length)
     ? offline.drafts
-    : envelope.offlineDrafts ?? [];
+    : (Array.isArray(envelope.offlineDrafts) ? envelope.offlineDrafts : []);
   const policy = CachePolicyService.policy();
 
   if (typeof window !== "undefined") {
@@ -57,7 +56,6 @@ export function UdcOfflineQueuePanel({ role = "udc" }: { role?: string }) {
               ? "IndexedDB-তে সংরক্ষিত খসড়া — ব্রাউজার বন্ধ হলেও থাকবে।"
               : "Drafts live in IndexedDB — they survive browser restarts."}
           </p>
-          <NetworkBar lang={lang} />
         </header>
 
         <section className={styles.section}>
@@ -88,7 +86,8 @@ export function UdcOfflineQueuePanel({ role = "udc" }: { role?: string }) {
               type="button"
               className={`${styles.btn} ${styles.btnPrimary}`}
               onClick={() => {
-                for (const d of drafts) {
+                const list = Array.isArray(drafts) ? drafts : [];
+                for (const d of list) {
                   void SyncQueueService.tryDrain(d.temporaryId);
                 }
               }}

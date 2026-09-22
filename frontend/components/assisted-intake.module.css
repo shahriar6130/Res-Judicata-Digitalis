@@ -1,0 +1,1147 @@
+/* ------------------------------------------------------------------ *
+ *  Assisted Intake wizard — same visual language as complaint-modal
+ *  so citizens already recognise the controls. Tokens-driven, never
+ *  hardcoded. Mobile-first; collapses the aside above the form.
+ * ------------------------------------------------------------------ */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Offline / pending banner.
+ * ------------------------------------------------------------------ */
+
+.offlineBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  background: var(--off-white);
+  border: 1px solid var(--ink);
+  border-radius: var(--r-3);
+  padding: var(--s-4) var(--s-6);
+}
+
+.offlineDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  margin-top: 6px;
+  flex: 0 0 auto;
+}
+
+.offlineTitle {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.offlineSub {
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+}
+
+/* Layout ----------------------------------------------------------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  gap: var(--s-8);
+  align-items: start;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  min-width: 0;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  min-width: 0;
+  position: sticky;
+  top: var(--s-6);
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .aside {
+    position: static;
+  }
+}
+
+/* Step progress strip --------------------------------------------- */
+
+.stepProgress {
+  position: sticky;
+  top: var(--s-2);
+  z-index: 4;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: var(--s-4) var(--s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.stepProgressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.stepProgressEyebrow {
+  color: var(--gray);
+  font-size: var(--t-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.stepProgressTitle {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+.stepTrack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.stepCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.stepDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  color: var(--gray);
+  flex: 0 0 32px;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.stepDotActive {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--white);
+}
+
+.stepDotCompleted {
+  background: var(--sidebar-accent);
+  border-color: var(--sidebar-accent);
+  color: var(--white);
+}
+
+.stepConnector {
+  height: 2px;
+  background: var(--line);
+  flex: 1;
+  align-self: center;
+  margin-top: 16px;
+  min-width: 8px;
+  border-radius: 1px;
+}
+
+.stepConnectorCompleted {
+  background: var(--sidebar-accent);
+}
+
+.stepLabel {
+  font-size: var(--t-label);
+  color: var(--gray);
+  text-align: center;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stepLabelActive {
+  color: var(--black);
+  font-weight: var(--weight-semibold);
+}
+
+/* Step card ------------------------------------------------------- */
+
+.stepCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: var(--s-8);
+}
+
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  background: var(--off-white);
+  color: var(--black);
+  border-radius: 999px;
+  font-size: var(--t-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+}
+
+.stepTitle {
+  font-size: var(--t-section);
+  line-height: var(--leading-section);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+  font-family: var(--font-serif);
+}
+
+.stepSubtitle {
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  color: var(--gray);
+  margin: 0;
+  max-width: 60ch;
+}
+
+.stepQuestion {
+  font-size: var(--t-sub);
+  line-height: var(--leading-sub);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: 0;
+}
+
+/* Sub-block within a step ---------------------------------------- */
+
+.subBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+}
+
+.subBlockTitle {
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+  font-family: var(--font-serif);
+}
+
+.subBlockSub {
+  font-size: var(--t-small);
+  color: var(--gray);
+  margin: 0;
+  line-height: var(--leading-small);
+}
+
+/* Form fields ---------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.fieldLabel {
+  font-size: var(--t-label);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+}
+
+.textInput,
+.textarea {
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--white);
+  padding: var(--s-3) var(--s-4);
+  color: var(--ink);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color var(--motion-fast);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 96px;
+  font-family: var(--font-serif);
+}
+
+.textInput:focus,
+.textarea:focus {
+  outline: var(--focus-width) solid var(--sidebar-dark-accent);
+  outline-offset: 2px;
+  border-color: var(--ink);
+}
+
+.fieldError {
+  color: var(--red);
+  font-size: var(--t-small);
+  font-weight: var(--weight-medium);
+}
+
+/* Voice mic ------------------------------------------------------ */
+
+.voiceBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+}
+
+.micButton {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--black);
+  color: var(--white);
+  border: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--motion-fast), background var(--motion-fast);
+}
+
+.micButton:hover {
+  transform: scale(1.02);
+}
+
+.micListening {
+  background: var(--red);
+}
+
+.micRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.micListening .micRing {
+  animation: micRingPulse 1.4s ease-out infinite;
+}
+
+.micRing2 {
+  animation-delay: 0.4s;
+}
+
+.micRing3 {
+  animation-delay: 0.8s;
+}
+
+@keyframes micRingPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.micLabel {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.micLabelMuted {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+}
+
+.voiceStatusRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-small);
+  padding: var(--s-1) var(--s-3);
+  border-radius: 999px;
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.voiceStatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+.voiceStatusListening {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.voiceStatusListening .voiceStatusDot {
+  background: var(--red);
+}
+
+.voiceStatusProcessing {
+  border-color: var(--yellow);
+  color: var(--ink);
+}
+
+.voiceStatusProcessing .voiceStatusDot {
+  background: var(--yellow);
+}
+
+.voiceStatusCompleted {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.voiceStatusCompleted .voiceStatusDot {
+  background: var(--green);
+}
+
+/* Acting-for pills (Step 1) ------------------------------------- */
+
+.actingRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.actingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-body);
+  cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+
+.actingPill:hover {
+  border-color: var(--ink);
+}
+
+.actingPillActive {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+.actingIcon {
+  display: inline-flex;
+}
+
+/* Proxy disclosure (Step 1) -------------------------------------- */
+
+.proxyDisclosure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+/* Matter cards (Step 2) ------------------------------------------ */
+
+.matterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+@media (max-width: 720px) {
+  .matterGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.matterCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  text-align: left;
+  padding: var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+  min-height: 132px;
+}
+
+.matterCard:hover {
+  border-color: var(--ink);
+}
+
+.matterCardActive {
+  background: var(--off-white);
+  border-color: var(--black);
+  box-shadow: inset 0 0 0 2px var(--black);
+}
+
+.matterEyebrow {
+  margin: 0;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  font-weight: var(--weight-semibold);
+}
+
+.matterTitle {
+  margin: 0;
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-serif);
+}
+
+.matterSub {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+}
+
+.matterCheck {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity var(--motion-fast), background var(--motion-fast);
+}
+
+.matterCardActive .matterCheck {
+  opacity: 1;
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+/* Drop zone (Step 4) -------------------------------------------- */
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-12) var(--s-6);
+  border: 2px dashed var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+  text-align: center;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+
+.dropZoneActive {
+  border-color: var(--black);
+  background: var(--white);
+}
+
+.dropIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.dropHeading {
+  margin: 0;
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-serif);
+}
+
+.dropHint {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+}
+
+.dropQuality {
+  margin: var(--s-2) 0 0;
+  font-size: var(--t-label);
+  color: var(--gray);
+  max-width: 50ch;
+}
+
+.browseBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-6);
+  border: 1px solid var(--ink);
+  border-radius: var(--r-2);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  margin-top: var(--s-2);
+}
+
+.browseBtn:hover {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Documents list (Step 4) --------------------------------------- */
+
+.docsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.docRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.docIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--off-white);
+  color: var(--ink);
+}
+
+.docMeta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.docName {
+  font-size: var(--t-body);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docSize {
+  font-size: var(--t-label);
+  color: var(--gray);
+}
+
+.docRemove {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: var(--r-2);
+  font: inherit;
+  font-size: var(--t-label);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.docRemove:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.docsEmpty {
+  margin: 0;
+  padding: var(--s-4) var(--s-6);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-3);
+  color: var(--gray);
+  font-size: var(--t-small);
+  text-align: center;
+}
+
+/* Safe contact slots (Step 5) ----------------------------------- */
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+@media (max-width: 720px) {
+  .slotGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.slotCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  text-align: left;
+  padding: var(--s-4) var(--s-6);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  transition: border-color var(--motion-fast);
+}
+
+.slotCard:hover {
+  border-color: var(--ink);
+}
+
+.slotCardActive {
+  background: var(--off-white);
+  border-color: var(--black);
+  box-shadow: inset 0 0 0 2px var(--black);
+}
+
+.slotIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-2);
+  background: var(--off-white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slotTitle {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+}
+
+.slotSub {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+}
+
+.slotCheck {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.slotCardActive .slotCheck {
+  opacity: 1;
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+/* Agreement / consent box (Step 5) ------------------------------- */
+
+.agreementBox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-6);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.agreementTitle {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+}
+
+.agreementBody {
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+}
+
+.consentBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-6);
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+
+.reviewHeading {
+  margin: 0;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  font-weight: var(--weight-semibold);
+}
+
+.reviewRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--t-body);
+}
+
+.reviewLabel {
+  color: var(--gray);
+}
+
+.reviewValue {
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  text-align: right;
+}
+
+.consentRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: var(--leading-body);
+}
+
+.consentRow input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+}
+
+.consentLegal {
+  margin: 0;
+  font-size: var(--t-label);
+  color: var(--gray);
+  line-height: var(--leading-label);
+}
+
+/* Footer (back / next / submit) --------------------------------- */
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.footerBack,
+.footerNext {
+  flex: 1;
+}
+
+.footerNext {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .footer {
+    flex-direction: column-reverse;
+  }
+  .footerBack,
+  .footerNext {
+    width: 100%;
+  }
+  .footerNext {
+    justify-content: stretch;
+  }
+}
+
+/* Live preview (aside) ------------------------------------------ */
+
+.previewCard {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: var(--s-6);
+}
+
+.previewEyebrow {
+  margin: 0;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  font-weight: var(--weight-semibold);
+}
+
+.previewEmpty {
+  margin: var(--s-3) 0 0;
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+
+.previewRows {
+  margin: var(--s-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.previewLabel {
+  color: var(--gray);
+  font-size: var(--t-small);
+}
+
+.previewValue {
+  color: var(--ink);
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+}
+
+/* How-it-works card --------------------------------------------- */
+
+.howCard {
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: var(--s-6);
+}
+
+.howHeading {
+  margin: 0 0 var(--s-4);
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+  font-weight: var(--weight-semibold);
+}
+
+.howList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.howItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.howNum {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--t-label);
+  font-weight: var(--weight-semibold);
+  flex: 0 0 28px;
+}
+
+.howBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.howItemTitle {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.howItemBody {
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+}
+
+/* Success view -------------------------------------------------- */
+
+.successWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  align-items: center;
+  text-align: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  padding: var(--s-12) var(--s-8);
+}
+
+.successBadge {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray);
+  font-weight: var(--weight-semibold);
+}
+
+.successRef {
+  margin: 0;
+}
+
+.successRefNumber {
+  font-family: var(--font-serif);
+  font-size: var(--t-title);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.successTitle {
+  margin: var(--s-2) 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-section);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.successBody {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--gray);
+  max-width: 56ch;
+  line-height: var(--leading-body);
+}
+
+.successHint {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--gray);
+  line-height: var(--leading-small);
+  max-width: 50ch;
+}
+
+.successList {
+  margin: var(--s-2) 0 var(--s-4);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+}
+
+.successList li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: var(--leading-body);
+}
+
+.successList svg {
+  flex: 0 0 20px;
+  margin-top: 2px;
+  color: var(--green);
+}

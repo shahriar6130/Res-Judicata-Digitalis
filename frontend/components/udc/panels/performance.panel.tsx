@@ -10,7 +10,6 @@ import {
 } from "@/lib/shakkho";
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
-import { NetworkBar } from "../primitives/network-bar";
 import styles from "../udc.module.css";
 
 export function UdcPerformancePanel() {
@@ -48,7 +47,6 @@ export function UdcPerformancePanel() {
               ? "একই থ্রটলড প্রোফাইলে দুটি মোডের তুলনা। সব সংখ্যা এই ডিভাইসে পরিমাপিত।"
               : "Two modes compared under the same throttled profile. All numbers measured on this device."}
           </p>
-          <NetworkBar lang={lang} />
         </header>
 
         <section className={styles.section}>

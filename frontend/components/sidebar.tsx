@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { listCitizenCases } from "@/lib/case-demo";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
+import { useUdcProfile } from "@/lib/udc-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -27,6 +28,7 @@ import {
   User,
   Users,
   Briefcase,
+  ChevronRight,
 } from "@/components/icons";
 import type { ComponentType, SVGProps } from "react";
 
@@ -71,6 +73,9 @@ type SidebarProps = {
 export function Sidebar({ role, open = false, onNavigate }: SidebarProps) {
   if (role === "citizen") {
     return <CitizenSidebar open={open} onNavigate={onNavigate} />;
+  }
+  if (role === "udc") {
+    return <UdcLegacySidebar role={role} open={open} onNavigate={onNavigate} />;
   }
   return <LegacySidebar role={role} open={open} onNavigate={onNavigate} />;
 }
@@ -158,6 +163,13 @@ function CitizenSidebar({
             active={current === "complaint"}
             onClick={() => go("complaint")}
             prominent
+          />
+
+          <NavItem
+            icon={<Play size={18} />}
+            label={t("navIntake", lang)}
+            active={current === "intake"}
+            onClick={() => go("intake")}
           />
 
           <p className={styles.subSectionLabel}>{t("sidebarSectionMyCases", lang)}</p>
@@ -397,11 +409,13 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const { lang, t } = useI18n();
   const items = getLegacyItems(role);
 
-  // DLO is the only legacy role that needs an inline profile panel at
-  // the bottom of the sidebar right now. Other roles fall back to the
-  // wordmark-only chrome.
-  const showProfile = role === "dlo";
-  const profile = useDloProfile();
+  // DLO and UDC need an inline profile panel at the bottom. Other roles
+  // fall back to the wordmark-only chrome.
+  const showProfile = role === "dlo" || role === "udc";
+  const dloProfile = useDloProfile();
+  const udcProfile = useUdcProfile();
+
+  const isUdc = role === "udc";
 
   // The DLO profile kebab mirrors the citizen sidebar's profile menu.
   // Click outside / Escape close it so the menu stays dismissable.
@@ -449,16 +463,34 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
           role="group"
           aria-label={lang === "bn" ? "প্রোফাইল" : "Profile"}
         >
-          <div className={styles.legacyProfileAvatar} aria-hidden>
-            {profile.initials}
-          </div>
+          {isUdc ? (
+            <div
+              className={styles.legacyProfileAvatarImg}
+              aria-hidden
+               
+              dangerouslySetInnerHTML={{ __html: udcProfile.avatarSvg }}
+            />
+          ) : (
+            <div className={styles.legacyProfileAvatar} aria-hidden>
+              {dloProfile.initials}
+            </div>
+          )}
           <div className={styles.legacyProfileText}>
             <span className={styles.legacyProfileName}>
-              {lang === "bn" ? profile.nameBn : profile.nameEn}
+              {lang === "bn"
+                ? (isUdc ? udcProfile.nameBn : dloProfile.nameBn)
+                : (isUdc ? udcProfile.nameEn : dloProfile.nameEn)}
             </span>
             <span className={styles.legacyProfileRole}>
-              {lang === "bn" ? profile.roleBn : profile.roleEn}
+              {lang === "bn"
+                ? (isUdc ? udcProfile.roleBn : dloProfile.roleBn)
+                : (isUdc ? udcProfile.roleEn : dloProfile.roleEn)}
             </span>
+            {isUdc && (
+              <span className={styles.legacyProfileOffice}>
+                {lang === "bn" ? udcProfile.officeBn : udcProfile.officeEn}
+              </span>
+            )}
             <span
               className={styles.legacyProfileStatusInline}
               aria-label={lang === "bn" ? "লগইন সক্রিয়" : "Signed in"}
@@ -562,6 +594,453 @@ function renderLegacyItem(
   );
 }
 
+/* ------------------------------------------------------------------ *
+ *  UDC sidebar — 4 sections:
+ *
+ *    1. Intake (collapsible, 5 sub-items)
+ *    2. Sync Center (flat link)
+ *    3. Conflict Review (flat link)
+ *    4. Application List (flat link)
+ *
+ *  Reuses the legacy surface, wordmark, and profile panel from
+ *  LegacySidebar. Sub-items live under #intake-new, #intake/<id>,
+ *  #intake/<id>/documents, #intake/<id>/consent, #sync-centre,
+ *  #conflict, and #applications. Resume / Consent / Document Capture
+ *  resolve to the most recent assisted intake, falling back to
+ *  #intake-new when none exists.
+ *
+ *  Section expand/collapse state is persisted to
+ *  `shakkho.udc.sidebar.v1` and seeded with Intake open by default.
+ * ------------------------------------------------------------------ */
+
+type UdcSubItem = {
+  id: string;
+  labelKey: MessageKey;
+  /** Where to navigate. If a function, it receives the latest intake id
+   *  (or undefined) and returns the destination hash. */
+  hrefFor: (latestIntakeId?: string) => string;
+};
+
+type UdcSection =
+  | {
+      id: string;
+      kind: "expandable";
+      labelKey: MessageKey;
+      Icon: IconComponent;
+      children: UdcSubItem[];
+    }
+  | {
+      id: string;
+      kind: "link";
+      labelKey: MessageKey;
+      Icon: IconComponent;
+      href: string;
+    };
+
+const UDC_NAV: UdcSection[] = [
+  {
+    id: "intake",
+    kind: "expandable",
+    labelKey: "udcNavIntake",
+    Icon: HelpingHand,
+    children: [
+      { id: "new",       labelKey: "udcNavIntakeNew",         hrefFor: () => "/dashboard/udc#intake-new" },
+      { id: "resume",    labelKey: "udcNavIntakeResume",      hrefFor: (id) => id ? `/dashboard/udc#intake/${id}` : "/dashboard/udc#intake-new" },
+      { id: "consent",   labelKey: "udcNavIntakeConsent",     hrefFor: (id) => id ? `/dashboard/udc#intake/${id}/consent` : "/dashboard/udc#intake-new" },
+      { id: "documents", labelKey: "udcNavIntakeDocuments",   hrefFor: (id) => id ? `/dashboard/udc#intake/${id}/documents` : "/dashboard/udc#intake-new" },
+      { id: "translation", labelKey: "udcNavIntakeTranslation", hrefFor: () => "/dashboard/udc#translation" },
+    ],
+  },
+  { id: "sync",        kind: "link", labelKey: "udcNavSyncCentre",     Icon: Briefcase, href: "/dashboard/udc#sync-centre" },
+  { id: "conflict",    kind: "link", labelKey: "udcNavConflictReview", Icon: AlertCircle, href: "/dashboard/udc#conflict" },
+  { id: "applications",kind: "link", labelKey: "udcNavApplications",   Icon: FileText,   href: "/dashboard/udc#applications" },
+];
+
+const UDC_SIDEBAR_KEY = "shakkho.udc.sidebar.v1";
+
+/** Latest assisted intake id for this UDC — reads the shakkho envelope
+ *  directly. Returns undefined on SSR / parse failure / empty state. */
+function latestAssistedIntakeId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem("shakkho.helpline.v1");
+    if (!raw) return undefined;
+    const env = JSON.parse(raw);
+    const list = Array.isArray(env?.assistedIntakes) ? env.assistedIntakes : [];
+    const sorted = [...list].sort((a, b) =>
+      (b?.updatedAt ?? b?.createdAt ?? "").localeCompare(a?.updatedAt ?? a?.createdAt ?? ""),
+    );
+    return sorted[0]?.temporaryId;
+  } catch {
+    return undefined;
+  }
+}
+
+function readUdcSidebarState(): Record<string, boolean> {
+  if (typeof window === "undefined") return { intake: true };
+  try {
+    const raw = window.localStorage.getItem(UDC_SIDEBAR_KEY);
+    if (!raw) return { intake: true };
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : { intake: true };
+  } catch {
+    return { intake: true };
+  }
+}
+
+function writeUdcSidebarState(state: Record<string, boolean>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(UDC_SIDEBAR_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
+/** Thin chevron used inside the section toggle. Pulled from the
+ *  icon set so we keep a single stroke weight and colour path. */
+function ChevronGlyph({ size = 14 }: { size?: number }) {
+  return <ChevronRight size={size} />;
+}
+
+function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
+  const pathname = usePathname();
+  const { lang, t } = useI18n();
+  const udcProfile = useUdcProfile();
+
+  // Both `collapsed` and `latestId` read from `localStorage`. We seed
+  // them with safe defaults that match what the SSR pass returns, and
+  // rehydrate inside a `useEffect` so the very first client render
+  // matches the server output. The flags `collapsedReady` and
+  // `latestReady` only flip to true after mount; the persisted state
+  // is ignored until then so the server HTML and the first client
+  // paint are byte-identical.
+  const [collapsed, setCollapsedState] = useState<Record<string, boolean>>({
+    intake: true,
+  });
+  const [collapsedReady, setCollapsedReady] = useState(false);
+  const [latestId, setLatestId] = useState<string | undefined>(undefined);
+  const [latestReady, setLatestReady] = useState(false);
+
+  // Read localStorage AFTER mount so the SSR snapshot (which cannot
+  // touch `window`) matches the first client render exactly. The
+  // `*Ready` flags then flip on so subsequent renders pick up the
+  // persisted state. The lint rule flags this as a "cascading
+  // render", but it is the documented React pattern for hydrating
+  // client-only state from `localStorage` and runs exactly once.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCollapsedState(readUdcSidebarState());
+     
+    setCollapsedReady(true);
+     
+    setLatestId(latestAssistedIntakeId());
+     
+    setLatestReady(true);
+  }, []);
+
+  // Until rehydration completes, treat the section as open (matching
+  // the SSR default) and treat the latest-id as undefined (matching
+  // SSR). The "ready" flags are only used to decide which collapsed
+  // value to forward to the toggle's `aria-expanded` so server and
+  // client agree.
+  const effectiveCollapsed = collapsedReady ? collapsed : { intake: true };
+  const effectiveLatestId = latestReady ? latestId : undefined;
+
+  const setCollapsed = useCallback(
+    (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
+      setCollapsedState((prev) => {
+        const next = updater(prev);
+        writeUdcSidebarState(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const currentPath = (pathname ?? "").split("#")[0];
+  const currentHash = (() => {
+    if (typeof window === "undefined") return "";
+    const full = (pathname ?? "").split("#")[1] ?? "";
+    if (full) return full;
+    return (window.location.hash ?? "").replace(/^#/, "");
+  })();
+
+  // The Intake section is "active" (parent highlighted) when any of
+  // its children is active — even if the section is currently
+  // collapsed. A sub-item is considered active when the current hash
+  // begins with its href's hash.
+  const isSectionActive = (s: UdcSection): boolean => {
+    const sectionHash = sectionHashPrefix(s);
+    if (sectionHash && currentHash.startsWith(sectionHash)) return true;
+    if (s.kind === "expandable") {
+      return s.children.some((c) => {
+        const href = c.hrefFor(effectiveLatestId);
+        const h = href.split("#")[1] ?? "";
+        return h !== "" && currentHash.startsWith(h);
+      });
+    }
+    return false;
+  };
+
+  // A sub-item is active when its resolved hash starts the current hash.
+  const isSubActive = (sub: UdcSubItem): boolean => {
+    const href = sub.hrefFor(effectiveLatestId);
+    const h = href.split("#")[1] ?? "";
+    if (!h) return false;
+    return currentHash === h || currentHash.startsWith(`${h}/`);
+  };
+
+  function toggleSection(id: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      // Default to open — only persist an explicit "false" (closed)
+      // so a fresh user always sees Intake open.
+      const persisted: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(next)) {
+        if (v === false) persisted[k] = false;
+        else persisted[k] = true;
+      }
+      writeUdcSidebarState(persisted);
+      return next;
+    });
+  }
+
+  const navigateTo = useCallback(
+    (href: string) => {
+      onNavigate?.();
+      const [itemPath, itemHash = ""] = href.split("#");
+      if (itemHash) {
+        if (window.location.hash !== `#${itemHash}`) {
+          window.location.hash = itemHash;
+        } else {
+          window.dispatchEvent(new HashChangeEvent("hashchange"));
+        }
+      } else if (currentPath !== itemPath) {
+        window.location.href = href;
+      }
+    },
+    [currentPath, onNavigate],
+  );
+
+  // Kebab menu mirrors CitizenSidebar / LegacySidebar pattern.
+  const [kebabOpen, setKebabOpen] = useState(false);
+  const kebabRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!kebabOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!kebabRef.current) return;
+      if (!kebabRef.current.contains(e.target as Node)) {
+        setKebabOpen(false);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setKebabOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [kebabOpen]);
+
+  return (
+    <aside
+      className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
+      aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
+    >
+      <div className={styles.brand}>
+        <Wordmark
+          variant="onSidebar"
+          roleLabel={getRoleLabel(role)}
+          roleSubLabel={getRoleSubLabel(role)}
+        />
+      </div>
+      <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
+        <ul className={styles.legacyList}>
+          {UDC_NAV.map((section) => {
+            if (section.kind === "link") {
+              const Icon = section.Icon;
+              const [itemPath, itemHash = ""] = section.href.split("#");
+              const linkActive =
+                currentPath === itemPath &&
+                (itemHash === "" || itemHash === currentHash);
+              return (
+                <li key={section.id} className={styles.listItem}>
+                  <button
+                    type="button"
+                    className={`${styles.legacyLink} ${linkActive ? styles.legacyLinkActive : ""}`}
+                    onClick={() => navigateTo(section.href)}
+                    aria-current={linkActive ? "page" : undefined}
+                  >
+                    <span className={styles.legacyIcon} aria-hidden>
+                      <Icon size={18} />
+                    </span>
+                    <span className={styles.legacyLabel}>{t(section.labelKey)}</span>
+                  </button>
+                </li>
+              );
+            }
+
+            // Expandable section (Intake).
+            const Icon = section.Icon;
+            const sectionActive = isSectionActive(section);
+            const isOpen = effectiveCollapsed[section.id] !== false; // default open
+            const anyChildActive = section.children.some((c) => isSubActive(c));
+            // When a child is active, force the section open regardless of
+            // the persisted collapsed state — WordPress-style auto-expand.
+            const visuallyOpen = isOpen || anyChildActive;
+            const expandLabel = t(
+              visuallyOpen ? "udcNavCollapse" : "udcNavExpand",
+            );
+
+            return (
+              <li key={section.id} className={styles.legacySection}>
+                <button
+                  type="button"
+                  className={`${styles.legacySectionToggle} ${
+                    sectionActive && !anyChildActive ? styles.legacySectionActive : ""
+                  }`}
+                  onClick={() => toggleSection(section.id)}
+                  aria-expanded={visuallyOpen}
+                  aria-controls={`udc-section-${section.id}`}
+                  aria-label={expandLabel}
+                >
+                  <span className={styles.legacyIcon} aria-hidden>
+                    <Icon size={18} />
+                  </span>
+                  <span className={styles.legacyLabel}>{t(section.labelKey)}</span>
+                  <span
+                    className={`${styles.legacySectionChevron} ${
+                      visuallyOpen ? styles.legacySectionChevronOpen : ""
+                    }`}
+                    aria-hidden
+                  >
+                    <ChevronGlyph size={14} />
+                  </span>
+                </button>
+                <ul
+                  id={`udc-section-${section.id}`}
+                  className={`${styles.legacySubList} ${
+                    visuallyOpen ? styles.legacySubListOpen : ""
+                  }`}
+                  role="region"
+                  aria-label={t(section.labelKey)}
+                >
+                  <div className={styles.legacySubListInner}>
+                    {section.children.map((sub) => {
+                      const subActive = isSubActive(sub);
+                      const href = sub.hrefFor(effectiveLatestId);
+                      return (
+                        <li key={sub.id}>
+                          <button
+                            type="button"
+                            className={`${styles.legacySubLink} ${
+                              subActive ? styles.legacySubLinkActive : ""
+                            }`}
+                            onClick={() => navigateTo(href)}
+                            aria-current={subActive ? "page" : undefined}
+                          >
+                            {t(sub.labelKey)}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </div>
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div
+        className={styles.legacyProfilePanel}
+        role="group"
+        aria-label={lang === "bn" ? "প্রোফাইল" : "Profile"}
+      >
+        <div
+          className={styles.legacyProfileAvatarImg}
+          aria-hidden
+           
+          dangerouslySetInnerHTML={{ __html: udcProfile.avatarSvg }}
+        />
+        <div className={styles.legacyProfileText}>
+          <span className={styles.legacyProfileName}>
+            {lang === "bn" ? udcProfile.nameBn : udcProfile.nameEn}
+          </span>
+          <span className={styles.legacyProfileRole}>
+            {lang === "bn" ? udcProfile.roleBn : udcProfile.roleEn}
+          </span>
+          <span className={styles.legacyProfileOffice}>
+            {lang === "bn" ? udcProfile.officeBn : udcProfile.officeEn}
+          </span>
+          <span
+            className={styles.legacyProfileStatusInline}
+            aria-label={lang === "bn" ? "লগইন সক্রিয়" : "Signed in"}
+            title={lang === "bn" ? "লগইন সক্রিয়" : "Signed in"}
+          >
+            <span className={styles.legacyProfileStatusDot} aria-hidden />
+            <span className={styles.legacyProfileStatusLabel}>
+              {lang === "bn" ? "লগইন" : "Logged in"}
+            </span>
+          </span>
+        </div>
+        <div className={styles.legacyKebab} ref={kebabRef}>
+          <button
+            type="button"
+            className={styles.legacyKebabBtn}
+            onClick={() => setKebabOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={kebabOpen}
+            aria-label={lang === "bn" ? "প্রোফাইল মেনু" : "Profile menu"}
+          >
+            <MoreVertical size={18} aria-hidden />
+          </button>
+          {kebabOpen ? (
+            <div className={styles.legacyKebabMenu} role="menu">
+              <button
+                type="button"
+                className={styles.legacyKebabItem}
+                role="menuitem"
+                onClick={() => setKebabOpen(false)}
+                title={t("profileComingSoon")}
+              >
+                {t("profileSettings")}
+                <span className={styles.legacyComingSoonTag}>
+                  {t("profileComingSoon")}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.legacyKebabItem}
+                role="menuitem"
+                onClick={() => setKebabOpen(false)}
+                title={t("profileComingSoon")}
+              >
+                {t("profileLogout")}
+                <span className={styles.legacyComingSoonTag}>
+                  {t("profileComingSoon")}
+                </span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/** Return the hash prefix used to highlight a top-level section.
+ *  For expandable sections, returns the prefix of the first sub-item. */
+function sectionHashPrefix(section: UdcSection): string {
+  if (section.kind === "link") {
+    return section.href.split("#")[1] ?? "";
+  }
+  return "";
+}
+
 /* Role label helpers — surface which workspace the user is on right in
    the sidebar header. Returns the localised label + sub-label so the
    wordmark can render them inside a clear pill. */
@@ -570,6 +1049,7 @@ function getRoleLabel(role: string): string | undefined {
   if (role === "dlo") return "DLO";
   if (role === "lawyer") return "Lawyer";
   if (role === "admin") return "Admin";
+  if (role === "udc") return "UDC";
   return undefined;
 }
 
@@ -578,6 +1058,7 @@ function getRoleSubLabel(role: string): string | undefined {
   if (role === "dlo") return "District";
   if (role === "lawyer") return "Panel";
   if (role === "admin") return "System";
+  if (role === "udc") return "Entrepreneur";
   return undefined;
 }
 

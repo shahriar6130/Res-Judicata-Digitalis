@@ -460,6 +460,153 @@
   margin: 0;
 }
 
+/* UDC expandable section group — sits between flat links in the
+   legacy list. Chevron rotates when open; sub-list uses a grid row
+   trick so we can animate the height without measuring it. */
+.legacy .legacySection {
+  margin: 0;
+}
+
+.legacy .legacySectionToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  position: relative;
+  width: 100%;
+  padding: var(--s-4) var(--s-4);
+  color: var(--sidebar-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-2);
+  text-align: left;
+  font: inherit;
+  font-size: var(--t-body);
+  line-height: var(--leading-body);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  font-weight: var(--weight-medium);
+}
+
+.legacy .legacySectionToggle:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-fg);
+}
+
+.legacy .legacySectionToggle:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.legacy .legacySectionActive {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.legacy .legacySectionActive::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--sidebar-accent);
+  border-radius: 2px;
+}
+
+.legacy .legacySectionChevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  transition: transform 200ms ease;
+}
+
+.legacy .legacySectionChevronOpen {
+  transform: rotate(90deg);
+}
+
+.legacy .legacySubList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+
+.legacy .legacySubListOpen {
+  grid-template-rows: 1fr;
+}
+
+.legacy .legacySubListInner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 6px 0;
+}
+
+.legacy .legacySubLink {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border-radius: var(--r-2);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: var(--sidebar-muted);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.legacy .legacySubLink:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-fg);
+}
+
+.legacy .legacySubLink:focus-visible {
+  outline: var(--focus-width) solid var(--sidebar-accent);
+  outline-offset: 2px;
+}
+
+.legacy .legacySubLinkActive {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  font-weight: var(--weight-semibold);
+}
+
+.legacy .legacySubLinkActive::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--sidebar-accent);
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legacy .legacySectionChevron,
+  .legacy .legacySubList {
+    transition: none;
+  }
+}
+
 .legacy .legacyLink {
   display: flex;
   align-items: center;
@@ -618,6 +765,34 @@
   letter-spacing: 0.06em;
   color: var(--sidebar-muted);
   line-height: 1;
+}
+
+/* UDC avatar — full circle filled by an inline SVG portrait. */
+.legacy .legacyProfileAvatarImg {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--sidebar-fg);
+  border: 1px solid var(--sidebar-border);
+}
+.legacy .legacyProfileAvatarImg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* UDC office / hub identifier under the role label. */
+.legacy .legacyProfileOffice {
+  font-size: 10px;
+  color: var(--sidebar-muted);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Optional kebab / settings menu — mirrors the citizen sidebar

@@ -68,14 +68,20 @@
   vertical-align: top;
 }
 
+/* Echoes components/status-pill.module.css: rounded, subtle fill, semibold,
+   no forced uppercase (Bangla has no case and localized English reads better
+   in sentence case). */
 .pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 2px var(--s-2);
   border: 1px solid var(--line);
   border-radius: 999px;
+  background: var(--off-white);
   font-size: var(--t-label);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .pillOk { border-color: var(--black); color: var(--black); }
@@ -160,10 +166,19 @@
 }
 
 .field textarea, .field input, .field select {
-  border: 1px solid var(--line);
-  padding: var(--s-2);
+  border: var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--white);
+  padding: var(--control-pad-y) var(--control-pad-x);
   font: inherit;
+  color: var(--black);
   min-height: 44px;
+  transition: border-color var(--motion-fast) var(--ease), outline-color var(--motion-fast) var(--ease);
+}
+.field textarea:focus-visible, .field input:focus-visible, .field select:focus-visible {
+  outline: var(--focus-width) solid var(--black);
+  outline-offset: 2px;
+  border-color: var(--black);
 }
 
 .field label { font-weight: var(--weight-semibold); }
@@ -226,22 +241,48 @@
   flex-wrap: wrap;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Buttons — same shape and behaviour as the shared components/button
+ *  .module.css (rounded control radius, control padding, medium weight,
+ *  hover + disabled states) so mediator-page buttons read as real app
+ *  buttons, not bordered boxes. No new tokens.
+ * ------------------------------------------------------------------ */
 .btn {
-  border: 1px solid var(--black);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  border: var(--control-border);
+  border-color: var(--black);
   background: var(--black);
   color: var(--white);
-  padding: var(--s-2) var(--s-4);
+  padding: var(--s-3) var(--s-6);
   min-height: 44px;
-  font: inherit;
+  border-radius: var(--control-radius);
+  font-size: var(--t-button);
+  font-weight: var(--weight-medium);
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease),
+    color var(--motion-base) var(--ease);
 }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:hover { background: var(--ink); }
+.btn:focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: 2px; }
+.btn:disabled {
+  background: var(--line);
+  border-color: var(--line);
+  color: var(--gray);
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   composes: btn;
   background: var(--white);
   color: var(--black);
 }
+.btnSecondary:hover { background: var(--off-white); }
 
 .btnDanger {
   composes: btn;
@@ -249,6 +290,7 @@
   color: var(--red);
   border-color: var(--red);
 }
+.btnDanger:hover { background: var(--red); color: var(--white); }
 
 .caseBody {
   display: grid;

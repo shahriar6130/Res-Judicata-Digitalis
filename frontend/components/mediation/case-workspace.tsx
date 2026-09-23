@@ -31,6 +31,7 @@ import type {
   SettlementConsentChecklist,
 } from "@/lib/shakkho/types";
 import styles from "./mediation.module.css";
+import { L, fmtDateTime } from "./labels";
 
 const ACTOR = "mediator";
 type TabKey = "overview" | "parties" | "schedule" | "documents" | "attendance" | "session" | "draft" | "signing" | "history";
@@ -111,20 +112,20 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
         </div>
         <div className={styles.headerTopRow}>
           <div>
-            <h1 className={styles.title} style={{ margin: 0 }}>{matter.mediationReference} — {matter.matterCategory}</h1>
+            <h1 className={styles.title} style={{ margin: 0 }}>{matter.mediationReference} — {L.category(matter.matterCategory, lang)}</h1>
             <div className={styles.intro}>
-              {say("কেস আইডি", "Case ID")}: <strong>{matter.caseId}</strong> · {matter.pathway === "pre_case" ? say("প্রাক-মামলা", "Pre-case") : say("মামলা-পরবর্তী", "Post-case")} · {say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}: {matter.assignedMediator}
+              {say("কেস আইডি", "Case ID")}: <strong>{matter.caseId}</strong> · {matter.pathway === "pre_case" ? say("প্রাক-মামলা", "Pre-case") : say("মামলা-পরবর্তী", "Post-case")} · {say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}: {L.role(matter.assignedMediator, lang)}
             </div>
           </div>
           <div className={styles.primaryActions}>{renderPrimaryActions(matter, draft, signing, lang, run, tick, setTab)}</div>
         </div>
         <dl className={styles.headerFacts}>
-          <div><dt>{say("বর্তমান অবস্থা", "Current state")}</dt><dd><span className={styles.pill}>{matter.state}</span></dd></div>
-          <div><dt>{say("পরবর্তী অধিবেশন", "Next session")}</dt><dd>{latestSession ? new Date(latestSession.scheduledFor).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB") : "—"}</dd></div>
-          <div><dt>{say("দায়িত্বপ্রাপ্ত", "Responsible actor")}</dt><dd>{matter.assignedMediator}</dd></div>
+          <div><dt>{say("বর্তমান অবস্থা", "Current state")}</dt><dd><span className={styles.pill}>{L.state(matter.state, lang)}</span></dd></div>
+          <div><dt>{say("পরবর্তী অধিবেশন", "Next session")}</dt><dd>{latestSession ? fmtDateTime(latestSession.scheduledFor, lang) : "—"}</dd></div>
+          <div><dt>{say("দায়িত্বপ্রাপ্ত", "Responsible actor")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
           <div><dt>{say("পরবর্তী প্রয়োজনীয় কাজ", "Next required action")}</dt><dd>{nextAction}</dd></div>
-          <div><dt>{say("অংশগ্রহণ পদ্ধতি", "Mode")}</dt><dd>{matter.participationMode}</dd></div>
-          <div><dt>{say("সর্বশেষ আপডেট", "Last updated")}</dt><dd>{new Date(matter.updatedAt).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</dd></div>
+          <div><dt>{say("অংশগ্রহণ পদ্ধতি", "Mode")}</dt><dd>{L.mode(matter.participationMode, lang)}</dd></div>
+          <div><dt>{say("সর্বশেষ আপডেট", "Last updated")}</dt><dd>{fmtDateTime(matter.updatedAt, lang)}</dd></div>
         </dl>
       </header>
 
@@ -171,7 +172,7 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
         <aside className={styles.rightCol}>
           <div className={styles.rightPanel}>
             <span className={styles.sectionHeading}>{say("দায়িত্ব ও ইতিহাস", "Responsibility and history")}</span>
-            <div className={styles.kv}><dt>{say("বর্তমান মালিক", "Current owner")}</dt><dd>{matter.assignedMediator}</dd></div>
+            <div className={styles.kv}><dt>{say("বর্তমান মালিক", "Current owner")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
             <div className={styles.kv}><dt>{say("পরবর্তী কাজ", "Next task")}</dt><dd>{nextAction}</dd></div>
             <div className={styles.kv}><dt>{say("অমীমাংসিত ধারা", "Unresolved clauses")}</dt><dd>{draft ? draft.clauses.filter((c) => c.disposition === "undisposed").length : "—"}</dd></div>
             <div className={styles.kv}><dt>{say("ব্লকিং অসঙ্গতি", "Blocking inconsistencies")}</dt><dd>{draft ? draft.inconsistencies.filter((i) => i.severity === "blocking").length : 0}</dd></div>
@@ -185,8 +186,8 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
             <div className={styles.timeline}>
               {[...matter.history].slice(-4).reverse().map((h, i) => (
                 <div key={i} className={styles.timelineItem}>
-                  <div>{h.toState}</div>
-                  <div style={{ color: "var(--gray)" }}>{h.actor} · {new Date(h.at).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</div>
+                  <div>{L.state(h.toState, lang)}</div>
+                  <div style={{ color: "var(--gray)" }}>{L.role(h.actor, lang)} · {fmtDateTime(h.at, lang)}</div>
                 </div>
               ))}
             </div>
@@ -259,20 +260,20 @@ function OverviewSection({ matter, record, sessions, draft, lang }: { matter: Me
           <div className={styles.kv}><dt>{say("মধ্যস্থতা রেফারেন্স", "Mediation reference")}</dt><dd>{matter.mediationReference}</dd></div>
           <div className={styles.kv}><dt>{say("কেস আইডি", "Case ID")}</dt><dd>{matter.caseId}</dd></div>
           <div className={styles.kv}><dt>{say("আবেদনের উৎস", "Application source")}</dt><dd>{record?.channel ?? "—"} <span className={styles.provTag}>{record ? "staff-entered" : ""}</span></dd></div>
-          <div className={styles.kv}><dt>{say("বিষয়ের ধরন", "Matter category")}</dt><dd>{matter.matterCategory}</dd></div>
-          <div className={styles.kv}><dt>{say("পথ", "Pathway")}</dt><dd>{matter.pathway}</dd></div>
+          <div className={styles.kv}><dt>{say("বিষয়ের ধরন", "Matter category")}</dt><dd>{L.category(matter.matterCategory, lang)}</dd></div>
+          <div className={styles.kv}><dt>{say("পথ", "Pathway")}</dt><dd>{L.pathway(matter.pathway, lang)}</dd></div>
           {matter.referralSource && <div className={styles.kv}><dt>{say("রেফারেল উৎস", "Referral source")}</dt><dd>{matter.referralSource}</dd></div>}
           <div className={styles.kv}><dt>{say("নিবন্ধনের উৎস", "Registration source")}</dt><dd>{matter.registrationSource}</dd></div>
-          <div className={styles.kv}><dt>{say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}</dt><dd>{matter.assignedMediator}</dd></div>
+          <div className={styles.kv}><dt>{say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
         </div>
         <div>
           <div className={styles.kv}><dt>{say("প্রতিনিধিত্ব", "Representation status")}</dt><dd>{matter.parties.some((p) => p.representedBy) ? say("এক বা একাধিক পক্ষ প্রতিনিধিত্বপ্রাপ্ত", "One or more parties represented") : say("সরাসরি", "Direct")}</dd></div>
           <div className={styles.kv}><dt>{say("নিরাপদ যোগাযোগ", "Safe-contact restrictions")}</dt><dd>{matter.parties.some((p) => p.safeContact) ? say("প্রযোজ্য", "Applies") : "—"}</dd></div>
-          <div className={styles.kv}><dt>{say("পছন্দের ভাষা", "Preferred language")}</dt><dd>{matter.parties.map((p) => p.preferredLanguage ?? "bn").join(", ")}</dd></div>
-          <div className={styles.kv}><dt>{say("বর্তমান পর্যায়", "Current stage")}</dt><dd>{matter.state}</dd></div>
+          <div className={styles.kv}><dt>{say("পছন্দের ভাষা", "Preferred language")}</dt><dd>{[...new Set(matter.parties.map((p) => L.language(p.preferredLanguage ?? "bn", lang)))].join(", ")}</dd></div>
+          <div className={styles.kv}><dt>{say("বর্তমান পর্যায়", "Current stage")}</dt><dd>{L.state(matter.state, lang)}</dd></div>
           <div className={styles.kv}><dt>{say("পূর্ববর্তী অধিবেশন", "Previous sessions")}</dt><dd>{sessions.length}</dd></div>
           <div className={styles.kv}><dt>{say("পর্যালোচনার অপেক্ষায় নথি", "Documents awaiting review")}</dt><dd>{matter.documentReviews.filter((d) => d.status !== "reviewed").length}</dd></div>
-          <div className={styles.kv}><dt>{say("ফলাফলের অবস্থা", "Outcome status")}</dt><dd>{matter.outcome ? matter.outcome.decision : say("অমীমাংসিত", "Pending")}</dd></div>
+          <div className={styles.kv}><dt>{say("ফলাফলের অবস্থা", "Outcome status")}</dt><dd>{matter.outcome ? L.outcome(matter.outcome.decision, lang) : say("অমীমাংসিত", "Pending")}</dd></div>
         </div>
       </div>
       <div className={styles.warnBox}>
@@ -282,7 +283,7 @@ function OverviewSection({ matter, record, sessions, draft, lang }: { matter: Me
         )}
       </div>
       {draft && (
-        <div className={styles.kv}><dt>{say("সংযুক্ত নিষ্পত্তি খসড়া", "Attached settlement draft")}</dt><dd>{draft.draftId} — {draft.status}</dd></div>
+        <div className={styles.kv}><dt>{say("সংযুক্ত নিষ্পত্তি খসড়া", "Attached settlement draft")}</dt><dd>{draft.draftId} — {L.draftStatus(draft.status, lang)}</dd></div>
       )}
     </div>
   );
@@ -296,43 +297,65 @@ function PartiesSection({ matter, record, lang, run }: { matter: MediationMatter
       <span className={styles.sectionHeading}>{say("পক্ষগণ", "Parties")}</span>
       {matter.parties.map((party) => {
         const evaluation = record ? SafeContactService.evaluate(record) : undefined;
+        // §7 safe-contact gate. When the gate has not cleared, a live SMS/voice
+        // attempt is prohibited: the service will record it as `blocked_unsafe`.
+        // Surface that up-front so the mediator knows the outcome before acting,
+        // rather than being surprised by a silent "blocked_unsafe" result.
+        const cleared = evaluation?.cleared ?? false;
+        const blockReason = evaluation && !cleared
+          ? evaluation.reasons.map((r) => (lang === "bn" ? r.bn : r.en)).join("; ")
+          : undefined;
+        const recordAttempt = () =>
+          run(() =>
+            MediationService.recordPartyContact({
+              matterId: matter.matterId,
+              partyRole: party.role,
+              application: record,
+              channel: "sms",
+              result: "reached",
+              actor: ACTOR,
+            }),
+          );
         return (
           <div key={party.role} className={styles.partyCard}>
             <div className={styles.headerTopRow}>
               <strong>{party.name}</strong>
-              <span className={styles.pill}>{party.role}</span>
+              <span className={styles.pill}>{L.role(party.role, lang)}</span>
             </div>
             <div className={styles.grid2}>
               <div>
-                <div className={styles.kv}><dt>{say("পছন্দের ভাষা", "Preferred language")}</dt><dd>{party.preferredLanguage ?? "bn"}</dd></div>
+                <div className={styles.kv}><dt>{say("পছন্দের ভাষা", "Preferred language")}</dt><dd>{L.language(party.preferredLanguage ?? "bn", lang)}</dd></div>
                 <div className={styles.kv}><dt>{say("প্রতিনিধি", "Representative")}</dt><dd>{party.representedBy ?? "—"}</dd></div>
-                <div className={styles.kv}><dt>{say("অংশগ্রহণ পদ্ধতি", "Participation mode")}</dt><dd>{party.participationMode ?? "—"}</dd></div>
-                <div className={styles.kv}><dt>{say("নোটিশের অবস্থা", "Notice status")}</dt><dd>{party.noticeStatus ?? "not_sent"}</dd></div>
-                <div className={styles.kv}><dt>{say("উপস্থিতির অবস্থা", "Attendance status")}</dt><dd>{party.attendanceStatus ?? "pending"}</dd></div>
+                <div className={styles.kv}><dt>{say("অংশগ্রহণ পদ্ধতি", "Participation mode")}</dt><dd>{party.participationMode ? L.mode(party.participationMode, lang) : "—"}</dd></div>
+                <div className={styles.kv}><dt>{say("নোটিশের অবস্থা", "Notice status")}</dt><dd>{L.noticeStatus(party.noticeStatus, lang)}</dd></div>
+                <div className={styles.kv}><dt>{say("উপস্থিতির অবস্থা", "Attendance status")}</dt><dd>{L.attendanceStatus(party.attendanceStatus, lang)}</dd></div>
               </div>
               <div>
                 <div className={styles.kv}><dt>{say("নিরাপদ যোগাযোগ নির্দেশনা", "Safe-contact instruction")}</dt><dd>{party.safeContact ?? "—"}</dd></div>
-                <div className={styles.kv}><dt>{say("অনুমোদিত চ্যানেল", "Permitted channel")}</dt><dd>{evaluation?.cleared ? say("এসএমএস/সরাসরি", "SMS / in-person") : say("সীমাবদ্ধ", "Restricted")}</dd></div>
-                <div className={styles.kv}><dt>{say("যোগাযোগের ফলাফল", "Contact result")}</dt><dd>{party.contactResult ?? "—"}</dd></div>
+                <div className={styles.kv}><dt>{say("অনুমোদিত চ্যানেল", "Permitted channel")}</dt><dd>{cleared ? say("এসএমএস/সরাসরি", "SMS / in-person") : say("সীমাবদ্ধ", "Restricted")}</dd></div>
+                <div className={styles.kv}><dt>{say("যোগাযোগের ফলাফল", "Contact result")}</dt><dd>{L.contactResult(party.contactResult, lang)}</dd></div>
               </div>
             </div>
+            {!cleared && (
+              <div className={styles.warnBox}>
+                {say(
+                  "নিরাপদ-যোগাযোগ যাচাই এখনো সম্পন্ন হয়নি, তাই সরাসরি এসএমএস/ভয়েস যোগাযোগ অনুমোদিত নয়। এখন যোগাযোগের চেষ্টা রেকর্ড করলে তা “অনিরাপদ — অবরুদ্ধ” হিসেবে অডিট ট্রেইলে লিপিবদ্ধ হবে।",
+                  "The safe-contact check has not cleared, so a live SMS/voice attempt is not permitted. Recording an attempt now will be logged in the audit trail as “blocked (unsafe)”.",
+                )}
+                {blockReason && <div style={{ marginTop: "var(--s-1)" }}>{say("কারণ", "Reason")}: {blockReason}</div>}
+              </div>
+            )}
             <div className={styles.actionsRow}>
               <button
-                className={styles.btnSecondary}
-                onClick={() =>
-                  run(() =>
-                    MediationService.recordPartyContact({
-                      matterId: matter.matterId,
-                      partyRole: party.role,
-                      application: record,
-                      channel: "sms",
-                      result: "reached",
-                      actor: ACTOR,
-                    }),
-                  )
-                }
+                className={cleared ? styles.btnSecondary : styles.btnDanger}
+                onClick={recordAttempt}
+                title={cleared
+                  ? say("অনুমোদিত চ্যানেলে যোগাযোগের চেষ্টা রেকর্ড করুন", "Record a contact attempt on the permitted channel")
+                  : say("অবরুদ্ধ (অনিরাপদ) যোগাযোগের চেষ্টা রেকর্ড করুন", "Record a blocked (unsafe) contact attempt")}
               >
-                {say("যোগাযোগ সম্পন্ন হিসেবে চিহ্নিত করুন", "Record contact attempt")}
+                {cleared
+                  ? say("যোগাযোগের চেষ্টা রেকর্ড করুন (এসএমএস)", "Record contact attempt (SMS)")
+                  : say("অবরুদ্ধ চেষ্টা রেকর্ড করুন", "Record blocked attempt")}
               </button>
             </div>
           </div>
@@ -406,7 +429,7 @@ function ScheduleSection({ matter, sessions, lang, run }: { matter: MediationMat
             <tbody>
               {latest.noticesSent.length === 0 && <tr><td colSpan={3}>{say("এখনো কোনো নোটিশ পাঠানো হয়নি।", "No notices sent yet.")}</td></tr>}
               {latest.noticesSent.map((n, i) => (
-                <tr key={i}><td>{n.party}</td><td>{n.channel}</td><td><span className={styles.pill}>{n.deliveryState}</span></td></tr>
+                <tr key={i}><td>{n.party}</td><td>{L.channel(n.channel, lang)}</td><td><span className={styles.pill}>{L.deliveryState(n.deliveryState, lang)}</span></td></tr>
               ))}
             </tbody>
           </table>
@@ -448,7 +471,7 @@ function DocumentsSection({ matter, lang, run }: { matter: MediationMatter; lang
           {matter.documentReviews.map((d) => (
             <tr key={d.documentId}>
               <td>{d.documentId}</td>
-              <td><span className={styles.pill}>{d.status}</span></td>
+              <td><span className={styles.pill}>{L.docStatus(d.status, lang)}</span></td>
               <td>{d.note ?? "—"}</td>
               <td>
                 <div className={styles.actionsRow}>
@@ -532,12 +555,22 @@ function SessionSection({ session, lang, run }: { session: ReturnType<typeof Med
   if (!session) return <div className={styles.section}>{say("প্রথমে একটি অধিবেশন নির্ধারণ করুন।", "Schedule a session first.")}</div>;
 
   const remote = session.mode !== "in_person";
+  const noteLabels: Record<keyof typeof notes, [string, string]> = {
+    issuesIdentified: ["চিহ্নিত সমস্যা", "Issues identified"],
+    documentsConsidered: ["বিবেচিত নথি", "Documents considered"],
+    agreedFacts: ["সম্মত তথ্য", "Agreed facts"],
+    disputedFacts: ["বিতর্কিত তথ্য", "Disputed facts"],
+    proposedTerms: ["প্রস্তাবিত শর্ত", "Proposed terms"],
+    unresolvedTerms: ["অমীমাংসিত শর্ত", "Unresolved terms"],
+    followUpRequirements: ["পরবর্তী করণীয়", "Follow-up requirements"],
+    sessionResult: ["অধিবেশনের ফলাফল", "Session result"],
+  };
 
   return (
     <div className={styles.section}>
       <span className={styles.sectionHeading}>{remote ? say("রিমোট/হাইব্রিড অধিবেশন সিমুলেটর", "Remote/Hybrid Session Simulator") : say("মধ্যস্থতা অধিবেশন", "Mediation session")}</span>
-      <div className={styles.kv}><dt>{say("অবস্থা", "Status")}</dt><dd><span className={styles.pill}>{session.status}</span></dd></div>
-      {remote && <div className={styles.kv}><dt>{say("সংযোগের অবস্থা", "Connection status")}</dt><dd>{session.connectionStatus}</dd></div>}
+      <div className={styles.kv}><dt>{say("অবস্থা", "Status")}</dt><dd><span className={styles.pill}>{L.sessionStatus(session.status, lang)}</span></dd></div>
+      {remote && <div className={styles.kv}><dt>{say("সংযোগের অবস্থা", "Connection status")}</dt><dd>{L.connectionStatus(session.connectionStatus, lang)}</dd></div>}
       <div className={styles.actionsRow}>
         <button className={styles.btnSecondary} onClick={() => run(() => MediationService.sessionAction({ sessionId: session.sessionId, action: "start", actor: ACTOR }))}>{say("শুরু করুন", "Start")}</button>
         <button className={styles.btnSecondary} onClick={() => run(() => MediationService.sessionAction({ sessionId: session.sessionId, action: "pause", actor: ACTOR }))}>{say("বিরতি", "Pause")}</button>
@@ -550,7 +583,7 @@ function SessionSection({ session, lang, run }: { session: ReturnType<typeof Med
       <span className={styles.sectionHeading}>{say("মধ্যস্থতাকারীর নোট (কাঠামোগত)", "Mediator notes (structured)")}</span>
       {(Object.keys(notes) as (keyof typeof notes)[]).map((key) => (
         <div className={styles.field} key={key}>
-          <label>{key}</label>
+          <label>{say(noteLabels[key][0], noteLabels[key][1])}</label>
           <textarea rows={2} value={notes[key]} onChange={(e) => setNotes((prev) => ({ ...prev, [key]: e.target.value }))} />
         </div>
       ))}
@@ -605,7 +638,7 @@ function DraftSection({ matter, session, draft, lang, run }: { matter: Mediation
 
       {draft.inconsistencies.map((inc, i) => (
         <div key={i} className={styles.inconsistency}>
-          <strong>{say("অসঙ্গতি সনাক্ত হয়েছে", "Inconsistency detected")}</strong> ({inc.severity}) — {lang === "bn" ? inc.description.bn : inc.description.en}
+          <strong>{say("অসঙ্গতি সনাক্ত হয়েছে", "Inconsistency detected")}</strong> ({L.severity(inc.severity, lang)}) — {lang === "bn" ? inc.description.bn : inc.description.en}
           <div>{say("সংশ্লিষ্ট ধারা", "Affected clauses")}: {inc.clauseIds.join(", ")}</div>
         </div>
       ))}
@@ -614,8 +647,8 @@ function DraftSection({ matter, session, draft, lang, run }: { matter: Mediation
         <div key={clause.clauseId} className={`${styles.clause} ${clause.origin === "template" ? styles.clauseTemplate : clause.origin === "ai_inferred" ? styles.clauseAiInferred : styles.clauseHumanEdited}`}>
           <div className={styles.clauseTitle}>
             {lang === "bn" ? clause.titleBn : clause.titleEn}
-            <span className={styles.originBadge}>{clause.origin}</span>
-            <span className={styles.pill}>{clause.disposition}</span>
+            <span className={styles.originBadge}>{L.origin(clause.origin, lang)}</span>
+            <span className={styles.pill}>{L.disposition(clause.disposition, lang)}</span>
           </div>
           <div>{lang === "bn" ? clause.bodyBn : clause.bodyEn}</div>
           {clause.sourceNote && <div style={{ color: "var(--gray)", fontSize: "var(--t-label)" }}>{clause.sourceNote}</div>}
@@ -623,7 +656,7 @@ function DraftSection({ matter, session, draft, lang, run }: { matter: Mediation
             <div className={styles.actionsRow}>
               {(["accept", "edit", "reject", "request_clarification", "mark_unresolved"] as ClauseDisposition[]).map((d) => (
                 <button key={d} className={styles.btnSecondary} onClick={() => run(() => SettlementDraftingService.dispositionClause({ draftId: draft.draftId, clauseId: clause.clauseId, disposition: d, actor: ACTOR }))}>
-                  {d}
+                  {L.disposition(d, lang)}
                 </button>
               ))}
             </div>
@@ -725,7 +758,7 @@ function SigningOutcomeSection({ matter, draft, signing, lang, run, runAsync }: 
           <div className={styles.kv}><dt>{say("নথির হ্যাশ", "Document hash")}</dt><dd style={{ fontFamily: "monospace", fontSize: "10px" }}>{signing.documentHash.slice(0, 24)}…</dd></div>
           {signing.parties.map((p) => (
             <div key={p.party} className={styles.partyCard}>
-              <div className={styles.kv}><dt>{p.party}</dt><dd><span className={styles.pill}>{p.status}</span></dd></div>
+              <div className={styles.kv}><dt>{p.party}</dt><dd><span className={styles.pill}>{L.signStatus(p.status, lang)}</span></dd></div>
               {p.status === "not_started" && (
                 <div className={styles.actionsRow}>
                   <button className={styles.btnSecondary} onClick={() => runAsync(() => SettlementSigningService.sign({ signingId: signing.signingId, party: p.party, offline: false, actor: ACTOR }))}>{say("অনলাইনে স্বাক্ষর করুন", "Sign online")}</button>
@@ -757,7 +790,7 @@ function SigningOutcomeSection({ matter, draft, signing, lang, run, runAsync }: 
       <span className={styles.sectionHeading}>{say("ফলাফল", "Outcome")}</span>
       {matter.outcome ? (
         <div className={styles.okBox}>
-          {say("রেকর্ড হয়েছে", "Recorded")}: {matter.outcome.decision} — {matter.outcome.humanApprovedBy} ({new Date(matter.outcome.recordedAt).toLocaleString()})
+          {say("রেকর্ড হয়েছে", "Recorded")}: {L.outcome(matter.outcome.decision, lang)} — {matter.outcome.humanApprovedBy} ({fmtDateTime(matter.outcome.recordedAt, lang)})
         </div>
       ) : (
         <>
@@ -818,7 +851,7 @@ function HistorySection({ matter, auditEvents, lang }: { matter: MediationMatter
         <thead><tr><th>{say("সময়", "Time")}</th><th>{say("কর্ম", "Action")}</th><th>{say("অভিনেতা", "Actor")}</th></tr></thead>
         <tbody>
           {[...auditEvents].reverse().map((e) => (
-            <tr key={e.id}><td>{new Date(e.occurredAt).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</td><td>{e.action}</td><td>{e.actor}</td></tr>
+            <tr key={e.id}><td>{fmtDateTime(e.occurredAt, lang)}</td><td>{e.action}</td><td>{L.role(e.actor, lang)}</td></tr>
           ))}
         </tbody>
       </table>

@@ -14,6 +14,7 @@ import { useI18n } from "@/lib/i18n";
 import { ensureSeeded, useHelplineStore, MediationService } from "@/lib/shakkho";
 import { LanguageToggle } from "@/components/language-toggle";
 import styles from "./mediation.module.css";
+import { L, fmtDate } from "./labels";
 
 export function MediatorWorklist() {
   const { lang } = useI18n();
@@ -51,9 +52,9 @@ export function MediatorWorklist() {
             <tr key={m.matterId}>
               <td>{m.mediationReference}</td>
               <td>{m.caseId}</td>
-              <td>{m.matterCategory}</td>
-              <td><span className={styles.pill}>{m.state}</span></td>
-              <td>{new Date(m.updatedAt).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}</td>
+              <td>{L.category(m.matterCategory, lang)}</td>
+              <td><span className={styles.pill}>{L.state(m.state, lang)}</span></td>
+              <td>{fmtDate(m.updatedAt, lang)}</td>
               <td><Link href={`/mediator/cases/${m.caseId}`} className={styles.backLink}>{say("খুলুন →", "Open →")}</Link></td>
             </tr>
           ))}

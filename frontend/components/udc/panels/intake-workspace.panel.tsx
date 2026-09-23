@@ -27,6 +27,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import styles from "../udc.module.css";
+import { UdcDoor, useDlasDb, useCurrentUdcOperator, SAFE_TIMES } from "@/lib/dlas";
 
 interface Props {
   temporaryId: string;
@@ -113,7 +114,14 @@ function UdcIntakeWorkspaceBody({
   offlineDrafts: OfflineDraft[];
 }) {
   const { lang } = useI18n();
+  const me = useCurrentUdcOperator();
   const [intake, setIntake] = useState<AssistedIntake>(initial);
+  // Interpreter record (typed by the operator — no demo values)
+  const [trField, setTrField] = useState("applicant_name");
+  const [trOriginal, setTrOriginal] = useState("");
+  const [trTranslated, setTrTranslated] = useState("");
+  // Document capture: the operator states whether the photo is readable.
+  const [docUnreadable, setDocUnreadable] = useState(false);
   const [transcript, setTranscript] = useState<TranslationEvent[]>(initial.translations);
   const [draftStatus, setDraftStatus] = useState<OfflineDraft["syncStatus"]>(() => {
     const list = Array.isArray(offlineDrafts) ? offlineDrafts : [];
@@ -132,12 +140,13 @@ function UdcIntakeWorkspaceBody({
       topic,
       method: "oral_with_readback",
       language: (intake.languagePreference?.primary ?? "bn") as LanguageCode,
-      explainedBy: "রহমান (UDC)",
+      explainedBy: `${me?.name ?? "UDC"} (${me?.operatorId ?? "UDC"})`,
       interpreter: intake.languagePreference?.interpreterName,
       applicantResponse: response,
     });
     const next = AssistedIntakeService.recordConsent(intake, c);
     setIntake(next);
+    UdcDoor.syncConsents(next.temporaryId, next.consents, next.freeServiceNoticeAcknowledged);
   }
 
   function recordTranslation(field: string, original: string, translated: string) {
@@ -148,31 +157,35 @@ function UdcIntakeWorkspaceBody({
       translatedText: translated,
       personWhoSpoke: "আবেদনকারী",
       interpreterOrTranslator: intake.languagePreference?.interpreterName,
-      personWhoTyped: "UDC entrepreneur",
+      personWhoTyped: me ? `${me.name} (${me.operatorId})` : "UDC entrepreneur",
       method: "human_interpreter",
     });
     const next = AssistedIntakeService.recordTranslation(intake, t);
     setIntake(next);
+    UdcDoor.syncTranslation(next.temporaryId, field, original, translated, intake.languagePreference?.interpreterName);
     setTranscript((prev) => [...prev, t]);
   }
 
-  async function captureDoc(checklistItemId: string, label: string) {
+  async function captureDoc(checklistItemId: string, label: string, file: File | undefined) {
+    if (!file) return;
     const capture = DocumentCaptureService.capture({
       applicationOrDraftId: intake.temporaryId,
       checklistItemId,
-      capturedBy: "UDC entrepreneur",
+      capturedBy: me ? `${me.name} (${me.operatorId})` : "UDC entrepreneur",
       documentType: { bn: label, en: label },
       pageCount: 1,
-      bytes: 28_000,
-      compressed: true,
+      bytes: file.size,
+      compressed: false,
       pageOrder: [1],
       sensitivity: "restricted",
     });
-    const findings = DocumentQualityService.evaluate(capture, { blur: true });
+    // Quality finding comes from the operator's own check, not a canned result.
+    const findings = DocumentQualityService.evaluate(capture, { blur: docUnreadable });
     const updated = DocumentCaptureService.attachQuality(capture, findings);
     const confirmed = DocumentCaptureService.confirmByApplicant(updated);
     const next = AssistedIntakeService.attachDocument(intake, confirmed);
     setIntake(next);
+    UdcDoor.syncDocument(next.temporaryId, confirmed, { name: file.name, type: file.type });
   }
 
   function setItem(itemId: string, state: ChecklistItemState) {
@@ -183,11 +196,30 @@ function UdcIntakeWorkspaceBody({
   function acknowledgeFreeNotice() {
     const next = AssistedIntakeService.acknowledgeFreeServiceNotice(intake);
     setIntake(next);
+    UdcDoor.syncConsents(next.temporaryId, next.consents, true);
   }
 
   async function saveAndQueue() {
     const authz = UdcAuthorizationService.authorize("submission.queue");
     if (!authz.allowed) return;
+    // Submit to the shared record FIRST so the offline sync reuses the same Application ID.
+    UdcDoor.submit(intake.temporaryId, {
+      temporaryId: intake.temporaryId,
+      operatorId: me?.operatorId ?? "udc-unknown",
+      centre: me?.centre ?? "",
+      applicantName: intake.applicantName,
+      district: intake.district,
+      matterType: intake.matterType,
+      primaryLanguage: intake.languagePreference?.primary ?? "bn",
+      interpreterName: intake.languagePreference?.interpreterName ?? "",
+      contactKind: intake.applicantContact?.kind ?? "no_safe_phone",
+      contactValue: intake.applicantContact?.value ?? "",
+      safeTime: null,
+      summaryOriginal: "",
+      summaryBangla: "",
+      freeNoticeAck: intake.freeServiceNoticeAcknowledged,
+      lang,
+    });
     const draft = await AssistedIntakeService.saveAndQueue(intake);
     setDraftStatus(draft.syncStatus);
   }
@@ -271,19 +303,33 @@ function UdcIntakeWorkspaceBody({
                 ? "প্রতিটি ক্ষেত্রের অনুবাদ নিচের চেইনে যোগ হবে।"
                 : "Translations are added to the chain below as you record them."}
             </p>
+            <div className={styles.fieldGrid}>
+              <label htmlFor="tr-field">{lang === "bn" ? "ক্ষেত্র" : "Field"}</label>
+              <select id="tr-field" value={trField} onChange={(e) => setTrField(e.target.value)}>
+                <option value="applicant_name">{lang === "bn" ? "আবেদনকারীর নাম" : "Applicant name"}</option>
+                <option value="problem">{lang === "bn" ? "সমস্যার বিবরণ" : "Problem description"}</option>
+                <option value="incident_date">{lang === "bn" ? "ঘটনার তারিখ" : "Incident date"}</option>
+              </select>
+              <span></span>
+              <label htmlFor="tr-orig">{lang === "bn" ? "মূল কথা (আবেদনকারী যা বলেছেন)" : "Original (as the applicant said it)"}</label>
+              <input id="tr-orig" type="text" value={trOriginal} onChange={(e) => setTrOriginal(e.target.value)} />
+              <span></span>
+              <label htmlFor="tr-bn">{lang === "bn" ? "বাংলা অনুবাদ" : "Bangla translation"}</label>
+              <input id="tr-bn" type="text" value={trTranslated} onChange={(e) => setTrTranslated(e.target.value)} />
+              <span></span>
+            </div>
             <div className={styles.btnRow}>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() =>
-                  recordTranslation(
-                    "applicant_name",
-                    "Nuching Marma (Marma)",
-                    "নুচিং মারমা",
-                  )
-                }
+                disabled={!trOriginal.trim() || !trTranslated.trim()}
+                onClick={() => {
+                  recordTranslation(trField, trOriginal.trim(), trTranslated.trim());
+                  setTrOriginal("");
+                  setTrTranslated("");
+                }}
               >
-                {lang === "bn" ? "নাম রেকর্ড করুন (দোভাষী)" : "Record name (interpreter)"}
+                {lang === "bn" ? "অনুবাদ রেকর্ড করুন (দোভাষী)" : "Record translation (interpreter)"}
               </button>
             </div>
           </div>
@@ -442,18 +488,25 @@ function UdcIntakeWorkspaceBody({
           <div className={styles.sectionHead}>
             <h2>{lang === "bn" ? "নথি ক্যাপচার" : "Document capture"}</h2>
           </div>
+          <label className={styles.bannerInfo} style={{ display: "flex", gap: "var(--s-2)", alignItems: "center" }}>
+            <input type="checkbox" checked={docUnreadable} onChange={(e) => setDocUnreadable(e.target.checked)} />
+            {lang === "bn" ? "ছবি অস্পষ্ট / পড়া যায় না (পরবর্তী ক্যাপচারে প্রযোজ্য)" : "Photo is blurred / unreadable (applies to the next capture)"}
+          </label>
           <div className={styles.btnRow}>
             {checklist.items.map((item: ChecklistItem) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`${styles.btn} ${styles.btnSm}`}
-                onClick={() =>
-                  captureDoc(item.id, lang === "bn" ? item.label.bn : item.label.en)
-                }
-              >
+              <label key={item.id} className={`${styles.btn} ${styles.btnSm}`}>
                 + {lang === "bn" ? item.label.bn : item.label.en}
-              </button>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  hidden
+                  onChange={(e) => {
+                    void captureDoc(item.id, lang === "bn" ? item.label.bn : item.label.en, e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             ))}
           </div>
           <div className={styles.docsList}>
@@ -465,12 +518,7 @@ function UdcIntakeWorkspaceBody({
               intake.documentCaptureIds.map((id) => (
                 <div key={id} className={styles.docCard}>
                   <strong>{id}</strong>
-                  <span>{lang === "bn" ? "ব্লকিং সমস্যা নেই — সতর্কতা রিভিউ করুন" : "No blockers — review warnings"}</span>
-                  <ul className={styles.docFindings}>
-                    <li className={styles.docFindingWarn}>
-                      {lang === "bn" ? "ছবি ঝাপসা — ধরন: সতর্কতা" : "Blur detected — severity: warn"}
-                    </li>
-                  </ul>
+                  <DocFindings temporaryId={intake.temporaryId} captureId={id} />
                 </div>
               ))
             )}
@@ -511,6 +559,8 @@ function UdcIntakeWorkspaceBody({
             </li>
           </ul>
         </section>
+
+        <SharedRecordPanel temporaryId={intake.temporaryId} />
 
         {/* Save + queue + simulate network drop */}
         <section className={styles.section}>
@@ -575,6 +625,74 @@ function UdcIntakeWorkspaceBody({
           </Link>
         </section>
       </main>
+    </>
+  );
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Shared record (lib/dlas) for this draft — same JSON as every door.
+ * ------------------------------------------------------------------ */
+function SharedRecordPanel({ temporaryId }: { temporaryId: string }) {
+  const { lang } = useI18n();
+  const db = useDlasDb();
+  const session = db.sessions.filter((s) => s.meta.clientRef === temporaryId).slice(-1)[0];
+  const app = db.applications.find((a) => a.channel.clientRef === temporaryId);
+  const v = app?.validation ?? session?.lastValidation;
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHead}>
+        <h2>{lang === "bn" ? "শেয়ার্ড রেকর্ড" : "Shared record"}</h2>
+        <Link href={`/debug?id=${encodeURIComponent(app?.applicationId ?? session?.sessionId ?? "")}`} className={styles.cardLink}>
+          /debug →
+        </Link>
+      </div>
+      <ul className={styles.provenanceList}>
+        <li>
+          <span>session</span>
+          <span>{session?.sessionId ?? (lang === "bn" ? "জমার সময় তৈরি হবে" : "created on submit")}</span>
+        </li>
+        <li>
+          <span>step</span>
+          <span><strong>{session?.step ?? "—"}</strong></span>
+        </li>
+        <li>
+          <span>applicationId</span>
+          <span><strong>{app?.applicationId ?? "—"}</strong></span>
+        </li>
+        <li>
+          <span>safeTime</span>
+          <span>{SAFE_TIMES.find((t) => t.code === session?.draft.safeContact.safeTime)?.label[lang] ?? "—"}</span>
+        </li>
+        {v && !v.valid ? (
+          <li>
+            <span>{lang === "bn" ? "অনুপস্থিত" : "missing"}</span>
+            <span>{v.missing.join(", ")} → COMPLETE_MISSING_INFO</span>
+          </li>
+        ) : null}
+      </ul>
+    </section>
+  );
+}
+
+
+/** Quality findings for one captured document, read from the shared record. */
+function DocFindings({ temporaryId, captureId }: { temporaryId: string; captureId: string }) {
+  const { lang } = useI18n();
+  const db = useDlasDb();
+  const session = db.sessions.filter((x) => x.meta.clientRef === temporaryId).slice(-1)[0];
+  const doc = session?.draft.documents.find((d) => d.docId === `DOC-${captureId}`);
+  if (!doc) return null;
+  return (
+    <>
+      <span>
+        {doc.fileName ?? "—"} · {doc.sizeBytes ? `${Math.round(doc.sizeBytes / 1024)} KB` : "—"}
+      </span>
+      <ul className={styles.docFindings}>
+        <li className={doc.qualityNote ? styles.docFindingWarn : undefined}>
+          {doc.qualityNote ?? (lang === "bn" ? "অপারেটর: পড়া যায়" : "Operator: readable")}
+        </li>
+      </ul>
     </>
   );
 }

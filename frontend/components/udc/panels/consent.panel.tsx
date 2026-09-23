@@ -11,6 +11,7 @@ import {
 } from "@/lib/shakkho";
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
+import { UdcAuth } from "@/lib/dlas";
 import styles from "../udc.module.css";
 
 type ConsentVideo = {
@@ -148,7 +149,7 @@ export function UdcConsentPanel({
           topic,
           method: "video_consent_capture",
           language: lang === "bn" ? "bn" : "en",
-          explainedBy: "udc-001",
+          explainedBy: UdcAuth.current()?.operatorId ?? "udc-unknown",
           applicantResponse: "yes",
           note: {
             en: `Video consent capture · ${(blob.size / 1024).toFixed(0)} KB · ${(durationMs / 1000).toFixed(1)}s · ${blob.type}`,

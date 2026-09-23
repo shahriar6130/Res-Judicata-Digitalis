@@ -70,7 +70,7 @@
 }
 
 .tabActive .icon {
-  color: var(--sidebar-dark-accent);
+  color: var(--yellow);
 }
 
 .tabActive::before {
@@ -81,6 +81,6 @@
   transform: translateX(-50%);
   width: 24px;
   height: 3px;
-  background: var(--sidebar-dark-accent);
+  background: var(--yellow);
   border-radius: 0 0 2px 2px;
 }

@@ -21,6 +21,8 @@
   /* Type */
   /* --font-playfair and --font-bengali are injected by next/font in layout.tsx */
   --font-serif: var(--font-playfair), var(--font-bengali), Georgia, serif;
+  /* Monospace — JSON / ids in /debug and the live-record panels */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Type scale */
   --t-hero: 56px;

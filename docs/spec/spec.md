@@ -66,3 +66,17 @@ Successful prototype sign-in routes directly to the matching dashboard. For citi
 - [x] Colours and fonts come exclusively from shared tokens.
 - [x] Queue rows and evidence layouts stack without horizontal page overflow.
 - [x] Sign-in portals render visible, responsive law-mark imagery with vignette framing and grid overlay.
+
+## Step 1 — Access & Application (shared record)
+
+- Citizen portal `/`: sign up with name + mobile number; log in with the mobile number only (no password). The wizard is prefilled from the account and the session records `meta.citizenId`; the phone is still verified by OTP before submitting.
+- Citizen dashboard (home greeting, sidebar profile, My cases, case detail) shows the LOGGED-IN citizen and their own applications from `dlas.db.v1` (`lib/dlas/citizen-view.ts`): filed after login, or any door where the applicant/representative phone matches the account. No hard-coded citizen data remains: profile, cases, case detail, notifications (derived from own applications, open tasks, simulated SMS and complaints; "mark all read" stored on the account), unread badge and "My legal aid centre" (district office from the latest application; officer shown only once assigned) all read `dlas.db.v1`.
+- UDC portal `/portal/udc`: sign up with name + mobile + UDC centre + district; log in with the mobile only. `/dashboard/udc` requires a logged-in operator. The operator id/name/centre come from the account (no `udc-001`, no demo operator). UDC demo seed data (Nuching/Rangamati/Bandarban drafts, conflicts, measurements) and the Nuching jury-mode/demo pages were removed; the dashboard, applications list and sidebar show only the operator's own work from `dlas.db.v1` (+ live offline-queue status). Interpreter records and document captures are entered by the operator (real file, operator marks unreadable).
+- Four doors write ONE canonical JSON record through `IntakeGateway` (`frontend/lib/dlas/`):
+  - Citizen: "Lodge a complaint" = the 5-step intake wizard at `/dashboard/citizen#intake` (`#complaint` is an alias; the separate old complaint form was removed as redundant), via `CitizenDoor`. Step 1 now also asks for the district and verifies the mobile number by OTP (simulated SMS); step 5 requires a safe contact time. Family/neighbour filing records the filer as a representative.
+  - UDC: existing `/dashboard/udc/intake/new` → `/dashboard/udc/intake/[temporaryId]` (via `UdcDoor`). New intake adds district list, the problem in the applicant's words + Bangla translation, and a safe contact time. The workspace writes consents, interpreter records and document captures to the shared record, and "Save + queue" submits to it first so the offline sync reuses the same Application ID.
+  - Phones: `/device/ivr` (16699, simulated network + speech-to-text) and `/device/ussd` (*16699#, simulated gateway).
+- One validator for all doors (`lib/dlas/validate.ts`); every field carries provenance; every session and record carries `audit[]`. Application ID `APP-YYYY-NNNNN` is minted only by the gateway (helpline agent submit and UDC offline sync reuse it).
+- Submit opens human tasks (eligibility review, urgent safety review, document follow-up, missing info, representative call-back). Routing priority is advisory; `humanDecision` stays null.
+- `/debug` shows every session/application, its intake step and backbone stage, JSON, provenance, audit, tasks, messages and transcript; export/import/reset.
+- Storage is `localStorage["dlas.db.v1"]` (per browser). Full contract: `docs/architecture/DATA-CONTRACTS.md`.

@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/button";
 import { CaseDetail } from "@/components/case-detail";
-import { ComplaintModal } from "@/components/complaint-modal";
 import { AssistedIntake } from "@/components/assisted-intake";
 import { CoverageNavigator } from "@/components/coverage-navigator";
 import { HomeDashboard } from "@/components/home-dashboard";
 import { NotificationList } from "@/components/notification-list";
 import { OperationalRoleDashboard } from "@/components/operational-role-dashboard";
 import { UdcSection, type UdcTab } from "@/components/udc-section";
-import { listCitizenCases, type CitizenCaseSummary } from "@/lib/case-demo";
+import type { CitizenCaseSummary } from "@/lib/case-demo";
+import { useCitizenCases, useCurrentCitizen } from "@/lib/dlas/citizen-view";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { useDlaoInbox } from "@/lib/shakkho/bridges/dlao-inbox.bridge";
 import type { RoleId } from "@/lib/roles";
@@ -29,7 +31,7 @@ type DashboardProps = { role: RoleId };
 
 export function RoleDashboard({ role }: DashboardProps) {
   const { lang } = useI18n();
-  return role === "citizen" ? <CitizenDashboard /> :
+  return role === "citizen" ? <CitizenGate /> :
     role === "lawyer" ? <LawyerDashboard lang={lang} /> :
     role === "dlo" ? <OfficerDashboard lang={lang} /> :
     role === "admin" ? <AdminDashboard lang={lang} /> :
@@ -61,6 +63,32 @@ function State({ value }: { value: "verified" | "reported" | "pending" | "disput
   return <span className={`${styles.state} ${styles[value]}`}>{value.replace("_", " ")}</span>;
 }
 
+/** Citizen pages need a logged-in account; after logout they point back to sign-in. */
+function CitizenGate() {
+  const { lang } = useI18n();
+  const router = useRouter();
+  const me = useCurrentCitizen();
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+  if (!mounted) return null;
+  if (!me) {
+    return (
+      <div className={styles.page}>
+        <PageHeader
+          eyebrow={lang === "bn" ? "নাগরিক" : "Citizen"}
+          title={lang === "bn" ? "লগইন প্রয়োজন" : "Please log in"}
+          intro={lang === "bn" ? "আপনার আবেদন ও নোটিফিকেশন দেখতে মোবাইল নম্বর দিয়ে লগইন বা সাইন আপ করুন।" : "Log in or sign up with your mobile number to see your applications and notifications."}
+          action={
+            <Button onClick={() => router.push("/")}>
+              {lang === "bn" ? "লগইন / সাইন আপ →" : "Log in / sign up →"}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+  return <CitizenDashboard key={me.citizenId} />;
+}
+
 function CitizenDashboard() {
   // The citizen sidebar writes `window.location.hash`; this dashboard
   // mirrors it into state and renders exactly one panel. No tab strip;
@@ -70,8 +98,7 @@ function CitizenDashboard() {
   //   ""                  → home (default landing)
   //   #home               → home
   //   #notifications      → notification feed
-  //   #complaint          → complaint wizard
-  //   #intake             → assisted-intake wizard (new case)
+  //   #intake             → "Lodge a Complaint" wizard (assisted intake)
   //   #cases              → case list
   //   #cases/<id>         → case detail
   //   #udc                → UDC overview
@@ -79,11 +106,10 @@ function CitizenDashboard() {
   //   #udc/officer        → Legal aid officer
   //   #udc/contact        → Contact support
   const { lang, t } = useI18n();
-  const citizenCases = listCitizenCases();
+  const citizenCases = useCitizenCases();
   type Section =
     | "home"
     | "notifications"
-    | "complaint"
     | "intake"
     | "cases"
     | "udc";
@@ -95,10 +121,7 @@ function CitizenDashboard() {
     function sync() {
       const raw = window.location.hash.replace(/^#/, "");
       const [head, rest] = raw.split("/");
-      if (head === "complaint") {
-        setSection("complaint");
-        setActiveCaseId(null);
-      } else if (head === "intake") {
+      if (head === "intake") {
         setSection("intake");
         setActiveCaseId(null);
       } else if (head === "udc") {
@@ -144,23 +167,12 @@ function CitizenDashboard() {
         <NotificationList key="notifications" />
       ) : null}
 
-      {section === "complaint" ? (
-        <section
-          id="complaint"
-          key="complaint"
-          role="region"
-          aria-label={t("navLodgeComplaint")}
-        >
-          <ComplaintModal />
-        </section>
-      ) : null}
-
       {section === "intake" ? (
         <section
           id="intake"
           key="intake"
           role="region"
-          aria-label={t("navIntake")}
+          aria-label={t("navLodgeComplaint")}
         >
           <AssistedIntake />
         </section>

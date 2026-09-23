@@ -1,7 +1,8 @@
+import { DISTRICTS, useCurrentUdcOperator } from "./dlas";
 /* ------------------------------------------------------------------ *
  *  UDC entrepreneur profile — surfaced at the bottom of the sidebar.
  *
- *  Hardcoded for the prototype. The image is an inline SVG avatar so
+ *  Built from the logged-in operator account (lib/dlas/udc-auth.ts). The image is an inline SVG avatar so
  *  no external request is required.
  * ------------------------------------------------------------------ */
 
@@ -35,17 +36,41 @@ function buildAvatarSvg(initials: string, bg: string, fg: string): string {
   </svg>`;
 }
 
-export const UDC_PROFILE: UdcProfile = {
-  nameBn: "মোঃ রহমান",
-  nameEn: "Md. Rahman",
-  roleBn: "UDC উদ্যোক্তা",
-  roleEn: "UDC entrepreneur",
-  initials: "MR",
-  officeBn: "খাগড়াছড়ি সদর হাব",
-  officeEn: "Khagrachari Sadar Hub",
-  avatarSvg: buildAvatarSvg("MR", "#0b6cb8", "#1a1a1a"),
-};
-
+/**
+ * The logged-in UDC operator (sign-up: name + phone + centre + district,
+ * lib/dlas/udc-auth.ts). Neutral placeholder when nobody is logged in —
+ * never an invented person.
+ */
 export function useUdcProfile(): UdcProfile {
-  return UDC_PROFILE;
+  const me = useCurrentUdcOperator();
+  if (!me) {
+    return {
+      nameBn: "লগইন করা হয়নি",
+      nameEn: "Not logged in",
+      roleBn: "UDC উদ্যোক্তা",
+      roleEn: "UDC entrepreneur",
+      initials: "U",
+      officeBn: "—",
+      officeEn: "—",
+      avatarSvg: buildAvatarSvg("U", "#0b6cb8", "#1a1a1a"),
+    };
+  }
+  const initials =
+    me.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "U";
+  const d = DISTRICTS.find((x) => x.code === me.district);
+  return {
+    nameBn: me.name,
+    nameEn: me.name,
+    roleBn: "UDC উদ্যোক্তা",
+    roleEn: "UDC entrepreneur",
+    initials,
+    officeBn: `${me.centre}${d ? `, ${d.label.bn}` : ""}`,
+    officeEn: `${me.centre}${d ? `, ${d.label.en}` : ""}`,
+    avatarSvg: buildAvatarSvg(initials, "#0b6cb8", "#1a1a1a"),
+  };
 }

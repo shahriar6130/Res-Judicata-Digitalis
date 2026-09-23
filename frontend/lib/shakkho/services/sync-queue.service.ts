@@ -25,6 +25,8 @@ import {
 } from "./offline-store.service";
 import { IntegrityVerificationService } from "./integrity-verification.service";
 import { NetworkConditionService } from "./network-condition.service";
+import { IntakeGateway } from "../../dlas/gateway";
+import { ingestUdcOfflineDraft } from "../../dlas/legacy-bridge";
 import type {
   IdempotencyRecord,
   IntegrityVerification,
@@ -101,9 +103,22 @@ export const SimulatedDlasServer = {
       return { receipt, duplicate: true };
     }
 
+    // One Application ID for the whole system: if the UDC workspace already
+    // submitted this draft to the shared record (lib/dlas), reuse that ID.
+    // "OFF-NEW-*" drafts are the new-intake page's keystroke auto-saves:
+    // they are stored, but never get an Application ID of their own.
+    const autosaveScratch = draft.temporaryId.startsWith("OFF-NEW-");
+    let canonicalId: string | null = null;
+    try {
+      canonicalId =
+        IntakeGateway.applicationIdForClientRef(draft.temporaryId) ??
+        (autosaveScratch ? null : ingestUdcOfflineDraft(draft.temporaryId, draft.payload));
+    } catch {
+      canonicalId = null;
+    }
     const entry: ServerEntry = {
       temporaryId: draft.temporaryId,
-      authoritativeApplicationId: nextAuthoritativeId(),
+      authoritativeApplicationId: canonicalId ?? (autosaveScratch ? "" : nextAuthoritativeId()),
       payloadDigest,
       receivedAt: new Date().toISOString(),
       payload: draft.payload,

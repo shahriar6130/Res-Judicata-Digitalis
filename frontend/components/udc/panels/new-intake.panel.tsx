@@ -16,20 +16,28 @@ import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import { useNetwork } from "../primitives/use-network";
 import styles from "../udc.module.css";
+import Link from "next/link";
+import { DISTRICTS, SAFE_TIMES, UdcAuth, UdcDoor, type SafeTime } from "@/lib/dlas";
 
 export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
   const { lang } = useI18n();
   const router = useRouter();
   const net = useNetwork();
 
+  // No demo defaults: district starts from the logged-in operator's own district.
+  const operator = typeof window !== "undefined" ? UdcAuth.current() : undefined;
   const [applicantName, setApplicantName] = useState("");
-  const [district, setDistrict] = useState("খাগড়াছড়ি");
-  const [matterType, setMatterType] = useState("land");
-  const [primary, setPrimary] = useState<LanguageCode>("marma");
-  const [interpreterName, setInterpreterName] = useState("উচাই মারমা");
-  const [contactKind, setContactKind] = useState<ApplicantContactRouteKind>("trusted_contact");
-  const [contactValue, setContactValue] = useState("+8801XXXXXXXXX");
+  const [district, setDistrict] = useState(() => DISTRICTS.find((d) => d.code === operator?.district)?.label.bn ?? "");
+  const [matterType, setMatterType] = useState("");
+  const [primary, setPrimary] = useState<LanguageCode>("bn");
+  const [interpreterName, setInterpreterName] = useState("");
+  const [contactKind, setContactKind] = useState<ApplicantContactRouteKind>("applicant_controlled_phone");
+  const [contactValue, setContactValue] = useState("");
   const [freeNoticeAck, setFreeNoticeAck] = useState(false);
+  // Shared-record fields (same as every other door — lib/dlas/validate.ts)
+  const [summaryOriginal, setSummaryOriginal] = useState("");
+  const [summaryBangla, setSummaryBangla] = useState("");
+  const [safeTime, setSafeTime] = useState<SafeTime | "">("");
 
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "syncing" | "synced" | "error">("idle");
   const [autoSaveAt, setAutoSaveAt] = useState<string>("");
@@ -134,7 +142,7 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
   async function start() {
     if (!applicantName.trim()) return;
     const intake = AssistedIntakeService.start({
-      udcEntrepreneurId: "udc-001",
+      udcEntrepreneurId: operator?.operatorId ?? "udc-unknown",
       applicantName,
       district,
       matterType,
@@ -147,9 +155,31 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
       applicantContact: {
         kind: contactKind,
         value: contactValue,
-        safeWindow: { bn: "বিকাল ৩-৫টা", en: "3-5 PM" },
+        safeWindow: SAFE_TIMES.find((t) => t.code === safeTime)?.label ?? { bn: "—", en: "—" },
       },
     });
+    // Open the shared-record session for this draft (visible in /debug at every step).
+    try {
+      UdcDoor.start({
+        temporaryId: intake.temporaryId,
+        operatorId: operator?.operatorId ?? "udc-unknown",
+        centre: operator?.centre ?? "",
+        applicantName,
+        district,
+        matterType,
+        primaryLanguage: primary,
+        interpreterName,
+        contactKind,
+        contactValue,
+        safeTime: safeTime || null,
+        summaryOriginal,
+        summaryBangla,
+        freeNoticeAck,
+        lang,
+      });
+    } catch {
+      /* storage failure — the workspace will retry on submit */
+    }
     router.push(`/dashboard/${role}/intake/${intake.temporaryId}`);
   }
 
@@ -217,17 +247,25 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
               type="text"
               value={applicantName}
               onChange={(e) => { setApplicantName(e.target.value); void autoSaveField({ applicant_name: e.target.value }); }}
-              placeholder={lang === "bn" ? "যেমন: নুচিং মারমা" : "e.g. Nuching Marma"}
+              placeholder={lang === "bn" ? "আবেদনকারীর পুরো নাম" : "Applicant's full name"}
               className={autoSaveState === "saved" || autoSaveState === "synced" ? styles.fieldSaved : ""}
             />
             <small style={{ color: "var(--gray)" }}>{lang === "bn" ? "প্রতিটি অক্ষর অটো-সেভ হয়" : "Every keystroke auto-saves"}</small>
 
             <label htmlFor="ni-district">{lang === "bn" ? "জেলা" : "District"}</label>
-            <input id="ni-district" type="text" value={district} onChange={(e) => { setDistrict(e.target.value); void autoSaveField({ district: e.target.value }); }} />
+            <select id="ni-district" value={district} onChange={(e) => { setDistrict(e.target.value); void autoSaveField({ district: e.target.value }); }}>
+              <option value="">{lang === "bn" ? "বাছাই করুন" : "Select"}</option>
+              {DISTRICTS.map((d) => (
+                <option key={d.code} value={d.label.bn}>
+                  {d.label[lang]}
+                </option>
+              ))}
+            </select>
             <span></span>
 
             <label htmlFor="ni-matter">{lang === "bn" ? "মামলার ধরন" : "Matter type"}</label>
             <select id="ni-matter" value={matterType} onChange={(e) => { setMatterType(e.target.value); void autoSaveField({ matter_type: e.target.value }); }}>
+              <option value="">{lang === "bn" ? "বাছাই করুন" : "Select"}</option>
               <option value="family">Family</option>
               <option value="land">Land</option>
               <option value="labour">Labour</option>
@@ -270,6 +308,25 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
             <input id="ni-value" type="text" value={contactValue} onChange={(e) => { setContactValue(e.target.value); void autoSaveField({ contact_value: e.target.value }); }} />
             <span></span>
 
+            <label htmlFor="ni-sumo">{lang === "bn" ? "সমস্যা — আবেদনকারীর নিজের কথা (মূল ভাষা)" : "Problem — applicant's own words (original language)"}</label>
+            <textarea id="ni-sumo" rows={3} value={summaryOriginal} onChange={(e) => setSummaryOriginal(e.target.value)} />
+            <span></span>
+
+            <label htmlFor="ni-sumb">{lang === "bn" ? "সমস্যা — বাংলা অনুবাদ (দোভাষী/অপারেটর)" : "Problem — Bangla translation (interpreter/operator)"}</label>
+            <textarea id="ni-sumb" rows={3} value={summaryBangla} onChange={(e) => setSummaryBangla(e.target.value)} />
+            <span></span>
+
+            <label htmlFor="ni-safe">{lang === "bn" ? "নিরাপদ যোগাযোগের সময়" : "Safe contact time"}</label>
+            <select id="ni-safe" value={safeTime} onChange={(e) => setSafeTime(e.target.value as SafeTime | "")}>
+              <option value="">{lang === "bn" ? "বাছাই করুন" : "Select"}</option>
+              {SAFE_TIMES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.label[lang]}
+                </option>
+              ))}
+            </select>
+            <span></span>
+
             <label htmlFor="ni-free">
               {lang === "bn" ? "ফ্রি-সার্ভিস নোটিশ পড়া ও বোঝানো হয়েছে" : "Free-service notice read + explained"}
             </label>
@@ -297,10 +354,13 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
               type="button"
               className={`${styles.btn} ${styles.btnPrimary}`}
               onClick={start}
-              disabled={!applicantName.trim()}
+              disabled={!applicantName.trim() || !matterType || !district}
             >
               {lang === "bn" ? "ইনটেক শুরু করুন" : "Start intake"}
             </button>
+            <Link href="/debug" className={styles.btn}>
+              /debug
+            </Link>
             <button
               type="button"
               className={styles.btn}

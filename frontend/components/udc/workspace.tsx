@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useHelplineStore } from "@/lib/shakkho";
 import { NetworkBar } from "./primitives/network-bar";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useI18n } from "@/lib/i18n";
@@ -17,16 +16,16 @@ import { UdcClarificationTasksPanel } from "./panels/clarification-tasks.panel";
 import { UdcHistoryPanel } from "./panels/history.panel";
 import { UdcDeviceAndCachePanel } from "./panels/device-and-cache.panel";
 import { UdcPerformancePanel } from "./panels/performance.panel";
-import { UdcJuryModePanel } from "./panels/jury-mode.panel";
 import { UdcApplicationsPanel } from "./panels/applications.panel";
 import { UdcStatusVisitPanel } from "./panels/status-visit.panel";
 import { UdcLetterAccessPanel } from "./panels/letter-access.panel";
 import { UdcTranslationPanel } from "./panels/translation.panel";
 import styles from "./udc.module.css";
+import Link from "next/link";
+import { useCurrentUdcOperator } from "@/lib/dlas";
 
 export function UdcWorkspace({ role = "udc" }: { role?: string }) {
   const { lang } = useI18n();
-  const envelope = useHelplineStore();
   const [view, setView] = useState(() => parseView(typeof window !== "undefined" ? window.location.hash : ""));
   const [params, setParams] = useState<Record<string, string>>(() =>
     parseParams(typeof window !== "undefined" ? window.location.hash : ""),
@@ -85,7 +84,23 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
     };
   }, []);
 
+  const operator = useCurrentUdcOperator();
+
   function renderPanel() {
+    // Every UDC screen works for the logged-in operator only.
+    if (!operator) {
+      return (
+        <main id="udc-main" className={styles.page}>
+          <h1 className={styles.pageTitle}>{lang === "bn" ? "ইউডিসি লগইন প্রয়োজন" : "UDC login required"}</h1>
+          <p className={styles.bannerInfo}>
+            {lang === "bn" ? "সহায়তাপ্রাপ্ত আবেদন শুরু করতে আগে লগইন বা সাইন আপ করুন।" : "Log in or sign up before starting assisted applications."}{" "}
+            <Link href="/portal/udc" className={styles.cardLink}>
+              {lang === "bn" ? "লগইন / সাইন আপ →" : "Log in / sign up →"}
+            </Link>
+          </p>
+        </main>
+      );
+    }
     if (view === "intake-new") {
       return <UdcNewIntakePanel role={role} />;
     }
@@ -118,9 +133,6 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
     }
     if (view === "performance") {
       return <UdcPerformancePanel />;
-    }
-    if (view === "jury-mode") {
-      return <UdcJuryModePanel role={role} envelope={envelope} />;
     }
     if (view === "applications") {
       return <UdcApplicationsPanel role={role} />;

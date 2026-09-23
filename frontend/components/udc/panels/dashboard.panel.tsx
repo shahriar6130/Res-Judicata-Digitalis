@@ -14,6 +14,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import styles from "../udc.module.css";
+import { useCurrentUdcOperator, useDlasDb, label, MATTERS } from "@/lib/dlas";
 
 const STATUS_PILL: Record<OfflineDraft["syncStatus"], string> = {
   local_draft: styles.statusPillOffline,
@@ -32,6 +33,13 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
   const { lang } = useI18n();
   const envelope = useHelplineStore();
   const offline = useOfflineStore();
+  const me = useCurrentUdcOperator();
+  const db = useDlasDb();
+  // Everything below is this operator's own work in the shared record.
+  const mySessions = db.sessions.filter((s) => s.channel === "UDC_ASSISTED" && s.meta.operatorId === me?.operatorId);
+  const myApps = db.applications.filter((a) => a.channel.code === "UDC_ASSISTED" && a.data.filedBy.operatorId === me?.operatorId);
+  const myOpenTasks = db.tasks.filter((t) => t.status !== "DONE" && myApps.some((a) => a.applicationId === t.applicationId));
+  const latestTemp = [...mySessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.meta.clientRef;
 
   useEffect(() => {
     ensureSeeded();
@@ -78,8 +86,8 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
           </h1>
           <p className={styles.pageIntro}>
             {lang === "bn"
-              ? "নুচিং মারমা সহায়-গ্রহণযোগ্য অন-অফলাইন সেবা — সবকিছু একই DLAS রেকর্ডে সংরক্ষিত।"
-              : "Assisted intake for Nuching Marma and others — on- and offline — all stored in the same DLAS record."}
+              ? `${me ? `${me.name} · ${me.centre}` : "লগইন করা হয়নি"} — সহায়-গ্রহণযোগ্য অন-অফলাইন আবেদন, সবকিছু একই DLAS রেকর্ডে।`
+              : `${me ? `${me.name} · ${me.centre}` : "Not logged in"} — assisted applications on- and offline, all in the same DLAS record.`}
           </p>
         </header>
 
@@ -101,6 +109,39 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
             <strong>{counts.conflict + conflicts.filter((c) => !c.resolution).length}</strong>
             <span>{lang === "bn" ? "পর্যালোচনা প্রয়োজন" : "Needs review"}</span>
           </div>
+          <div>
+            <strong>{myApps.length}</strong>
+            <span>{lang === "bn" ? "জমা দেওয়া আবেদন" : "Applications submitted"}</span>
+          </div>
+          <div>
+            <strong>{myOpenTasks.length}</strong>
+            <span>{lang === "bn" ? "চলমান কাজ (DLAO)" : "Open follow-ups (DLAO)"}</span>
+          </div>
+        </section>
+
+        {/* This operator's applications in the shared record */}
+        <section className={styles.section}>
+          <div className={styles.sectionHead}>
+            <h2>{lang === "bn" ? "আমার জমা দেওয়া আবেদন" : "My submitted applications"}</h2>
+            <Link href="/debug" className={styles.cardLink}>/debug →</Link>
+          </div>
+          {myApps.length === 0 ? (
+            <p className={styles.bannerInfo}>{lang === "bn" ? "এখনো কোনো আবেদন জমা হয়নি।" : "No applications submitted yet."}</p>
+          ) : (
+            <ul className={styles.queueList}>
+              {[...myApps].reverse().map((a) => (
+                <li key={a.applicationId} className={styles.queueRow}>
+                  <strong>{a.applicationId}</strong>
+                  <span>
+                    {a.data.applicant.fullName ?? "—"} · {label(MATTERS, a.data.matter.category, lang)}
+                    {a.validation.valid ? "" : lang === "bn" ? " · তথ্য অসম্পূর্ণ" : " · info missing"}
+                  </span>
+                  <span className={`${styles.statusPill} ${styles.statusPillSynced}`}>{a.status}</span>
+                  <Link href={`/debug?id=${a.applicationId}`}>Open</Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* 9 operational cards */}
@@ -130,7 +171,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 ? "৮টি বিষয়ের সম্মতি — মৌখিক রিডব্যাক, প্রত্যক্ষ অ্যাকশন, বা সাক্ষীসহ নিশ্চিত।"
                 : "8 consent topics — oral read-back, direct action, or witnessed confirmation."
             }
-            href={`/dashboard/${role}/device-and-cache`}
+            href={latestTemp ? `/dashboard/${role}/intake/${latestTemp}/consent` : `/dashboard/${role}/intake/new`}
           />
           <Card
             title={lang === "bn" ? "নথি ক্যাপচার ও মান পরীক্ষা" : "Document capture + quality"}
@@ -139,7 +180,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 ? "১০টি মান-পরীক্ষা কোড — ব্লকিং সমস্যা হলে আবার তোলা আবশ্যক।"
                 : "10 quality codes — blocking issues must be retaken before upload."
             }
-            href={`/dashboard/${role}/intake/OFF-NUCH-01/documents`}
+            href={latestTemp ? `/dashboard/${role}/intake/${latestTemp}/documents` : `/dashboard/${role}/intake/new`}
           />
           <Card
             title={lang === "bn" ? "অনুবাদ প্রোভেন্যান্স" : "Translation provenance"}
@@ -148,7 +189,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
                 ? "প্রতিটি ক্ষেত্রে বক্তা, অনুবাদক, টাইপকারী ও নিশ্চিতকারীর চেইন।"
                 : "Chain of speaker, interpreter, typist, and confirmer for every field."
             }
-            href={`/dashboard/${role}/intake/OFF-NUCH-01`}
+            href={latestTemp ? `/dashboard/${role}/intake/${latestTemp}` : `/dashboard/${role}/intake/new`}
           />
           <Card
             title={lang === "bn" ? "সিঙ্ক সেন্টার" : "Sync centre"}
@@ -182,7 +223,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
             href={`/dashboard/${role}/applications`}
           />
           <Card
-            title={lang === "bn" ? "নির্ধারিত ৪:০০ পরিদর্শন" : "Scheduled 4 PM visit"}
+            title={lang === "bn" ? "আবেদনকারীর অবস্থা-জানার পরিদর্শন" : "Applicant status visit"}
             desc={
               lang === "bn"
                 ? "আবেদনকারী উপস্থিতিতে APPLICANT_ASSISTED_VIEW সেশন শুরু করুন।"

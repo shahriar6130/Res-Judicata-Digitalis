@@ -2,26 +2,26 @@
 
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useHashRoute } from "@/lib/use-hash-route";
-import { Building, FileText, HelpingHand, Home, Play } from "@/components/icons";
+import { Building, FileText, HelpingHand, Home } from "@/components/icons";
 import styles from "./bottom-nav.module.css";
 
 /* ------------------------------------------------------------------ *
  *  BottomNav — mobile-only navigation for the citizen role.
- *  Five tabs (Home / Lodge / Intake / Cases / UDC) fixed to the bottom edge.
+ *  Four tabs (Home / Lodge / Cases / UDC) fixed to the bottom edge.
  *  Active tab is derived from the URL hash so the sidebar's hash
- *  writes stay in sync without prop drilling.
+ *  writes stay in sync without prop drilling. "Lodge a Complaint"
+ *  points at #intake — there's only one citizen-facing wizard now.
  * ------------------------------------------------------------------ */
 
-type TabKey = "home" | "complaint" | "intake" | "cases" | "udc";
+type TabKey = "home" | "intake" | "cases" | "udc";
 
 function tabActive(tab: TabKey, current: string): boolean {
   switch (tab) {
     case "home":
       return current === "home" || current === "";
-    case "complaint":
-      return current === "complaint";
     case "intake":
-      return current === "intake";
+      // Backward-compatible: legacy #complaint hashes still highlight the tab.
+      return current === "intake" || current === "complaint";
     case "cases":
       return current === "cases" || current.startsWith("cases/");
     case "udc":
@@ -39,8 +39,7 @@ export function BottomNav({ role }: { role: string }) {
 
   const tabs: { key: TabKey; labelKey: MessageKey; icon: React.ReactNode; hash: string }[] = [
     { key: "home", labelKey: "bottomNavHome", icon: <Home size={22} />, hash: "home" },
-    { key: "complaint", labelKey: "bottomNavLodge", icon: <HelpingHand size={22} />, hash: "complaint" },
-    { key: "intake", labelKey: "navIntake", icon: <Play size={22} />, hash: "intake" },
+    { key: "intake", labelKey: "navLodgeComplaint", icon: <HelpingHand size={22} />, hash: "intake" },
     { key: "cases", labelKey: "bottomNavCases", icon: <FileText size={22} />, hash: "cases" },
     { key: "udc", labelKey: "bottomNavUdc", icon: <Building size={22} />, hash: "udc" },
   ];

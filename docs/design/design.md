@@ -77,3 +77,10 @@ live message, court record, or backend mutation occurred.
 At tablet width, two-column content becomes one column and queue rows become stacked records. At
 mobile width, page padding reduces to 16px, actions fill the available width, evidence comparisons
 stack, and wide content never causes horizontal page scrolling.
+
+## /device (IVR, USSD) and /debug
+
+- Styles: `frontend/components/dlas/dlas.module.css`, tokens only. New token `--font-mono` (JSON and ids).
+- /device pages show a step trail, the handset, and a right-hand **Live record** panel with the JSON being written. The citizen wizard and UDC screens keep their own design; UDC workspace gains a "Shared record" section.
+- Simulated external services (SMS gateway, telephone network, speech-to-text, USSD gateway) always carry a dashed "Simulated" tag.
+- IVR and USSD are rendered as a dark handset; prompts, keypad and transcript are bilingual (Bangla default).

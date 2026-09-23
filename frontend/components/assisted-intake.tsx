@@ -18,23 +18,15 @@ import {
   Clock,
   FileText,
   HelpingHand,
-  Lock,
   Mic,
   MicOff,
-  Moon,
   Shield,
   User,
   Users,
   X,
 } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
-import { useMockVoice, type VoiceStatus } from "@/lib/useMockVoice";
-import {
-  DESCRIPTIONS,
-  NAMES,
-  PHONES,
-  pickRandom,
-} from "@/lib/voice-demo";
+import { useSpeechInput, type VoiceStatus } from "@/lib/useSpeechInput";
 import {
   emptyDraft,
   enqueueSubmission,
@@ -52,6 +44,8 @@ import {
   type MatterCategory,
 } from "@/lib/intake-store";
 import styles from "./assisted-intake.module.css";
+import Link from "next/link";
+import { CitizenAuth, CitizenDoor, DAYS, DISTRICTS, normalizePhone, useDlasDb } from "@/lib/dlas";
 
 /* ------------------------------------------------------------------ *
  *  Assisted Intake — 5-step wizard for starting a new case.
@@ -96,12 +90,7 @@ const MATTER_KEYS: readonly MatterCategory[] = [
   "other",
 ];
 
-const SLOT_KEYS: readonly ContactSlot[] = [
-  "friday_morning",
-  "while_at_work",
-  "evening",
-  "anytime",
-];
+const SLOT_KEYS: readonly ContactSlot[] = ["anytime", "custom"];
 
 function matterTitleKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
   switch (k) {
@@ -136,35 +125,30 @@ function matterSubKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
   }
 }
 
-function slotTitleKey(k: ContactSlot): import("@/lib/i18n").MessageKey {
-  switch (k) {
-    case "friday_morning": return "slot1Title";
-    case "while_at_work": return "slot2Title";
-    case "evening": return "slot3Title";
-    case "anytime": return "slot4Title";
-  }
+/** Label for the two safe-contact choices: "any time" or a day + time. */
+function slotText(k: ContactSlot, t: (k: import("@/lib/i18n").MessageKey) => string, lang: "bn" | "en"): { title: string; sub: string } {
+  if (k === "anytime") return { title: t("slot4Title"), sub: t("slot4Sub") };
+  return {
+    title: lang === "bn" ? "নির্দিষ্ট দিন ও সময়" : "A specific day and time",
+    sub: lang === "bn" ? "যখন কথা বলা নিরাপদ, সেই দিন ও সময় লিখুন" : "Enter the day and time when it is safe to talk",
+  };
 }
 
-function slotSubKey(k: ContactSlot): import("@/lib/i18n").MessageKey {
-  switch (k) {
-    case "friday_morning": return "slot1Sub";
-    case "while_at_work": return "slot2Sub";
-    case "evening": return "slot3Sub";
-    case "anytime": return "slot4Sub";
+function slotSummary(d: IntakeDraft, t: (k: import("@/lib/i18n").MessageKey) => string, lang: "bn" | "en"): string | null {
+  if (d.contactSlot === "anytime") return t("slot4Title");
+  if (d.contactSlot === "custom") {
+    const day = DAYS.find((x) => x.code === d.contactDay)?.label[lang];
+    return day && d.contactTime ? `${day} ${d.contactTime}` : slotText("custom", t, lang).title;
   }
+  return null;
 }
 
 function SlotIcon({ k }: { k: ContactSlot }) {
-  switch (k) {
-    case "friday_morning": return <Calendar size={22} />;
-    case "while_at_work": return <Lock size={22} />;
-    case "evening": return <Moon size={22} />;
-    case "anytime": return <Clock size={22} />;
-  }
+  return k === "anytime" ? <Clock size={22} /> : <Calendar size={22} />;
 }
 
 /* ------------------------------------------------------------------ *
- *  Reused voice-mic affordance — mirrors complaint-modal so the
+ *  Reused voice-mic affordance — shared by the wizard steps so the
  *  citizen already knows how to use it.
  * ------------------------------------------------------------------ */
 
@@ -190,13 +174,13 @@ function VoiceMicButton({
       <span className={styles.micRing} aria-hidden />
       <span className={`${styles.micRing} ${styles.micRing2}`} aria-hidden />
       <span className={`${styles.micRing} ${styles.micRing3}`} aria-hidden />
-      {completed ? <Check size={28} /> : listening ? <MicOff size={28} /> : <Mic size={28} />}
+      {completed ? <Check size={20} /> : listening ? <MicOff size={20} /> : <Mic size={20} />}
     </button>
   );
 }
 
 function VoiceStatusRow({ status }: { status: VoiceStatus }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   let label = "";
   let variant: "" | "voiceStatusListening" | "voiceStatusProcessing" | "voiceStatusCompleted" = "";
   switch (status) {
@@ -211,6 +195,12 @@ function VoiceStatusRow({ status }: { status: VoiceStatus }) {
     case "completed":
       label = t("voiceDone");
       variant = "voiceStatusCompleted";
+      break;
+    case "unsupported":
+      label = lang === "bn" ? "এই ব্রাউজারে ভয়েস ইনপুট নেই — লিখে দিন" : "Voice input isn't available in this browser — please type";
+      break;
+    case "error":
+      label = lang === "bn" ? "শোনা যায়নি — আবার চেষ্টা করুন বা লিখে দিন" : "Couldn't hear you — try again or type";
       break;
     default:
       label = "";
@@ -240,7 +230,16 @@ export function AssistedIntake() {
      (only on the client) without firing the `set-state-in-effect`
      rule the project enforces. After mount we still listen for
      online/offline transitions and refresh the queue count. */
-  const [draft, setDraft] = useState<IntakeDraft>(() => loadDraft() ?? emptyDraft());
+  const [draft, setDraft] = useState<IntakeDraft>(() => {
+    const d = loadDraft() ?? emptyDraft();
+    // The filer is the logged-in account: name + phone always come from it.
+    // A draft saved by another account (or by the old demo voice samples)
+    // is discarded rather than shown.
+    const acct = typeof window !== "undefined" ? CitizenAuth.current() : undefined;
+    if (!acct) return d;
+    const base = d.ownerId === acct.citizenId ? d : emptyDraft();
+    return { ...base, ownerId: acct.citizenId, name: acct.name, phone: acct.phone };
+  });
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
   const [submittedOffline, setSubmittedOffline] = useState(false);
   const [storageFull, setStorageFull] = useState<boolean>(() => {
@@ -297,7 +296,7 @@ export function AssistedIntake() {
    *  complaint wizard so behaviour is identical and citizens learn
    *  it once. Real adapter can drop in later.
    * ------------------------------------------------------------- */
-  const descVoice = useMockVoice(() => pickRandom(DESCRIPTIONS), {
+  const descVoice = useSpeechInput(lang, {
     onComplete: (value) =>
       setDraft((d) => ({ ...d, description: value })),
   });
@@ -320,13 +319,36 @@ export function AssistedIntake() {
     () => validateStep(step, draft, t),
     [step, draft, t],
   );
-  const allValid = Object.keys(errors).length === 0;
+  // Shared-record requirements (same for every door): verified phone + district
+  // on step 1, a safe contact time on step 5. See lib/dlas/validate.ts.
+  const dlasDb = useDlasDb();
+  const citizenSession = CitizenDoor.current();
+  void dlasDb;
+  const phoneVerified =
+    !!citizenSession?.identity.verified &&
+    citizenSession.identity.phone === normalizePhone(draft.phone);
+  const extraErrors = useMemo(() => {
+    const e: string[] = [];
+    if (step === 1 && !draft.district) e.push(lang === "bn" ? "জেলা বাছাই করুন" : "Choose your district");
+    if (step === 1 && !phoneVerified) e.push(lang === "bn" ? "মোবাইল নম্বরটি কোড দিয়ে যাচাই করুন" : "Verify your mobile number with the code");
+    if (step === 5 && !draft.contactSlot) e.push(lang === "bn" ? "নিরাপদ যোগাযোগের সময় বাছাই করুন" : "Choose a safe contact time");
+    if (step === 5 && draft.contactSlot === "custom" && (!draft.contactDay || !draft.contactTime))
+      e.push(lang === "bn" ? "যোগাযোগের দিন ও সময় লিখুন" : "Enter the contact day and time");
+    return e;
+  }, [step, draft.district, draft.contactSlot, draft.contactDay, draft.contactTime, phoneVerified, lang]);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const allValid = Object.keys(errors).length === 0 && extraErrors.length === 0;
 
   /* ------------------------------------------------------------- *
    *  Navigation handlers.
    * ------------------------------------------------------------- */
   function handleNext() {
     if (!allValid) return;
+    try {
+      CitizenDoor.sync(draft, draft.district, step);
+    } catch {
+      /* storage failure is surfaced on submit */
+    }
     if (step < 5) setStep(((step + 1) as Step));
   }
   function handleBack() {
@@ -338,9 +360,23 @@ export function AssistedIntake() {
    *  success view. If we are online the queue will be flushed by
    *  the online event handler; otherwise it waits.
    * ------------------------------------------------------------- */
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!allValid) return;
-    const receipt = makeTempReceipt();
+    // One record for every door: the gateway validates, mints APP-YYYY-NNNNN,
+    // writes provenance + audit and opens the DLAO review task.
+    let receipt = makeTempReceipt();
+    try {
+      const r = await CitizenDoor.submit(draft, draft.district);
+      if (!r.ok) {
+        setSubmitErrors(r.validation.errors.map((e) => `${e.path} — ${e.message}`));
+        return;
+      }
+      receipt = r.record.applicationId;
+      setSubmitErrors([]);
+    } catch (e) {
+      setSubmitErrors([String(e)]);
+      return;
+    }
     const wasOnline = isOnline();
     const queue = enqueueSubmission({
       tempReceipt: receipt,
@@ -364,7 +400,8 @@ export function AssistedIntake() {
 
   function handleReset() {
     setStep(1);
-    setDraft(emptyDraft());
+    const acct = CitizenAuth.current();
+    setDraft(acct ? { ...emptyDraft(), ownerId: acct.citizenId, name: acct.name, phone: acct.phone } : emptyDraft());
     setSubmittedRef(null);
     setSubmittedOffline(false);
     setStorageFull(false);
@@ -407,11 +444,18 @@ export function AssistedIntake() {
           noValidate
         >
           {step === 1 ? (
-            <Step1Identity
-              draft={draft}
-              onChange={setField}
-              errors={errors}
-            />
+            <>
+              <Step1Identity
+                draft={draft}
+                onChange={setField}
+                errors={errors}
+              />
+              <CitizenIdentityCheck
+                draft={draft}
+                onDistrict={(v) => setField("district", v)}
+                verified={phoneVerified}
+              />
+            </>
           ) : null}
 
           {step === 2 ? (
@@ -460,6 +504,13 @@ export function AssistedIntake() {
             />
           ) : null}
 
+          {extraErrors.length || submitErrors.length ? (
+            <div className={styles.fieldError} role="alert" style={{ margin: "var(--s-3) 0" }}>
+              {[...extraErrors, ...submitErrors].map((m) => (
+                <div key={m}>• {m}</div>
+              ))}
+            </div>
+          ) : null}
           <WizardFooter
             step={step}
             onBack={handleBack}
@@ -513,7 +564,7 @@ function OfflineBanner({
 }
 
 /* ------------------------------------------------------------------ *
- *  Step progress strip (mirrors complaint-modal).
+ *  Step progress strip.
  * ------------------------------------------------------------------ */
 
 const STEPS: { id: Step; key: import("@/lib/i18n").MessageKey }[] = [
@@ -596,11 +647,11 @@ function Step1Identity({
   onChange: <K extends keyof IntakeDraft>(k: K, v: IntakeDraft[K]) => void;
   errors: StepErrors;
 }) {
-  const { t } = useI18n();
-  const nameVoice = useMockVoice(() => pickRandom(NAMES), {
+  const { t, lang } = useI18n();
+  const nameVoice = useSpeechInput(lang, {
     onComplete: (v) => onChange("name", v),
   });
-  const phoneVoice = useMockVoice(() => pickRandom(PHONES), {
+  const phoneVoice = useSpeechInput(lang, {
     onComplete: (v) => onChange("phone", v),
   });
 
@@ -710,7 +761,7 @@ function Step1Identity({
         </span>
       ) : null}
 
-      {draft.actingFor === "family" ? (
+      {draft.actingFor === "family" || draft.actingFor === "neighbor" ? (
         <div className={styles.proxyDisclosure}>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>{t("proxyRelLabel")}</span>
@@ -1080,7 +1131,7 @@ function Step5ContactConsent({
   errors: StepErrors;
   applicantLabel: string;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   return (
     <section className={styles.stepCard} aria-labelledby="ai-s5-title">
       <span className={styles.stepBadge}>০৫ · {t("intakeStep5Headline")}</span>
@@ -1116,8 +1167,8 @@ function Step5ContactConsent({
               <span className={styles.slotIcon} aria-hidden>
                 <SlotIcon k={key} />
               </span>
-              <p className={styles.slotTitle}>{t(slotTitleKey(key))}</p>
-              <p className={styles.slotSub}>{t(slotSubKey(key))}</p>
+              <p className={styles.slotTitle}>{slotText(key, t, lang).title}</p>
+              <p className={styles.slotSub}>{slotText(key, t, lang).sub}</p>
               <span className={styles.slotCheck} aria-hidden>
                 <Check size={14} />
               </span>
@@ -1125,6 +1176,35 @@ function Step5ContactConsent({
           );
         })}
       </div>
+
+      {draft.contactSlot === "custom" ? (
+        <div className={styles.proxyDisclosure}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>{lang === "bn" ? "দিন" : "Day"}</span>
+            <select
+              className={styles.textInput}
+              value={draft.contactDay}
+              onChange={(e) => onChange("contactDay", e.target.value as IntakeDraft["contactDay"])}
+            >
+              <option value="">{lang === "bn" ? "বাছাই করুন" : "Select"}</option>
+              {DAYS.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>{lang === "bn" ? "সময়" : "Time"}</span>
+            <input
+              className={styles.textInput}
+              type="time"
+              value={draft.contactTime}
+              onChange={(e) => onChange("contactTime", e.target.value)}
+            />
+          </label>
+        </div>
+      ) : null}
 
       <label className={styles.field}>
         <span className={styles.fieldLabel}>{t("specialInstrLabel")}</span>
@@ -1216,11 +1296,9 @@ function WizardFooter({
  * ------------------------------------------------------------------ */
 
 function SidePreview({ draft }: { draft: IntakeDraft }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const matterLabel = draft.matter ? t(matterTitleKey(draft.matter)) : null;
-  const slotLabel = draft.contactSlot
-    ? t(slotTitleKey(draft.contactSlot))
-    : null;
+  const slotLabel = slotSummary(draft, t, lang);
   const applicantLabel =
     draft.actingFor === "family" && draft.proxyName
       ? draft.proxyName
@@ -1343,6 +1421,11 @@ function SuccessView({
           {t("intakeSuccessNext3")}
         </li>
       </ul>
+      {refNumber.startsWith("APP-") ? (
+        <p className={styles.successHint}>
+          <Link href={`/debug?id=${refNumber}`}>/debug?id={refNumber}</Link>
+        </p>
+      ) : null}
       <Button onClick={onAnother}>{t("applyAgainBtn")}</Button>
     </div>
   );
@@ -1373,4 +1456,95 @@ function validateStep(
     if (!draft.consentOk) errors.consent = t("intakeErrConsent");
   }
   return errors;
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Shared-record identity check (step 1): district + phone OTP.
+ *  Same requirements as IVR (caller-line id), USSD (MSISDN) and UDC
+ *  (operator attestation) — see lib/dlas/validate.ts.
+ * ------------------------------------------------------------------ */
+
+function CitizenIdentityCheck({
+  draft,
+  onDistrict,
+  verified,
+}: {
+  draft: IntakeDraft;
+  onDistrict: (v: string) => void;
+  verified: boolean;
+}) {
+  const { lang } = useI18n();
+  const db = useDlasDb();
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const phone = normalizePhone(draft.phone);
+  const lastOtp = phone
+    ? [...db.outbox].reverse().find((m) => m.kind === "SMS_OTP" && m.to === phone)
+    : undefined;
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+
+  function send() {
+    const r = CitizenDoor.requestOtp(draft.phone);
+    setMsg(r.ok ? tx("কোড পাঠানো হয়েছে", "Code sent") : tx("সঠিক ১১ সংখ্যার নম্বর দিন (01…)", "Enter a valid 11-digit number (01…)"));
+  }
+  function verify() {
+    const r = CitizenDoor.verifyOtp(code);
+    setMsg(
+      r.ok
+        ? tx("নম্বর যাচাই হয়েছে", "Number verified")
+        : r.error === "WRONG_CODE"
+          ? tx(`ভুল কোড — আর ${r.attemptsLeft} বার`, `Wrong code — ${r.attemptsLeft} attempts left`)
+          : tx("আগে কোড পাঠান", "Send a code first"),
+    );
+  }
+
+  return (
+    <section className={styles.stepCard} aria-label={tx("যাচাই ও জেলা", "Verification and district")}>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>{tx("আপনার জেলা", "Your district")}</span>
+        <select className={styles.textInput} value={draft.district} onChange={(e) => onDistrict(e.target.value)}>
+          <option value="">{tx("বাছাই করুন", "Select")}</option>
+          {DISTRICTS.map((d) => (
+            <option key={d.code} value={d.code}>
+              {d.label[lang]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className={styles.field}>
+        <span className={styles.fieldLabel}>
+          {tx("মোবাইল নম্বর যাচাই (ওটিপি)", "Verify mobile number (OTP)")} {verified ? "✓" : ""}
+        </span>
+        {verified ? (
+          <span className={styles.micLabelMuted}>{tx(`${phone} যাচাইকৃত`, `${phone} verified`)}</span>
+        ) : (
+          <div style={{ display: "flex", gap: "var(--s-2)", flexWrap: "wrap", alignItems: "center" }}>
+            <Button variant="secondary" type="button" onClick={send} disabled={!phone}>
+              {tx("কোড পাঠান", "Send code")}
+            </Button>
+            <input
+              className={styles.textInput}
+              style={{ maxWidth: 160 }}
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="••••••"
+              aria-label={tx("৬ সংখ্যার কোড", "6-digit code")}
+            />
+            <Button type="button" onClick={verify} disabled={code.trim().length !== 6}>
+              {tx("যাচাই", "Verify")}
+            </Button>
+          </div>
+        )}
+        {msg ? <span className={styles.micLabelMuted}>{msg}</span> : null}
+        {lastOtp && !verified ? (
+          <span className={styles.micLabelMuted}>
+            [{tx("সিমুলেটেড এসএমএস", "Simulated SMS")} → {lastOtp.to}] {lastOtp.body}
+          </span>
+        ) : null}
+      </div>
+    </section>
+  );
 }

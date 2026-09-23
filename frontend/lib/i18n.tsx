@@ -1903,8 +1903,8 @@ export const messages: Messages = {
     helplineScenarioA1NextRepConfirm:
       "পরবর্তী ধাপ: DLAO নিরাপদ সময়ে যোগাযোগ করবেন, প্রতিনিধির নিশ্চিতকরণ নেওয়া হবে।",
     /* --- assisted intake --- */
-    navIntake: "সহায়িতা গ্রহণ",
-    intakeTitle: "সহায়িতা গ্রহণ — নতুন মামলা শুরু করুন",
+    navIntake: "অভিযোগ দাখিল",
+    intakeTitle: "অভিযোগ দাখিল — নতুন মামলা শুরু করুন",
     intakeIntro:
       "ধাপে ধাপে আপনার তথ্য দিন, প্রয়োজনীয় কাগজপত্র সংযুক্ত করুন। ইন্টারনেট না থাকলেও সংরক্ষিত থাকবে; নেটওয়ার্ক ফিরে এলে কর্তৃপক্ষের সার্ভারে পাঠানো হবে।",
     intakeStepOf: "এর মধ্যে",
@@ -3181,8 +3181,8 @@ export const messages: Messages = {
     helplineScenarioA1NextRepConfirm:
       "Next: DLAO will call at the safe time; representative confirmation is taken with the applicant directly.",
     /* --- assisted intake --- */
-    navIntake: "Assisted intake",
-    intakeTitle: "Assisted intake — start a new case",
+    navIntake: "Lodge a Complaint",
+    intakeTitle: "Lodge a Complaint — start a new case",
     intakeIntro:
       "Step through your details, attach the documents you have. If the network drops, your progress stays on this device — it will push to the case system the moment you are back online.",
     intakeStepOf: "of",

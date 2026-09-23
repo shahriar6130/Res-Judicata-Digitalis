@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { listCitizenCases } from "@/lib/case-demo";
+import { usePathname, useRouter } from "next/navigation";
+import { useCitizenCases, useCitizenNotifications } from "@/lib/dlas/citizen-view";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
 import { useUdcProfile } from "@/lib/udc-profile";
+import { CitizenAuth, readDb, UdcAuth } from "@/lib/dlas";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -59,7 +60,7 @@ type SidebarProps = {
  *    │  • Legal Aid Officer                    │
  *    │  • Contact Support                      │
  *    ├─ profile panel ─────────────────────────┤
- *    │  [RB] Rahima Begum          [⋮]         │
+ *    │  [AB] <logged-in citizen>    [⋮]         │
  *    │       Citizen                           │
  *    └─────────────────────────────────────────┘
  *
@@ -92,10 +93,11 @@ function CitizenSidebar({
   onNavigate: SidebarProps["onNavigate"];
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang } = useI18n();
   const profile = useCitizenProfile();
   const { navigate, current } = useHashRoute();
-  const cases = listCitizenCases();
+  const cases = useCitizenCases();
 
   // Track the citizen pathname separately from the hash so the UDC
   // items can compare "same path" without manually string-splitting.
@@ -106,8 +108,8 @@ function CitizenSidebar({
     ? current.slice("cases/".length)
     : null;
 
-  // Notifications unread count (mock — first two entries).
-  const unreadCount = 2;
+  // Unread notifications, derived from the citizen's own records.
+  const unreadCount = useCitizenNotifications().filter((n) => n.unread).length;
 
   function go(hash: string) {
     navigate(hash);
@@ -160,16 +162,9 @@ function CitizenSidebar({
           <NavItem
             icon={<HelpingHand size={18} />}
             label={t("navLodgeComplaint", lang)}
-            active={current === "complaint"}
-            onClick={() => go("complaint")}
-            prominent
-          />
-
-          <NavItem
-            icon={<Play size={18} />}
-            label={t("navIntake", lang)}
-            active={current === "intake"}
+            active={current === "intake" || current === "complaint"}
             onClick={() => go("intake")}
+            prominent
           />
 
           <p className={styles.subSectionLabel}>{t("sidebarSectionMyCases", lang)}</p>
@@ -282,21 +277,13 @@ function CitizenSidebar({
                 type="button"
                 className={styles.kebabItem}
                 role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon", lang)}
-              >
-                {t("profileSettings", lang)}
-                <span className={styles.comingSoonTag}>{t("profileComingSoon", lang)}</span>
-              </button>
-              <button
-                type="button"
-                className={styles.kebabItem}
-                role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon", lang)}
+                onClick={() => {
+                  setKebabOpen(false);
+                  CitizenAuth.logout();
+                  router.replace("/");
+                }}
               >
                 {t("profileLogout", lang)}
-                <span className={styles.comingSoonTag}>{t("profileComingSoon", lang)}</span>
               </button>
             </div>
           ) : null}
@@ -658,19 +645,17 @@ const UDC_NAV: UdcSection[] = [
 
 const UDC_SIDEBAR_KEY = "shakkho.udc.sidebar.v1";
 
-/** Latest assisted intake id for this UDC — reads the shakkho envelope
- *  directly. Returns undefined on SSR / parse failure / empty state. */
+/** Latest assisted intake (temporaryId) started by the LOGGED-IN operator,
+ *  read from the shared record (dlas.db.v1). Undefined on SSR / empty. */
 function latestAssistedIntakeId(): string | undefined {
   if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem("shakkho.helpline.v1");
-    if (!raw) return undefined;
-    const env = JSON.parse(raw);
-    const list = Array.isArray(env?.assistedIntakes) ? env.assistedIntakes : [];
-    const sorted = [...list].sort((a, b) =>
-      (b?.updatedAt ?? b?.createdAt ?? "").localeCompare(a?.updatedAt ?? a?.createdAt ?? ""),
-    );
-    return sorted[0]?.temporaryId;
+    const me = UdcAuth.current();
+    if (!me) return undefined;
+    const mine = readDb().sessions
+      .filter((s) => s.channel === "UDC_ASSISTED" && s.meta.operatorId === me.operatorId && s.meta.clientRef)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return mine[0]?.meta.clientRef;
   } catch {
     return undefined;
   }
@@ -705,6 +690,7 @@ function ChevronGlyph({ size = 14 }: { size?: number }) {
 
 function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang, t } = useI18n();
   const udcProfile = useUdcProfile();
 
@@ -1004,25 +990,13 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
                 type="button"
                 className={styles.legacyKebabItem}
                 role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon")}
-              >
-                {t("profileSettings")}
-                <span className={styles.legacyComingSoonTag}>
-                  {t("profileComingSoon")}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={styles.legacyKebabItem}
-                role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon")}
+                onClick={() => {
+                  setKebabOpen(false);
+                  UdcAuth.logout();
+                  router.replace("/portal/udc");
+                }}
               >
                 {t("profileLogout")}
-                <span className={styles.legacyComingSoonTag}>
-                  {t("profileComingSoon")}
-                </span>
               </button>
             </div>
           ) : null}

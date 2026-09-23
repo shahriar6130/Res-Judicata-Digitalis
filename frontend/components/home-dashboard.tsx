@@ -1,11 +1,12 @@
 "use client";
 
-import { listCitizenCases, type CitizenCaseSummary } from "@/lib/case-demo";
+import type { CitizenCaseSummary } from "@/lib/case-demo";
+import { useCitizenCases } from "@/lib/dlas/citizen-view";
 import { useI18n } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { StatusPill } from "@/components/status-pill";
-import { Building, ChevronRight, FileText, HelpingHand, Play } from "@/components/icons";
+import { Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
 import styles from "./home-dashboard.module.css";
 
 /* ------------------------------------------------------------------ *
@@ -22,7 +23,7 @@ import styles from "./home-dashboard.module.css";
  *    RECENT CASES
  *    ┌──────────────────────────────────────────┐
  *    │ CASE 07  #DLAS-2026-0847                 │
- *    │ Rahima Begum v. Mohammad Ali             │
+ *    │ <applicant> v. <other party>             │
  *    │ Family violence and maintenance stopped  │
  *    │ ● Active · Updated 18 September          │
  *    │ [View case →]                            │
@@ -53,7 +54,7 @@ function greetingKey(g: Greeting) {
 export function HomeDashboard() {
   const { lang, t } = useI18n();
   const profile = useCitizenProfile();
-  const cases = listCitizenCases();
+  const cases = useCitizenCases();
   const { navigate } = useHashRoute();
 
   const greeting = greetingFor(new Date());
@@ -73,33 +74,15 @@ export function HomeDashboard() {
       <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>
         <button
           type="button"
-          className={`${styles.actionCard} ${styles.actionCardLodge}`}
-          onClick={() => navigate("complaint")}
+          className={styles.actionCard}
+          onClick={() => navigate("intake")}
         >
-          <span className={`${styles.actionIcon} ${styles.actionIconLodge}`} aria-hidden>
+          <span className={styles.actionIcon} aria-hidden>
             <HelpingHand size={26} />
           </span>
           <span className={styles.actionBody}>
             <span className={styles.actionTitle}>{t("homeActionLodgeTitle")}</span>
             <span className={styles.actionDesc}>{t("homeActionLodgeDesc")}</span>
-          </span>
-          <span className={styles.actionCta}>
-            {t("homeActionStart")}
-            <ChevronRight size={16} aria-hidden />
-          </span>
-        </button>
-
-        <button
-          type="button"
-          className={styles.actionCard}
-          onClick={() => navigate("intake")}
-        >
-          <span className={styles.actionIcon} aria-hidden>
-            <Play size={26} />
-          </span>
-          <span className={styles.actionBody}>
-            <span className={styles.actionTitle}>{t("navIntake")}</span>
-            <span className={styles.actionDesc}>{t("intakeIntro")}</span>
           </span>
           <span className={styles.actionCta}>
             {t("homeActionStart")}

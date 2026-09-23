@@ -72,6 +72,22 @@ function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
+/* UDC demo records that older builds seeded into this store. They are
+   dropped on read so no browser keeps showing them. */
+const LEGACY_UDC_DEMO = new Set(["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"]);
+const LEGACY_UDC_DEMO_IDS = new Set(["conf-nuch-01", "int-pass-01", "int-mis-02", "perf-light", "perf-normal", "ain-nuch"]);
+function notDemo<T>(list: T[] | undefined): T[] | undefined {
+  if (!Array.isArray(list)) return list;
+  return list.filter((x) => {
+    const r = x as { id?: string; temporaryId?: string; draftTemporaryId?: string };
+    return !(
+      (r.id && LEGACY_UDC_DEMO_IDS.has(r.id)) ||
+      (r.temporaryId && LEGACY_UDC_DEMO.has(r.temporaryId)) ||
+      (r.draftTemporaryId && LEGACY_UDC_DEMO.has(r.draftTemporaryId))
+    );
+  });
+}
+
 export function read(): StoreEnvelope {
   if (!isBrowser()) return emptyEnvelope();
   try {
@@ -100,16 +116,16 @@ export function read(): StoreEnvelope {
       safeContactPlans: Array.isArray(parsed.safeContactPlans)
         ? parsed.safeContactPlans
         : [],
-      offlineDrafts: Array.isArray(parsed.offlineDrafts) ? parsed.offlineDrafts : undefined,
-      syncConflicts: Array.isArray(parsed.syncConflicts) ? parsed.syncConflicts : undefined,
+      offlineDrafts: Array.isArray(parsed.offlineDrafts) ? notDemo(parsed.offlineDrafts) : undefined,
+      syncConflicts: Array.isArray(parsed.syncConflicts) ? notDemo(parsed.syncConflicts) : undefined,
       integrityVerifications: Array.isArray(parsed.integrityVerifications)
-        ? parsed.integrityVerifications
+        ? notDemo(parsed.integrityVerifications)
         : undefined,
       performanceMeasurements: Array.isArray(parsed.performanceMeasurements)
-        ? parsed.performanceMeasurements
+        ? notDemo(parsed.performanceMeasurements)
         : undefined,
-      assistedIntakes: Array.isArray(parsed.assistedIntakes) ? parsed.assistedIntakes : undefined,
-      idMappings: Array.isArray(parsed.idMappings) ? parsed.idMappings : undefined,
+      assistedIntakes: Array.isArray(parsed.assistedIntakes) ? notDemo(parsed.assistedIntakes) : undefined,
+      idMappings: Array.isArray(parsed.idMappings) ? notDemo(parsed.idMappings) : undefined,
       pwaCapability: parsed.pwaCapability,
       referrals: Array.isArray(parsed.referrals) ? parsed.referrals : [],
       sensitiveEvidence: parsed.sensitiveEvidence ?? { items: [], derivatives: [], grants: [], events: [] },

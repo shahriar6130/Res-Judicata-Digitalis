@@ -4,7 +4,7 @@
  *  Case Detail — Citizen-facing case tracking experience.
  *
  *  Replaces the prior placeholder. The citizen's case ID selects one
- *  of two demo cases from `lib/case-demo.ts`. The component answers
+ *  of the logged-in citizen's own applications (lib/dlas/citizen-view.ts). The component answers
  *  the four questions a real-world litigant asks at every visit:
  *
  *    1. "আমার মামলাটা এখন কোথায় আছে?"      → header + status badge
@@ -29,7 +29,8 @@ import {
   Play,
   Shield,
 } from "@/components/icons";
-import { getCaseById, type CaseRecord, type CaseStatus } from "@/lib/case-demo";
+import type { CaseRecord, CaseStatus } from "@/lib/case-demo";
+import { useCitizenCase } from "@/lib/dlas/citizen-view";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import styles from "./case-detail.module.css";
 
@@ -48,7 +49,7 @@ type Props = {
 
 export function CaseDetail({ caseId, onBack }: Props) {
   const { lang, t } = useI18n();
-  const caseRecord = getCaseById(caseId);
+  const caseRecord = useCitizenCase(caseId);
 
   if (!caseRecord) {
     return (

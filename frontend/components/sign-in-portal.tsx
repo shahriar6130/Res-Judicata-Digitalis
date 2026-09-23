@@ -11,6 +11,7 @@ import { Wordmark } from "@/components/wordmark";
 import { useI18n } from "@/lib/i18n";
 import { PORTAL_ART } from "@/lib/portal-art";
 import type { Role } from "@/lib/roles";
+import { CitizenAuth, DISTRICTS, UdcAuth } from "@/lib/dlas";
 
 /* ------------------------------------------------------------------ *
  *  Rotated vertical role label that sits near the bottom-right of the
@@ -126,6 +127,11 @@ export function SignInPortal({ role }: SignInPortalProps) {
             <p className={styles.supporting}>{role.description[lang]}</p>
           </div>
 
+          {role.id === "citizen" ? (
+            <CitizenAuthForm home={role.home} />
+          ) : role.id === "udc" ? (
+            <UdcAuthForm home={role.home} />
+          ) : (
           <form
             className={styles.form}
             onSubmit={handleSubmit}
@@ -136,9 +142,9 @@ export function SignInPortal({ role }: SignInPortalProps) {
               id="identifier"
               label={t("mobileNumber")}
               name="identifier"
-              type={role.id === "citizen" ? "text" : "tel"}
-              inputMode={role.id === "citizen" ? "text" : "tel"}
-              autoComplete={role.id === "citizen" ? "username" : "tel"}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               placeholder={t("mobilePlaceholder")}
               value={identifier}
               onChange={(event) => setIdentifier(event.target.value)}
@@ -164,6 +170,7 @@ export function SignInPortal({ role }: SignInPortalProps) {
               {pending ? t("signingIn") : t("signInAction")}
             </Button>
           </form>
+          )}
         </div>
 
         <footer className={styles.footer}>{t("footer")}</footer>
@@ -198,5 +205,185 @@ function RotatedRoleLabel({
     >
       {label[lang]}
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Citizen: simple sign-up (name + mobile) and login (mobile only).
+ *  Accounts live in the shared record store (lib/dlas/citizen-auth.ts).
+ * ------------------------------------------------------------------ */
+function CitizenAuthForm({ home }: { home: string }) {
+  const { lang, t } = useI18n();
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+
+  const messages: Record<string, string> = {
+    INVALID_NAME: tx("আপনার নাম লিখুন।", "Enter your name."),
+    INVALID_PHONE: tx("সঠিক ১১ সংখ্যার মোবাইল নম্বর লিখুন (01XXXXXXXXX)।", "Enter a valid 11-digit mobile number (01XXXXXXXXX)."),
+    PHONE_TAKEN: tx("এই নম্বরে আগেই অ্যাকাউন্ট আছে — লগইন করুন।", "This number already has an account — log in instead."),
+    NOT_FOUND: tx("এই নম্বরে কোনো অ্যাকাউন্ট নেই — সাইন আপ করুন।", "No account for this number — sign up first."),
+  };
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const r = mode === "login" ? CitizenAuth.login(phone) : CitizenAuth.signUp(name, phone);
+    if (!r.ok) {
+      setError(messages[r.error]);
+      if (r.error === "PHONE_TAKEN") setMode("login");
+      if (r.error === "NOT_FOUND") setMode("signup");
+      return;
+    }
+    setError(null);
+    setPending(true);
+    router.push(home);
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate>
+      <div role="tablist" style={{ display: "flex", gap: "var(--s-2)" }}>
+        <Button type="button" variant={mode === "login" ? "primary" : "secondary"} role="tab" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>
+          {tx("লগইন", "Log in")}
+        </Button>
+        <Button type="button" variant={mode === "signup" ? "primary" : "secondary"} role="tab" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setError(null); }}>
+          {tx("সাইন আপ", "Sign up")}
+        </Button>
+      </div>
+
+      {mode === "signup" ? (
+        <Field
+          id="citizen-name"
+          label={tx("আপনার নাম", "Your name")}
+          name="name"
+          type="text"
+          autoComplete="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+      ) : null}
+
+      <Field
+        id="citizen-phone"
+        label={t("mobileNumber")}
+        name="phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder={t("mobilePlaceholder")}
+        value={phone}
+        onChange={(event) => setPhone(event.target.value)}
+      />
+
+      {error ? (
+        <p role="alert" className={styles.formError}>
+          {error}
+        </p>
+      ) : null}
+
+      <Button type="submit" disabled={pending}>
+        {pending ? t("signingIn") : mode === "login" ? t("signInAction") : tx("অ্যাকাউন্ট খুলুন", "Create account")}
+      </Button>
+    </form>
+  );
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  UDC entrepreneur: sign-up (name + mobile + centre + district),
+ *  login (mobile only). Accounts: dlas.db.v1.udcOperators.
+ * ------------------------------------------------------------------ */
+function UdcAuthForm({ home }: { home: string }) {
+  const { lang, t } = useI18n();
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [centre, setCentre] = useState("");
+  const [district, setDistrict] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+
+  const messages: Record<string, string> = {
+    INVALID_NAME: tx("আপনার নাম লিখুন।", "Enter your name."),
+    INVALID_PHONE: tx("সঠিক ১১ সংখ্যার মোবাইল নম্বর লিখুন (01XXXXXXXXX)।", "Enter a valid 11-digit mobile number (01XXXXXXXXX)."),
+    INVALID_CENTRE: tx("ইউডিসি কেন্দ্রের নাম লিখুন।", "Enter your UDC centre name."),
+    INVALID_DISTRICT: tx("জেলা বাছাই করুন।", "Choose your district."),
+    PHONE_TAKEN: tx("এই নম্বরে আগেই অ্যাকাউন্ট আছে — লগইন করুন।", "This number already has an account — log in instead."),
+    NOT_FOUND: tx("এই নম্বরে কোনো অ্যাকাউন্ট নেই — সাইন আপ করুন।", "No account for this number — sign up first."),
+  };
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const r = mode === "login" ? UdcAuth.login(phone) : UdcAuth.signUp({ name, phone, centre, district });
+    if (!r.ok) {
+      setError(messages[r.error]);
+      if (r.error === "PHONE_TAKEN") setMode("login");
+      if (r.error === "NOT_FOUND") setMode("signup");
+      return;
+    }
+    setError(null);
+    setPending(true);
+    router.push(home);
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate>
+      <div role="tablist" style={{ display: "flex", gap: "var(--s-2)" }}>
+        <Button type="button" variant={mode === "login" ? "primary" : "secondary"} role="tab" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>
+          {tx("লগইন", "Log in")}
+        </Button>
+        <Button type="button" variant={mode === "signup" ? "primary" : "secondary"} role="tab" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setError(null); }}>
+          {tx("সাইন আপ", "Sign up")}
+        </Button>
+      </div>
+
+      {mode === "signup" ? (
+        <Field id="udc-name" label={tx("আপনার নাম", "Your name")} name="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+      ) : null}
+
+      <Field
+        id="udc-phone"
+        label={t("mobileNumber")}
+        name="phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder={t("mobilePlaceholder")}
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+
+      {mode === "signup" ? (
+        <>
+          <Field id="udc-centre" label={tx("ইউডিসি কেন্দ্রের নাম", "UDC centre name")} name="centre" type="text" value={centre} onChange={(e) => setCentre(e.target.value)} />
+          <div className={styles.field ?? ""} style={{ display: "flex", flexDirection: "column", gap: "var(--s-1)" }}>
+            <label htmlFor="udc-district">{tx("জেলা", "District")}</label>
+            <select id="udc-district" value={district} onChange={(e) => setDistrict(e.target.value)} style={{ padding: "var(--control-pad-y) var(--control-pad-x)", border: "var(--control-border)", borderRadius: "var(--control-radius)", font: "inherit", background: "var(--white)" }}>
+              <option value="">{tx("বাছাই করুন", "Select")}</option>
+              {DISTRICTS.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.label[lang]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className={styles.formError}>
+          {error}
+        </p>
+      ) : null}
+
+      <Button type="submit" disabled={pending}>
+        {pending ? t("signingIn") : mode === "login" ? t("signInAction") : tx("অ্যাকাউন্ট খুলুন", "Create account")}
+      </Button>
+    </form>
   );
 }

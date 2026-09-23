@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ensureSeeded,
-  useHelplineStore,
   useOfflineStore,
   OfflineStore,
   type OfflineDraft,
@@ -13,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import { useNetwork, networkRowClass } from "../primitives/use-network";
 import styles from "../udc.module.css";
+import { DISTRICTS, label, useCurrentUdcOperator, useDlasDb } from "@/lib/dlas";
 
 interface Props {
   role?: string;
@@ -20,7 +20,6 @@ interface Props {
 
 export function UdcApplicationsPanel({ role = "udc" }: Props) {
   const { lang } = useI18n();
-  const envelope = useHelplineStore();
   const offline = useOfflineStore();
   const net = useNetwork();
 
@@ -44,9 +43,8 @@ export function UdcApplicationsPanel({ role = "udc" }: Props) {
     }
   }
 
-  const assisted: typeof envelope.assistedIntakes = Array.isArray(envelope.assistedIntakes)
-    ? envelope.assistedIntakes
-    : [];
+  const me = useCurrentUdcOperator();
+  const db = useDlasDb();
 
   // Server-authorized search: case-insensitive match on tempId, appId, name,
   // but scoped to THIS UDC's assisted set.
@@ -62,34 +60,30 @@ export function UdcApplicationsPanel({ role = "udc" }: Props) {
       district: string;
     }>();
 
+    // Source of truth: this operator's sessions/applications in dlas.db.v1.
+    // The offline store only contributes the live sync status of each draft.
     const draftList: OfflineDraft[] = Array.isArray(drafts) ? drafts : [];
-    for (const d of draftList) {
-      const intake = assisted.find((a) => a.temporaryId === d.temporaryId);
-      map.set(d.temporaryId, {
-        tempId: d.temporaryId,
-        appId: d.authoritativeApplicationId,
-        applicantName: intake?.applicantName ?? "—",
-        status: d.syncStatus === "synced" ? "synced" : d.syncStatus === "conflict_detected" ? "conflict" : "pending",
-        syncStatus: d.syncStatus,
-        needsVerification: d.syncStatus === "synced",
-        nextStep: d.syncStatus === "synced" ? (lang === "bn" ? "পরিদর্শনের জন্য অপেক্ষা" : "awaiting visit") : (lang === "bn" ? "সিঙ্ক অপেক্ষমান" : "pending sync"),
-        district: intake?.district ?? "—",
+    for (const sess of db.sessions) {
+      if (sess.channel !== "UDC_ASSISTED" || sess.meta.operatorId !== me?.operatorId) continue;
+      const tempId = sess.meta.clientRef ?? sess.sessionId;
+      const draft = draftList.find((d) => d.temporaryId === tempId);
+      const app = sess.applicationId ? db.applications.find((x) => x.applicationId === sess.applicationId) : undefined;
+      const submitted = !!app;
+      map.set(tempId, {
+        tempId,
+        appId: app?.applicationId,
+        applicantName: sess.draft.applicant.fullName ?? "—",
+        status: draft?.syncStatus === "conflict_detected" ? "conflict" : submitted ? "synced" : "pending",
+        syncStatus: draft?.syncStatus ?? (submitted ? "synced" : "local_draft"),
+        needsVerification: submitted,
+        nextStep: submitted
+          ? app!.validation.valid
+            ? lang === "bn" ? "DLAO পর্যালোচনার অপেক্ষায়" : "awaiting DLAO review"
+            : lang === "bn" ? "তথ্য অসম্পূর্ণ — DLAO ফলো-আপ" : "info missing — DLAO follow-up"
+          : lang === "bn" ? "ইনটেক চলছে" : "intake in progress",
+        district: label(DISTRICTS, sess.draft.applicant.district, lang),
       });
     }
-    for (const a of assisted) {
-      if (map.has(a.temporaryId)) continue;
-      map.set(a.temporaryId, {
-        tempId: a.temporaryId,
-        appId: a.authoritativeApplicationId,
-        applicantName: a.applicantName,
-        status: a.state === "accepted" ? "synced" : "pending",
-        syncStatus: "local_draft",
-        needsVerification: false,
-        nextStep: lang === "bn" ? "ইনটেক চলছে" : "intake in progress",
-        district: a.district,
-      });
-    }
-
     let list = [...map.values()];
     if (filter === "synced")   list = list.filter((r) => r.status === "synced");
     if (filter === "pending")  list = list.filter((r) => r.status === "pending");
@@ -104,7 +98,7 @@ export function UdcApplicationsPanel({ role = "udc" }: Props) {
       );
     }
     return list;
-  }, [drafts, assisted, filter, search, lang]);
+  }, [drafts, db, me, filter, search, lang]);
 
   return (
     <>

@@ -304,7 +304,7 @@ export interface SimulationMetadata {
 export interface AuditEvent {
   id: string;
   subject: string;
-  subjectKind: "application" | "intake" | "representation" | "verification" | "handoff" | "communication" | "system" | "assisted_intake" | "document" | "sync_operation" | "sync_conflict" | "integrity" | "udc_session" | "referral" | "evidence" | "escalation" | "panel_lawyer" | "lawyer_assignment" | "lawyer_availability" | "hearing" | "case_progress" | "required_update" | "lawyer_change" | "reassignment" | "case_handover" | "inactivity_pattern" | "payment_reconciliation" | "fee_schedule" | "contact_attempt" | "voice_session";
+  subjectKind: "application" | "intake" | "representation" | "verification" | "handoff" | "communication" | "system" | "assisted_intake" | "document" | "sync_operation" | "sync_conflict" | "integrity" | "udc_session" | "referral" | "evidence" | "escalation" | "panel_lawyer" | "lawyer_assignment" | "lawyer_availability" | "hearing" | "case_progress" | "required_update" | "lawyer_change" | "reassignment" | "case_handover" | "inactivity_pattern" | "payment_reconciliation" | "fee_schedule" | "contact_attempt" | "voice_session" | "mediation_matter" | "mediation_session" | "settlement_draft" | "signing_workflow" | "dlao_task";
   action: string;
   actor: string;
   occurredAt: string;
@@ -414,6 +414,12 @@ export interface StoreEnvelope {
   paymentReconciliations: PaymentReconciliation[];
   voiceStatusSessions: VoiceStatusSession[];
   dlaoTaskItems: DlaoTaskItem[];
+
+  /* Prompt 10 — mediation & settlement (B2, Flow 4, T7). */
+  mediationMatters: MediationMatter[];
+  mediationSessions: MediationSession[];
+  settlementDrafts: SettlementDraft[];
+  signingWorkflows: SigningWorkflow[];
 }
 
 export interface ActiveCallBarState {
@@ -2114,5 +2120,326 @@ export interface DlaoTaskItem {
   dueAt?: string;
   assignedTo?: string;
   relatedSubjectId?: string;
+  auditEventIds: string[];
+}
+
+/* ------------------------------------------------------------------ *
+ *  Prompt 10 — Mediation & settlement (B2, Flow 4, T7).
+ *
+ *  A MediationMatter always belongs to an accepted Case (`caseId` is
+ *  required, never optional) — it is created after acceptance, per
+ *  the case's own backbone rule, and stays attached to that Case ID
+ *  through every session and the settlement draft.
+ * ------------------------------------------------------------------ */
+
+export type MediationMatterState =
+  | "registered"
+  | "party_contact_pending"
+  | "scheduled"
+  | "notices_sent"
+  | "documents_under_review"
+  | "ready_for_session"
+  | "attendance_confirmed"
+  | "in_session"
+  | "adjourned"
+  | "drafting"
+  | "draft_under_review"
+  | "party_review"
+  | "awaiting_signatures"
+  | "partially_signed"
+  | "signed"
+  | "outcome_recorded"
+  | "closed"
+  | "cancelled"
+  | "no_show_rescheduled"
+  | "no_settlement";
+
+/** The 9-step stepper shown on the mediator case page. Each state above maps to exactly one step. */
+export const MEDIATION_STEPS: { key: string; titleBn: string; titleEn: string; states: MediationMatterState[] }[] = [
+  { key: "registration", titleBn: "নিবন্ধন", titleEn: "Registration", states: ["registered"] },
+  { key: "parties", titleBn: "পক্ষ ও যোগাযোগ", titleEn: "Parties and contact", states: ["party_contact_pending"] },
+  { key: "scheduling", titleBn: "সময়সূচী ও নোটিশ", titleEn: "Scheduling and notices", states: ["scheduled", "notices_sent"] },
+  { key: "documents", titleBn: "নথি", titleEn: "Documents", states: ["documents_under_review"] },
+  { key: "attendance", titleBn: "উপস্থিতি", titleEn: "Attendance", states: ["ready_for_session", "attendance_confirmed"] },
+  { key: "session", titleBn: "মধ্যস্থতা অধিবেশন", titleEn: "Mediation session", states: ["in_session", "adjourned", "no_show_rescheduled"] },
+  { key: "draft", titleBn: "নিষ্পত্তি খসড়া", titleEn: "Settlement draft", states: ["drafting", "draft_under_review"] },
+  { key: "signing", titleBn: "পক্ষের পর্যালোচনা ও স্বাক্ষর", titleEn: "Party review and signing", states: ["party_review", "awaiting_signatures", "partially_signed", "signed"] },
+  { key: "outcome", titleBn: "ফলাফল", titleEn: "Outcome", states: ["outcome_recorded", "closed", "no_settlement", "cancelled"] },
+];
+
+export type MediationParticipationMode = "in_person" | "remote" | "hybrid";
+
+export interface MediationParty {
+  role: "applicant" | "respondent";
+  name: string;
+  representedBy?: string;
+  safeContact?: string;
+  preferredLanguage?: "bn" | "en";
+  accessibilityRequirement?: string;
+  interpreterRequired?: boolean;
+  participationMode?: MediationParticipationMode;
+  noticeStatus?: "not_sent" | "sent" | "delivered" | "delivery_failed" | "acknowledged";
+  attendanceStatus?: "pending" | "present" | "absent" | "late" | "remote_connected";
+  contactedAt?: string;
+  contactChannel?: string;
+  contactResult?: "reached" | "no_answer" | "blocked_unsafe";
+}
+
+/** T7/T11 — structured mediator working notes, separated from citizen-visible fields (§12 of the mediator-case spec). */
+export interface MediationSessionNotes {
+  issuesIdentified: string;
+  documentsConsidered: string;
+  agreedFacts: string;
+  disputedFacts: string;
+  proposedTerms: string;
+  unresolvedTerms: string;
+  followUpRequirements: string;
+  sessionResult: string;
+  author: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface MediationHistoryItem {
+  at: string;
+  actor: string;
+  fromState?: MediationMatterState;
+  toState: MediationMatterState;
+  reason?: string;
+  note?: string;
+  auditEventId?: string;
+}
+
+export interface MediationOutcome {
+  decision: "settled" | "not_settled" | "partial";
+  recordedBy: string;
+  recordedAt: string;
+  humanApprovedBy: string;
+  settlementDraftId?: string;
+  note?: string;
+}
+
+export interface MediationDocumentReview {
+  documentId: string;
+  status: "pending_review" | "reviewed" | "unclear" | "missing_requested";
+  reviewedBy?: string;
+  reviewedAt?: string;
+  note?: string;
+  followUpTaskId?: string;
+}
+
+export interface MediationMatter {
+  matterId: string;
+  /** Human-facing reference, distinct from the internal matterId (§6: "Mediation reference"). */
+  mediationReference: string;
+  caseId: string;
+  applicationId?: string;
+  pathway: "pre_case" | "post_case";
+  referralSource?: string;
+  courtOrTribunalRef?: string;
+  registrationSource: string;
+  assignedMediator: string;
+  parties: MediationParty[];
+  matterCategory: "maintenance" | "property" | "labour";
+  state: MediationMatterState;
+  participationMode: MediationParticipationMode;
+  sessionIds: string[];
+  documentIds: string[];
+  documentReviews: MediationDocumentReview[];
+  settlementDraftIds: string[];
+  outcome?: MediationOutcome;
+  history: MediationHistoryItem[];
+  auditEventIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MediationSessionStatus =
+  | "scheduled"
+  | "reminded"
+  | "in_progress"
+  | "paused"
+  | "attended"
+  | "no_show"
+  | "adjourned"
+  | "rescheduled"
+  | "completed";
+
+export type MediationNoticeDeliveryState =
+  | "draft"
+  | "ready_to_send"
+  | "sent"
+  | "delivered"
+  | "delivery_failed"
+  | "acknowledged"
+  | "resend_required";
+
+export interface MediationNotice {
+  party: string;
+  channel: "sms" | "voice_ivr" | "in_person" | "helpline_callback";
+  sentAt: string;
+  safeContactRespected: boolean;
+  deliveryState: MediationNoticeDeliveryState;
+  language: "bn" | "en";
+}
+
+export interface MediationAttendanceRecord {
+  party: string;
+  role: "applicant" | "respondent";
+  attended: boolean;
+  status: "present" | "absent" | "late" | "remote_connected";
+  represented: boolean;
+  identityCheck: "pending" | "completed";
+  interpreterPresent: boolean;
+  accessibilitySupportProvided: boolean;
+  note?: string;
+}
+
+export interface MediationSession {
+  sessionId: string;
+  matterId: string;
+  caseId: string;
+  scheduledFor: string;
+  expectedDurationMinutes?: number;
+  mode: MediationParticipationMode;
+  location?: string;
+  remoteInstructions?: string;
+  interpreterBooked?: boolean;
+  accessibilityAccommodation?: string;
+  inPersonFallbackPlanned?: boolean;
+  /** Set when a remote/hybrid session had to fall back to in-person — an explicit, auditable event, never a silent retry. */
+  fallbackTriggeredFrom?: { previousSessionId: string; reason: string };
+  noticesSent: MediationNotice[];
+  attendance: MediationAttendanceRecord[];
+  /** Free-text log kept for backward compatibility; structured notes below are canonical. */
+  mediatorNotes: string;
+  structuredNotes?: MediationSessionNotes;
+  connectionStatus?: "connected" | "interrupted" | "failed" | "not_applicable";
+  startedAt?: string;
+  pausedAt?: string;
+  adjournedAt?: string;
+  endedAt?: string;
+  status: MediationSessionStatus;
+  createdAt: string;
+  auditEventIds: string[];
+}
+
+export type SettlementDraftCategory = "maintenance" | "property" | "labour";
+
+export type SettlementClauseOrigin = "template" | "ai_inferred" | "human_edited";
+
+export type ClauseDisposition = "undisposed" | "accept" | "edit" | "reject" | "request_clarification" | "mark_unresolved";
+
+export interface SettlementClause {
+  clauseId: string;
+  titleBn: string;
+  titleEn: string;
+  bodyBn: string;
+  bodyEn: string;
+  origin: SettlementClauseOrigin;
+  sourceNote?: string;
+  required: boolean;
+  disposition: ClauseDisposition;
+  dispositionedBy?: string;
+  dispositionedAt?: string;
+}
+
+export interface SettlementInconsistency {
+  clauseIds: string[];
+  description: { bn: string; en: string };
+  severity: "warning" | "blocking";
+}
+
+export type SettlementDraftStatus =
+  | "draft"
+  | "human_reviewed"
+  | "party_consent_pending"
+  | "party_consented"
+  | "finalized"
+  | "rejected_needs_rework";
+
+export interface SettlementConsent {
+  party: string;
+  consented: boolean;
+  consentedAt?: string;
+  method?: "in_person_read_back" | "witnessed" | "remote_confirmation";
+}
+
+/** §14 — the pre-signing review checklist. Every item must be true before signing opens; none are preselected. */
+export interface SettlementConsentChecklist {
+  finalDraftFrozen: boolean;
+  partiesReceivedSameVersion: boolean;
+  languageRecorded: boolean;
+  plainLanguageExplanationProvided: boolean;
+  interpreterOrAccessibilitySupportRecorded: boolean;
+  questionsAndClarificationsRecorded: boolean;
+  voluntaryConsentRecorded: boolean;
+  unresolvedIssuesCleared: boolean;
+  humanLegalReviewCompleted: boolean;
+  requiredFormalitiesMarked: boolean;
+}
+
+export interface SettlementDraft {
+  draftId: string;
+  matterId: string;
+  caseId: string;
+  category: SettlementDraftCategory;
+  templateId: string;
+  templateVersion: string;
+  clauses: SettlementClause[];
+  inconsistencies: SettlementInconsistency[];
+  formalityWarning: { bn: string; en: string };
+  status: SettlementDraftStatus;
+  version: number;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  consent: SettlementConsent[];
+  consentChecklist: SettlementConsentChecklist;
+  /** Set once finalized — the seam T11 (e-signature) picks up later. Not acted on in this phase. */
+  finalizedForSigningAt?: string;
+  frozenText?: string;
+  frozenTextHash?: string;
+  auditEventIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ------------------------------------------------------------------ *
+ *  T11 — asynchronous e-signature status (party-signing workflow).
+ *  The mediator page only shows/connects to this; it never signs on a
+ *  party's behalf. See settlement-signing.service.ts.
+ * ------------------------------------------------------------------ */
+
+export type PartySignatureStatus =
+  | "not_started"
+  | "signed_online"
+  | "signed_offline_pending_sync"
+  | "synced"
+  | "invalidated_document_changed";
+
+export interface PartySignatureRecord {
+  party: string;
+  status: PartySignatureStatus;
+  signedAt?: string;
+  syncedAt?: string;
+  offline?: boolean;
+  signatureHex?: string;
+}
+
+export interface SigningWorkflow {
+  signingId: string;
+  draftId: string;
+  matterId: string;
+  caseId: string;
+  documentVersion: number;
+  documentHash: string;
+  parties: PartySignatureRecord[];
+  mediatorSignatureStatus: "not_applicable" | "pending" | "recorded";
+  integrityVerified: boolean;
+  verifiedAt?: string;
+  status: "awaiting_signatures" | "partially_signed" | "fully_synced_and_verified" | "invalidated";
+  createdAt: string;
+  updatedAt: string;
   auditEventIds: string[];
 }

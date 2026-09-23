@@ -98,21 +98,14 @@ Show sourceable service counts, versioned policy values, authorised-user totals,
 For this prototype S33 is a read-only seeded configuration reference, not a full policy-pack editor.
 Administrators cannot make legal or case-consequential decisions from this view.
 
-The admin workspace replaces sample figures with counts and recent activity from
-`dlas.db.v1`. Its dark heading, compact metric row, focused hash sections, and searchable
-role directory use the existing tokens and Bangla/English toggle. Administrators can add
-and edit citizen, panel-lawyer, DLO officer, and UDC operator accounts; each change writes
-an audit entry. The application section monitors all offices and channels. It does not
-offer legal decisions. During an open DLO verification, a disclosure form lets the
-officer correct applicant, filer, matter, urgency, and safe-contact details with a
-required reason. Changed values retain provenance and old values in the audit; changes
-to verified details reopen the affected checks. District corrections reroute open work.
+### Mediator document review
 
-The administrator Backup section has separate Export JSON and Import JSON panels. Export
-downloads one dated file with app-owned browser data, including the shared record and
-stored document previews. Import accepts the current bundle or an older shared-record
-JSON export, validates it, shows application/account/document counts, and requires a
-visible Replace action before restoring and reloading the dashboard.
+The document step explains the consequence before each action. A mediator records a reason, then
+either marks the document reviewed or flags it unclear. An unclear or missing item displays the
+created DLAO follow-up task and its state; resolving the issue completes that same task rather than
+creating or hiding duplicates. The matter can advance to session preparation only when every
+recorded document is reviewed. Once the stage has advanced it is read-only, except that an existing
+issue may be resolved with a recorded human reason and audit event.
 
 ## State and simulation treatment
 

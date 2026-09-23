@@ -7,6 +7,7 @@ import { useI18n, type Lang } from "@/lib/i18n";
 import { getRole, type Localized, type RoleId } from "@/lib/roles";
 import { HelplineWorkspace } from "@/components/helpline/workspace";
 import { UdcWorkspace } from "@/components/udc/workspace";
+import { MediatorWorklist } from "@/components/mediation/worklist";
 import styles from "./operational-role-dashboard.module.css";
 
 type OperationalRoleId = Exclude<RoleId, "citizen" | "dlo" | "lawyer" | "admin">;
@@ -148,6 +149,18 @@ export function OperationalRoleDashboard({ role }: { role: OperationalRoleId }) 
 
   if (role === "udc") {
     return <UdcWorkspace role={role} />;
+  }
+
+  /* The mediator role's dashboard is its worklist — every mediation
+     matter it's assigned to, each opening the real case workspace at
+     /mediator/cases/[caseId] with the same Case ID as the DLAO and
+     citizen pages. Same delegation pattern as helpline/udc above,
+     instead of the static `workspaces.mediator` config below, which
+     is now dead for this role but left in place since the
+     `Record<OperationalRoleId, Workspace>` type still requires an
+     entry for every non-delegated role. */
+  if (role === "mediator") {
+    return <MediatorWorklist />;
   }
 
   const config = workspaces[role];

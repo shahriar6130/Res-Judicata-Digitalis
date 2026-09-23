@@ -33,7 +33,32 @@ Each role signs in from its own URL; after sign-in the app lands directly on tha
 | Citizen (নাগরিক) | `/` | `/dashboard/citizen` | `/dashboard/citizen` |
 | District Legal Aid Officer (জেলা আইনি সহায়তা কর্মকর্তা) | `/dlo` | `/dashboard/dlo` | `/dashboard/dlo` |
 | Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/dashboard/lawyer` | `/dashboard/lawyer` |
+| UDC operator (ইউডিসি উদ্যোক্তা) | `/udc` (also `/portal/udc`) | `/dashboard/udc` | `/dashboard/udc` |
 | Administrator (প্রশাসক) | `/admin` | `/dashboard/admin` | `/dashboard/admin` |
+
+Citizen notifications at `/dashboard/citizen#notifications` group new and earlier updates, show
+readable details and timestamps, and open the related case or dashboard view. The unread count and
+mark-all-read control use the citizen account's existing read state.
+
+The DLO workspace opens on `#overview` (also the default route). Its header shows the active
+workload, the four status tiles navigate to `#new`, `#review`, `#decided`, and `#tasks`, and charts
+summarize the current office's applications by queue state, matter, and filing channel. Those four
+queue pages show their worklist without repeating the overview. The DLO sidebar has a separate
+Overview link and labelled queue counts. Worklist links open `#app/<APP-ID>` for the existing review
+flow; each application and follow-up record has a visible **Open application** control. The records
+wrap their labelled fields across the available width without horizontal scrolling. All queue
+figures come from `dlas.db.v1` and follow the selected Bangla or English language.
+
+The legacy lawyer dashboard at `/dashboard/lawyer` has focused Overview, Assignments, Reports,
+and Schedule views that match its sidebar links. The assignment offer supports acceptance or a
+required decline reason. The hearing report collects attendance, outcome, and next date separately.
+Its sample case data and action feedback are labelled simulated and remain in the current session.
+
+The UDC dashboard opens with a new assisted application action, operator-scoped work counts and
+recent intakes. The sidebar groups Overview, application work and support destinations. Consent
+and document links open their dedicated intake panels. Connection diagnostics are available in an
+expandable strip, and the global header provides the language toggle. The `/udc` sign-in page
+uses the existing mobile login and operator registration flow with UDC-specific art and copy.
 
 *Quick test login:* For fast evaluation on `/` (Citizen), quick-test credentials (Mobile: `a`, Password: `a`) are provided with **Auto-fill** and direct **Quick enter** buttons.
 
@@ -42,10 +67,15 @@ Every role signs in with a **mobile number and a password**; both are required b
 action becomes available. Sign-in portals split into two panes: a black art pane with the law-mark
 (a clear, high-contrast law emblem image rendered via `components/law-mark.tsx` with `object-fit: cover`, `--lawmark-opacity` token, a soft protective vignette, and a geometric hairline grid) and a login
 pane. **Each role has its own art treatment** so the entry points are easily distinguished:
-`lib/portal-art.ts` picks the image (from `assets/`), the side (left or right), and the **RGB accent
-colour** per role (`--accent-citizen` blue, `--accent-dlo` red, `--accent-lawyer` green,
-`--accent-admin` violet), and the login pane leads with a **bold white-on-black role-chip** naming
-the end.
+`lib/portal-art.ts` picks the image (from `assets/`), the side (left or right), and the token
+accent colour per role (`--accent-citizen` blue, `--accent-dlo` red, `--accent-lawyer` green,
+`--accent-admin` violet). A rotated role label identifies the art pane.
+
+The DLO and Lawyer login pages share the same form shell but have distinct entry treatments: DLO
+uses right-side office-review imagery and a red seam; Lawyer uses left-side case-representation
+imagery and a green seam. Each has bilingual role-specific copy and a labelled art caption. Their
+existing sign-in fields and destinations are unchanged.
+The rotated DLO image label is larger and aligned near the image's left edge, with responsive sizing.
 
 **Dashboard** (`/dashboard/{role}`): WordPress-style layout with a black
 left sidebar (240px, sticky) containing role-specific navigation for core roles (citizen, dlo, lawyer, admin) and operational roles, Wordmark, and a "Simulated"
@@ -53,9 +83,8 @@ section (clock/SMS/court/scenario/reset). Content area is off-white, max-width 1
 Header has hamburger menu (mobile) and language toggle. Mobile: sidebar slides in via overlay.
 Navigation labels from i18n (Bangla/English). The role pages are implemented in
 `components/role-dashboard.tsx`: citizen status and reply controls, lawyer assignments/reporting,
-DLO evidence queue and comparison, and admin measures/rule drafts. These are deterministic
-prototype interactions. The officer resolution control is intentionally disabled until the
-authorised resolution API exists. The sidebar simulation links are backed by the local-only
+the DLO live office queue and review flow, and admin measures/rule drafts. The DLO queue and
+review read and write the local shared record through `lib/dlas/`. The sidebar simulation links are backed by the local-only
 `/sim/{clock|sms|court|scenario|reset}` control panel; it changes visible demo state without
 claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/layout.tsx`.
 

@@ -15,6 +15,7 @@ import type { CitizenCaseSummary } from "@/lib/case-demo";
 import { useCitizenCases, useCurrentCitizen } from "@/lib/dlas/citizen-view";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { DlaoWorkspace } from "@/components/dlao/dlao-workspace";
+import { LawyerWorkspace } from "@/components/lawyer/lawyer-workspace";
 import type { RoleId } from "@/lib/roles";
 import styles from "./role-dashboard.module.css";
 
@@ -32,7 +33,7 @@ type DashboardProps = { role: RoleId };
 export function RoleDashboard({ role }: DashboardProps) {
   const { lang } = useI18n();
   return role === "citizen" ? <CitizenGate /> :
-    role === "lawyer" ? <LawyerDashboard lang={lang} /> :
+    role === "lawyer" ? <LawyerWorkspace /> :
     role === "dlo" ? <DlaoWorkspace /> :
     role === "admin" ? <AdminDashboard lang={lang} /> :
     <OperationalRoleDashboard role={role} />;
@@ -57,10 +58,6 @@ function PageHeader({ eyebrow, title, intro, action }: { eyebrow: string; title:
       {action ? <div className={styles.headerAction}>{action}</div> : null}
     </header>
   );
-}
-
-function State({ value }: { value: "verified" | "reported" | "pending" | "disputed" | "missing" | "stale" }) {
-  return <span className={`${styles.state} ${styles[value]}`}>{value.replace("_", " ")}</span>;
 }
 
 /** Citizen pages need a logged-in account; after logout they point back to sign-in. */
@@ -249,33 +246,6 @@ function CasesList({
   );
 }
 
-function LawyerDashboard({ lang }: { lang: Lang }) {
-  const [caseState, setCaseState] = useState<"offered" | "accepted" | "declined">("offered");
-  const [formOpen, setFormOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  return (
-    <div className={styles.page}>
-      <PrototypeNote lang={lang} />
-      <PageHeader eyebrow={lang === "bn" ? "প্যানেল আইনজীবী" : "Panel lawyer"} title={lang === "bn" ? "নিয়োগপ্রাপ্ত মামলা" : "Assigned cases"} intro={lang === "bn" ? "নিয়োগ গ্রহণ করুন এবং এক মিনিটের মধ্যে শুনানির তথ্য দিন।" : "Accept assignments and submit a structured hearing update in under a minute."} action={<Button onClick={() => setFormOpen(true)}>{lang === "bn" ? "শুনানির প্রতিবেদন দিন" : "Submit hearing report"}</Button>} />
-      <section id="assigned" className={styles.section}>
-        <div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>SHK-DEMO-007 · CIVIL</p><h2>{lang === "bn" ? "রহিমা বেগম বনাম মোহাম্মদ আলী" : "Rahima Begum v. Mohammad Ali"}</h2></div><State value={caseState === "accepted" ? "pending" : "reported"} /></div>
-        <div className={styles.caseMeta}><span>{lang === "bn" ? "পরবর্তী শুনানি · ৩০ সেপ্টেম্বর" : "Next hearing · 30 September"}</span><span>{lang === "bn" ? "জেলা আদালত · কক্ষ ৩" : "District Court · Room 3"}</span></div>
-        {caseState === "offered" ? <div className={styles.actions}><Button onClick={() => setCaseState("accepted")}>{lang === "bn" ? "নিয়োগ গ্রহণ করুন" : "Accept assignment"}</Button><Button variant="secondary" onClick={() => setCaseState("declined")}>{lang === "bn" ? "কারণসহ প্রত্যাখ্যান" : "Decline with reason"}</Button></div> : <p role="status" className={styles.success}>{caseState === "accepted" ? (lang === "bn" ? "নিয়োগ গ্রহণ করা হয়েছে।" : "Assignment accepted.") : (lang === "bn" ? "প্রত্যাখ্যানটি কর্মকর্তার কাছে পাঠানো হয়েছে।" : "Decline reason sent to the officer.")}</p>}
-      </section>
-
-      <section id="reports" className={styles.section}>
-        <div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{lang === "bn" ? "প্রতিবেদন প্রয়োজন" : "Report due"}</p><h2>{lang === "bn" ? "২৮ সেপ্টেম্বরের শুনানি" : "Hearing on 28 September"}</h2></div><State value="missing" /></div>
-        <p>{lang === "bn" ? "উপস্থিতি, ফলাফল এবং পরবর্তী তারিখ আলাদা করে দিন। শেষ সময় আজ বিকেল ৫টা।" : "Record attendance, outcome, and next date separately. Due today at 5:00 PM."}</p>
-        <button className={styles.textButton} onClick={() => setFormOpen(true)}>{lang === "bn" ? "এখন প্রতিবেদন পূরণ করুন" : "Complete report now"}</button>
-      </section>
-
-      {formOpen ? <div className={styles.dialogBackdrop} role="presentation"><section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="report-title"><div className={styles.sectionHeading}><h2 id="report-title">{lang === "bn" ? "শুনানির প্রতিবেদন" : "Hearing report"}</h2><button className={styles.textButton} onClick={() => setFormOpen(false)}>{copy(labels.close, lang)}</button></div><form onSubmit={(event) => { event.preventDefault(); setSubmitted(true); }} className={styles.form}><label>{lang === "bn" ? "উপস্থিতি" : "Attendance"}<select required><option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option><option>{lang === "bn" ? "উপস্থিত" : "Attended"}</option><option>{lang === "bn" ? "অনুপস্থিত" : "Did not attend"}</option></select></label><label>{lang === "bn" ? "ফলাফল" : "Outcome"}<select required><option value="">{lang === "bn" ? "বেছে নিন" : "Select"}</option><option>{lang === "bn" ? "মুলতবি" : "Adjourned"}</option><option>{lang === "bn" ? "আদেশ হয়েছে" : "Order issued"}</option></select></label><label>{lang === "bn" ? "পরবর্তী তারিখ" : "Next date"}<input type="date" required /></label>{submitted ? <p role="status" className={styles.success}>{lang === "bn" ? "প্রতিবেদনটি স্ব-প্রতিবেদিত প্রমাণ হিসেবে নথিভুক্ত হয়েছে।" : "Report recorded as self-reported evidence."}</p> : <Button type="submit">{lang === "bn" ? "প্রতিবেদন জমা দিন" : "Submit report"}</Button>}</form></section></div> : null}
-      <section id="calendar" className={styles.hairlineList}><h2>{lang === "bn" ? "আগামী সময়সূচি" : "Upcoming schedule"}</h2><div><time>30 Sep · 10:00</time><span>SHK-DEMO-007</span><span>{lang === "bn" ? "জেলা আদালত" : "District Court"}</span></div><div><time>08 Oct · 11:30</time><span>SHK-DEMO-011</span><span>{lang === "bn" ? "পারিবারিক আদালত" : "Family Court"}</span></div></section>
-      <CoverageNavigator />
-    </div>
-  );
-}
-
 function AdminDashboard({ lang }: { lang: Lang }) {
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -294,4 +264,3 @@ function AdminDashboard({ lang }: { lang: Lang }) {
     </div>
   );
 }
-

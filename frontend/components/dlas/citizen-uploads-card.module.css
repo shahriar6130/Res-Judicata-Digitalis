@@ -1,17 +1,28 @@
-/* Citizen case page — documents needed / submitted. */
+/* CitizenUploadsCard — "Documents needed" card on the home dashboard.
+   Mirrors the visual treatment of citizen-documents.tsx so a citizen
+   who lands on home gets the same affordance they would see on the
+   case-detail page (and vice versa). */
 
 .card {
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
   border-radius: 10px;
-  padding: 24px;
+  padding: 20px 24px;
   font-family: var(--font-sans, inherit);
 }
 
-.needed {
+.cardNeeded {
   border-color: color-mix(in srgb, var(--status-pending) 45%, white);
   background: color-mix(in srgb, var(--status-pending) 6%, white);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-pending) 12%, transparent);
+}
+
+.cardQuiet {
+  /* nothing-pending state stays in the same shape but visually quieter
+     so it doesn't shout at users who don't have anything to upload. */
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--surface-card-border) 70%, transparent);
+  background: transparent;
 }
 
 .heading {
@@ -19,9 +30,10 @@
   align-items: center;
   gap: 10px;
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
+  color: var(--ink);
 }
 
 .pulse {
@@ -46,69 +58,29 @@
 }
 
 .lead {
-  font-size: 15px;
+  font-size: 14px;
   color: #374151;
-  margin-bottom: 12px;
+  margin: 0 0 12px;
+  max-width: 720px;
 }
 
-.empty {
+.emptyText {
   font-size: 15px;
+  font-weight: 600;
+  margin: 4px 0 0;
+  color: var(--ink);
+}
+
+.emptySub {
+  font-size: 13px;
   color: #4b5563;
+  margin: 4px 0 0;
 }
 
 .list {
   list-style: none;
   display: flex;
   flex-direction: column;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
-}
-
-.row:first-child {
-  border-top: none;
-}
-
-.icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: var(--off-white);
-  color: var(--ink);
-  flex: none;
-}
-
-.meta {
-  flex: 1;
-  min-width: 180px;
-}
-
-.name {
-  font-size: 16px;
-  font-weight: 600;
   margin: 0;
-}
-
-.sub {
-  font-size: 14px;
-  color: #4b5563;
-  margin: 0;
-}
-
-.okPill {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 999px;
-  color: #11703a;
-  background: color-mix(in srgb, var(--green) 12%, white);
-  border: 1px solid color-mix(in srgb, var(--green) 35%, white);
+  padding: 0;
 }

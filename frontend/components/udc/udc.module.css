@@ -918,19 +918,7 @@
   flex-direction: column;
   min-height: 100%;
 }
-.udcStickyTop {
-  position: fixed;
-  top: 12px;
-  /* Span the entire right region, starting just past the sidebar (--sidebar-width = 272px) */
-  left: calc(var(--sidebar-width) + 12px);
-  right: 12px;
-  z-index: 50;
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  background: transparent;
-  border-bottom: 1px solid var(--line);
-  overflow: hidden;
-}
+.udcStickyTop { position: relative; z-index: 2; }
 /* Plain-flow language row, sits in document order right below the
    floating connection bar. No position property — it scrolls away
    naturally with the page, exactly like normal content. */
@@ -941,9 +929,34 @@
   padding: var(--s-3) 0;
   margin-bottom: var(--s-4);
 }
-.udcShellBody {
-  flex: 1 1 auto;
-  padding-top: 88px; /* 12px float offset + bar height + breathing room */
+.udcShellBody { flex: 1 1 auto; min-width: 0; }
+.page { width: 100%; min-width: 0; }
+.pageHeader { padding: var(--s-8); background: var(--white); border: 1px solid var(--line); border-left: 3px solid var(--accent-udc); }
+.pageTitle, .sectionHead h2 { font-family: var(--font-serif); font-weight: var(--weight-medium); }
+.sectionHead { gap: var(--s-4); }
+.sectionHead > * { min-width: 0; overflow-wrap: anywhere; }
+.queueList { min-width: 0; }
+.queueRow > * { min-width: 0; overflow-wrap: anywhere; }
+.udcShell :is(a, button, input, select, textarea, summary):focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: 2px; }
+.networkBar { flex-wrap: wrap; min-height: 52px; padding-inline: var(--page-pad); }
+.networkBarNormal, .networkBarReconnected { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.networkBarWarn { background: var(--udc-warning-ink); color: var(--white); border-color: var(--udc-warning-ink); }
+.networkBarOffline { background: var(--udc-danger-ink); color: var(--white); border-color: var(--udc-danger-ink); }
+.networkDetails { position: relative; }
+.networkDetails summary { cursor: pointer; font-size: var(--t-label); text-decoration: underline; }
+.networkDetails summary:focus-visible { outline: var(--focus-width) solid currentColor; outline-offset: 3px; }
+.networkBar button:focus-visible { outline: var(--focus-width) solid var(--white); outline-offset: 2px; }
+.networkDetailsBody { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--s-4); width: 100%; padding: var(--s-4) 0 var(--s-2); }
+.networkBarControls { flex-wrap: wrap; }
+.networkBarStats span { background: transparent; }
+.networkDetails[open] { flex-basis: 100%; }
+@media (max-width: 640px) {
+  .pageHeader { padding: var(--s-6); }
+  .networkBarKind { display: none; }
+  .networkDetailsBody { justify-content: flex-start; }
+  .fieldGrid { grid-template-columns: minmax(0, 1fr); }
+  .queueRow { grid-template-columns: minmax(0, 1fr); }
+  .queueRow > * { min-width: 0; overflow-wrap: anywhere; }
 }
 
 /* ===== Camera capture ===== */

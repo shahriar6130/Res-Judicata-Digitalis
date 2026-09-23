@@ -20,7 +20,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { CaseRecord, CaseStatus, CitizenCaseSummary, DocumentRecord, TimelineEvent } from "../case-demo";
 import { useDlasDb } from "./store";
-import { DISTRICTS, DOC_TYPES, MATTERS, label, safeTimeLabel } from "./reference";
+import { DISTRICTS, DOC_TYPES, MATTERS, formatDateTime, label, safeTimeLabel } from "./reference";
 import { PIPELINE, type ApplicationRecord, type PathwayType, type DocType, type CitizenAccount, type DlasDb, type UdcCentre } from "./schema";
 
 const CURRENT_KEY = "dlas.citizen.current";
@@ -51,14 +51,22 @@ export function useCurrentCitizen(): CitizenAccount | undefined {
 
 export function applicationsFor(db: DlasDb, account: CitizenAccount | undefined): ApplicationRecord[] {
   if (!account) return [];
+  // Precompute indices so the filter below is O(A + N + T) instead of
+  // O(A · N + A · T) when a single citizen has many cases.
+  const sessionById = new Map(db.sessions.map((s) => [s.sessionId, s]));
+  const openFollowUpByApp = new Set<string>();
+  for (const t of db.tasks) {
+    if (t.status === "DONE") continue;
+    if (t.type !== "DOCUMENT_FOLLOW_UP" && t.type !== "COMPLETE_MISSING_INFO") continue;
+    if (t.applicationId) openFollowUpByApp.add(t.applicationId);
+  }
   return db.applications
     .filter((a) => {
-      const s = db.sessions.find((x) => x.sessionId === a.channel.sessionId);
-      return (
-        s?.meta.citizenId === account.citizenId ||
-        a.data.applicant.phone === account.phone ||
-        a.data.filedBy.phone === account.phone
-      );
+      const s = sessionById.get(a.channel.sessionId);
+      if (s?.meta.citizenId === account.citizenId) return true;
+      if (a.data.applicant.phone === account.phone) return true;
+      if (a.data.filedBy.phone === account.phone) return true;
+      return openFollowUpByApp.has(a.applicationId);
     })
     .sort((x, y) => y.submittedAt.localeCompare(x.submittedAt));
 }
@@ -148,13 +156,27 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
       id: stage,
       titleBn: s.tBn,
       titleEn: s.tEn,
-      descriptionBn: stage === "CASE_OPENED" && a.caseId ? `কেস আইডি ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? PATHWAY_TEXT[a.review.pathway.type].bn : s.dBn,
-      descriptionEn: stage === "CASE_OPENED" && a.caseId ? `Case ID ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? PATHWAY_TEXT[a.review.pathway.type].en : s.dEn,
+      descriptionBn: stage === "CASE_OPENED" && a.caseId ? `কেস আইডি ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? `${PATHWAY_TEXT[a.review.pathway.type].bn}${lawyerLine(a, "bn")}` : stage === "FOLLOW_UP" ? nextHearingLine(a, "bn") ?? s.dBn : s.dBn,
+      descriptionEn: stage === "CASE_OPENED" && a.caseId ? `Case ID ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? `${PATHWAY_TEXT[a.review.pathway.type].en}${lawyerLine(a, "en")}` : stage === "FOLLOW_UP" ? nextHearingLine(a, "en") ?? s.dEn : s.dEn,
       dateBn: stageDate(a, i) ? fmt(stageDate(a, i)!, "bn") : "",
       dateEn: stageDate(a, i) ? fmt(stageDate(a, i)!, "en") : "",
       state,
     };
   });
+}
+
+/** " · Panel lawyer: X" once a lawyer has accepted the case. */
+function lawyerLine(a: ApplicationRecord, lang: "bn" | "en"): string {
+  const s = a.lawyer?.assignments.find((x) => x.status === "ACCEPTED" || x.status === "COMPLETED");
+  return s ? (lang === "bn" ? ` · প্যানেল আইনজীবী: ${s.lawyerName}` : ` · Panel lawyer: ${s.lawyerName}`) : "";
+}
+
+/** Next hearing, from the lawyer's record (no dates are invented). */
+function nextHearingLine(a: ApplicationRecord, lang: "bn" | "en"): string | null {
+  const t = new Date().toISOString();
+  const h = (a.lawyer?.hearings ?? []).filter((x) => x.at > t).sort((x, y) => x.at.localeCompare(y.at))[0];
+  if (!h) return null;
+  return lang === "bn" ? `পরবর্তী শুনানি: ${formatDateTime(h.at, "bn")} · ${h.court}` : `Next hearing: ${formatDateTime(h.at, "en")} · ${h.court}`;
 }
 
 function stageDate(a: ApplicationRecord, i: number): string | null {
@@ -214,6 +236,13 @@ export function useCitizenCases(): CitizenCaseSummary[] {
   const db = useDlasDb();
   const me = useCurrentCitizen();
   return useMemo(() => applicationsFor(db, me).map(toSummary), [db, me]);
+}
+
+/** Raw applications owned by the citizen (no transformation). */
+export function useCitizenApplications(): ApplicationRecord[] {
+  const db = useDlasDb();
+  const me = useCurrentCitizen();
+  return useMemo(() => applicationsFor(db, me), [db, me]);
 }
 
 /** The raw shared record for one of the logged-in citizen's applications (documents, provenance…). */
@@ -309,6 +338,17 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
     const pw = a.review?.pathway;
     if (pw && a.caseId) {
       out.push({ id: `pw-${a.applicationId}`, at: pw.at, icon: "check", title: { bn: PATHWAY_TEXT[pw.type].bn, en: PATHWAY_TEXT[pw.type].en }, body: { bn: a.caseId, en: a.caseId }, href: `cases/${a.applicationId}` });
+    }
+    // One entry per lawyer who accepted (access granted) — a reassignment shows the new lawyer too.
+    for (const g of a.lawyer?.access ?? []) {
+      out.push({ id: `law-${g.assignmentId}`, at: g.grantedAt, icon: "user", title: { bn: `প্যানেল আইনজীবী নিয়োগ: ${g.lawyerName}`, en: `Panel lawyer assigned: ${g.lawyerName}` }, body: { bn: a.caseId ?? a.applicationId, en: a.caseId ?? a.applicationId }, href: `cases/${a.applicationId}` });
+    }
+    for (const h of a.lawyer?.hearings ?? []) {
+      // A5: a missing lawyer report surfaces to the citizen before they travel.
+      if (h.overdueFlaggedAt && !h.updateId) {
+        out.push({ id: `hrgmiss-${h.hearingId}`, at: h.overdueFlaggedAt, icon: "bell", title: { bn: `আইনজীবী ${formatDateTime(h.at, "bn")}-এর শুনানির খবর দেননি`, en: `No lawyer report for the ${formatDateTime(h.at, "en")} hearing` }, body: { bn: "যাওয়ার আগে ১৬৬৯৯-এ কল করে পরবর্তী তারিখ নিশ্চিত করুন — অফিস জানে।", en: "Call 16699 to confirm the next date before you travel — the office has been alerted." }, href: `cases/${a.applicationId}` });
+      }
+      out.push({ id: `hrg-${h.hearingId}`, at: h.addedAt, icon: "bell", title: { bn: `শুনানি: ${formatDateTime(h.at, "bn")}`, en: `Hearing: ${formatDateTime(h.at, "en")}` }, body: { bn: `${a.caseId ?? a.applicationId} · ${h.court}`, en: `${a.caseId ?? a.applicationId} · ${h.court}` }, href: `cases/${a.applicationId}` });
     }
     if (d?.decision === "NOT_ELIGIBLE") {
       out.push({ id: `rej-${a.applicationId}`, at: d.at, icon: "bell", title: { bn: "আবেদন গৃহীত হয়নি", en: "Application not accepted" }, body: { bn: `কারণ: ${d.reason}`, en: `Reason: ${d.reason}` }, href: `cases/${a.applicationId}` });

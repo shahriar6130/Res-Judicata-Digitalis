@@ -49,6 +49,7 @@ export type ProvenanceSource =
   | "OPERATOR_ENTERED" // UDC/helpline typed it on the applicant's behalf
   | "AI_INFERRED" // speech-to-text / classifier output, unconfirmed
   | "OFFICER_VERIFIED" // checked/corrected by an authorised DLAO officer
+  | "LAWYER_REPORTED" // self-reported by the assigned panel lawyer (hearing updates)
   | "SYSTEM_DERIVED"; // computed by the platform (office, timestamps…)
 
 export type Confidence = "CONFIRMED" | "STATED" | "INFERRED";
@@ -214,7 +215,7 @@ export interface AuditEntry {
   seq: number;
   at: string;
   actor: string;
-  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "debug";
+  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "panel_lawyer" | "debug";
   action: string; // e.g. "session.started", "field.captured", "application.submitted"
   detail?: Record<string, unknown>;
 }
@@ -351,6 +352,7 @@ export interface ApplicationRecord {
   taskIds: string[];
   audit: AuditEntry[];
   review: DlaoReview | null; // Step 2 — set once an office receives the application
+  lawyer: LawyerMatter | null; // Step 3 (LAWYER pathway) — assignment, hearings, updates
   closedAt: string | null;
   version: number;
   createdAt: string;
@@ -472,6 +474,122 @@ export interface DlaoOfficerAccount {
   audit: AuditEntry[];
 }
 
+/* ---------- Panel lawyers (sign-up: name + phone + district + bar enrolment) ---------- */
+
+export interface PanelLawyerAccount {
+  lawyerId: string; // LAW-XXXXXX
+  name: string;
+  phone: string; // login id (no password in the prototype)
+  district: DistrictCode; // district legal aid panel the lawyer sits on
+  barEnrolmentNo: string; // self-declared; the DLAO checks it before empanelment
+  practiceAreas: MatterCategory[];
+  createdAt: string;
+  lastLoginAt: string | null;
+  audit: AuditEntry[];
+}
+
+export type AssignmentStatus = "OFFERED" | "ACCEPTED" | "DECLINED" | "WITHDRAWN" | "COMPLETED";
+
+/** Per-assignment attendance record — stored, so payment can be worked out after the case ends. */
+export interface AssignmentLedger {
+  hearingsAttended: number; // lawyer reported ATTENDED
+  hearingsMissed: number; // lawyer reported NOT_ATTENDED, or no report by the deadline
+  hearingsNotHeld: number; // court did not sit
+  hearingsUnreported: number; // past hearings still waiting for a report (not yet overdue)
+  updatesOnTime: number;
+  updatesLate: number;
+  updatedAt: string;
+}
+
+/** Stage-based payment reconciliation (T1). Amounts come from the fee schedule — never set here. */
+export interface PaymentReconciliation {
+  status: "ACCRUING" | "PENDING_CASE_COMPLETION" | "DLAO_REVIEW";
+  payableHearings: number; // attended hearings
+  completedStages: { hearingId: string; at: string; result: "ATTENDED" | "NOT_HELD" }[];
+  missedHearings: number;
+  eligibleAmount: "DEMO_RATE";
+  note: string;
+  at: string;
+}
+
+export interface LawyerAccessGrant {
+  lawyerId: string;
+  lawyerName: string;
+  assignmentId: string;
+  scope: "FULL_CASE_RECORD"; // case facts, client safe-contact, documents, hearing history
+  grantedAt: string;
+  revokedAt: string | null;
+  revokeReason: string | null;
+}
+
+/** Lawyer workflow thresholds — live in the JSON (dlas.db.v1.lawyerRules), editable without code. */
+export interface LawyerRuleset {
+  version: string;
+  source: "PROTOTYPE_RULE";
+  offerResponseHours: number;
+  updateDueHours: number;
+  missedHearingsBeforeReassign: number; // per case → DLAO asked to assign another lawyer
+  patternCases: number; // missed hearings on this many cases → separate pattern review (T1)
+  patternWindowDays: number;
+  maxActiveCases: number; // availability: lawyers at this load are flagged "at capacity"
+  feeBasis: string;
+}
+
+export interface LawyerAssignment {
+  assignmentId: string; // ASN-XXXXXX
+  lawyerId: string;
+  lawyerName: string;
+  status: AssignmentStatus;
+  offeredAt: string;
+  offeredBy: string; // officerId
+  offeredByName: string;
+  note: string | null; // officer's instructions
+  respondBy: string; // offer response deadline
+  respondedAt: string | null;
+  declineReason: string | null;
+  responseOverdueFlaggedAt: string | null;
+  handoverFrom: string | null; // previous assignmentId when this is a reassignment
+  reassignFlaggedAt: string | null; // DLAO alerted: missed-hearing threshold reached
+  ledger: AssignmentLedger;
+  payment: PaymentReconciliation | null;
+}
+
+export interface Hearing {
+  hearingId: string; // HRG-XXXXXX
+  assignmentId: string | null; // the assignment responsible for this hearing (moves to the new lawyer on reassignment if still upcoming)
+  result: "ATTENDED" | "MISSED" | "NOT_HELD" | null; // from the lawyer's report, or MISSED when no report by the deadline
+  at: string; // ISO date-time of the hearing
+  court: string;
+  purpose: string | null;
+  addedBy: string; // lawyerId or officerId
+  addedAt: string;
+  updateDueAt: string; // the lawyer's update is required by this time
+  updateId: string | null; // set when the lawyer reports on this hearing
+  overdueFlaggedAt: string | null; // when the DLAO was alerted
+  clientNotifiedAt: string | null;
+}
+
+export interface HearingUpdate {
+  updateId: string; // UPD-XXXXXX
+  hearingId: string | null;
+  attendance: "ATTENDED" | "NOT_ATTENDED" | "NOT_HELD";
+  outcome: "ADJOURNED" | "HEARD" | "ORDER_PASSED" | "JUDGMENT" | "SETTLED" | "OTHER";
+  nextDate: string | null; // next hearing (creates a new Hearing)
+  note: string;
+  by: string; // lawyerId
+  byName: string;
+  at: string;
+  late: boolean; // submitted after updateDueAt
+}
+
+export interface LawyerMatter {
+  assignments: LawyerAssignment[]; // history; at most one OFFERED/ACCEPTED at a time
+  hearings: Hearing[];
+  updates: HearingUpdate[];
+  access: LawyerAccessGrant[]; // who may open the full record; revoked on reassignment
+  completion: { outcome: "JUDGMENT" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER"; reason: string; by: string; byName: string; at: string } | null;
+}
+
 /* ---------- Tasks (human work items created by the workflow) ---------- */
 
 export type TaskType =
@@ -483,14 +601,20 @@ export type TaskType =
   | "HUMAN_CALLBACK"
   | "GRAM_ADALAT_REFERRAL"
   | "MEDIATION_SCHEDULING"
-  | "LAWYER_ASSIGNMENT";
+  | "LAWYER_ASSIGNMENT"
+  | "LAWYER_RESPONSE" // panel lawyer: accept or decline an offer
+  | "HEARING_UPDATE_DUE" // panel lawyer: report on a hearing
+  | "LAWYER_UPDATE_OVERDUE" // DLAO: a required lawyer update is late (no chase call needed)
+  | "LAWYER_REASSIGN_REVIEW" // DLAO: lawyer missed the threshold number of hearings on this case
+  | "LAWYER_INACTIVITY_REVIEW"; // DLAO: repeated overdue updates across cases (T1 pattern alert)
 
 export interface Task {
   taskId: string; // TSK-XXXXXX
   type: TaskType;
   applicationId: string | null;
   sessionId: string | null;
-  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR" | "MEDIATOR" | "GRAM_ADALAT";
+  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR" | "MEDIATOR" | "GRAM_ADALAT" | "PANEL_LAWYER";
+  assigneeId?: string | null; // e.g. LAW-XXXXXX when the task belongs to one person
   office: string | null;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
   priority: "NORMAL" | "HIGH" | "URGENT";
@@ -556,6 +680,8 @@ export interface DlasDb {
   citizens: CitizenAccount[];
   udcOperators: UdcOperatorAccount[];
   officers: DlaoOfficerAccount[];
+  lawyers: PanelLawyerAccount[];
+  lawyerRules: LawyerRuleset | null;
   udcCentres: UdcCentre[];
   eligibilityRulesets: EligibilityRuleset[];
   sessions: IntakeSession[];

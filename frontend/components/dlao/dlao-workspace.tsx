@@ -5,7 +5,7 @@
  *  (DLAO / SCLAC / LLAC). Everything is read from and written to the
  *  shared record in localStorage["dlas.db.v1"] via DlaoReviewService.
  *
- *  Hash routes:  #new · #review · #decided · #tasks · #app/<APP-ID>
+ *  Hash routes:  #overview · #new · #review · #decided · #tasks · #app/<APP-ID>
  * ------------------------------------------------------------------ */
 
 import Link from "next/link";
@@ -31,6 +31,15 @@ import {
   useEligibilityRuleset,
   useOfficeQueue,
   useStoredFile,
+  DlaoLawyerService,
+  activeAssignment,
+  formatDateTime,
+  hearingMissed,
+  hearingState,
+  suggestLawyers,
+  useClock,
+  useLawyerDeadlineSweep,
+  useLawyerRules,
   type ApplicationRecord,
   type DocType,
   type DocumentRef,
@@ -40,15 +49,17 @@ import {
 } from "@/lib/dlas";
 import styles from "@/components/dlas/dlas.module.css";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
+import { OfficeAnalytics } from "./dlao-analytics";
 import ui from "./dlao.module.css";
 
-type View = { kind: "list"; bucket: "new" | "review" | "decided" | "tasks" } | { kind: "app"; id: string };
+type QueueView = "overview" | "new" | "review" | "decided" | "tasks";
+type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
   if (raw.startsWith("app/")) return { kind: "app", id: decodeURIComponent(raw.slice(4)) };
-  if (raw === "review" || raw === "decided" || raw === "tasks") return { kind: "list", bucket: raw };
-  return { kind: "list", bucket: "new" };
+  if (raw === "new" || raw === "review" || raw === "decided" || raw === "tasks") return { kind: "list", bucket: raw };
+  return { kind: "list", bucket: "overview" };
 }
 
 const noop = () => () => {};
@@ -134,6 +145,10 @@ function Row({ label: l, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function WorkFact({ name, children }: { name: string; children: ReactNode }) {
+  return <div className={ui.workFact}><dt>{name}</dt><dd>{children}</dd></div>;
+}
+
 function Banner({ tone, icon, children }: { tone: "ok" | "warn" | "err"; icon: string; children: ReactNode }) {
   const cls = tone === "ok" ? ui.bannerOk : tone === "err" ? ui.bannerErr : ui.bannerWarn;
   return (
@@ -197,6 +212,7 @@ export function DlaoWorkspace() {
   const q = useOfficeQueue();
   const view = useHashView();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  useLawyerDeadlineSweep(); // overdue lawyer updates become DLAO alerts without a chase call
 
   if (!mounted) return null;
   if (!q.officer) {
@@ -222,22 +238,37 @@ export function DlaoWorkspace() {
 
 /* ------------------------------ queue ------------------------------ */
 
-function Queue({ bucket }: { bucket: "new" | "review" | "decided" | "tasks" }) {
+function Queue({ bucket }: { bucket: QueueView }) {
   const { lang } = useI18n();
   const q = useOfficeQueue();
   const db = useDlasDb();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
-  const rows = bucket === "new" ? q.NEW : bucket === "review" ? q.IN_REVIEW : bucket === "decided" ? q.DECIDED : [];
+  const rows = bucket === "overview" || bucket === "new" ? q.NEW : bucket === "review" ? q.IN_REVIEW : bucket === "decided" ? q.DECIDED : [];
   const title = {
+    overview: tx("অফিসের সারসংক্ষেপ", "Office overview"),
     new: tx("নতুন আবেদন — অফিসে প্রাপ্ত", "New applications — received by the office"),
     review: tx("যাচাই চলছে", "In verification"),
     decided: tx("সিদ্ধান্ত হয়েছে", "Decided"),
     tasks: tx("ফলো-আপ কাজ", "Follow-up tasks"),
   }[bucket];
+  const isOverview = bucket === "overview";
+  const activeCount = q.NEW.length + q.IN_REVIEW.length;
   return (
     <>
-      <h1 className={styles.title}>{title}</h1>
-      <div className={styles.stats}>
+      <header className={isOverview ? ui.queueHero : ui.queuePlainHead}>
+        <div className={ui.queueHeroCopy}>
+          <span className={ui.heroKicker}>{tx("অফিসের কার্যক্রম", "OFFICE WORKSPACE")}</span>
+          <h1 className={ui.queueTitle}>{title}</h1>
+          {isOverview ? <p className={ui.heroDescription}>
+            {tx("প্রাপ্ত আবেদন যাচাই করুন, সিদ্ধান্ত নিন এবং ফলো-আপ কাজের অগ্রগতি দেখুন।", "Review applications, record decisions, and keep follow-up work moving.")}
+          </p> : null}
+        </div>
+        {isOverview ? <div className={ui.heroMetric} aria-label={tx(`${activeCount}টি আবেদন অপেক্ষায়`, `${activeCount} applications awaiting action`)}>
+          <span className={ui.heroMetricNumber}>{activeCount}</span>
+          <span className={ui.heroMetricLabel}>{tx("পদক্ষেপের অপেক্ষায়", "Awaiting action")}</span>
+        </div> : null}
+      </header>
+      {isOverview ? <nav className={ui.queueStats} aria-label={tx("অফিসের সারসংক্ষেপ", "Office summary")}>
         {(
           [
             ["new", q.NEW.length, tx("নতুন", "New")],
@@ -246,100 +277,87 @@ function Queue({ bucket }: { bucket: "new" | "review" | "decided" | "tasks" }) {
             ["tasks", q.tasks.length, tx("খোলা কাজ", "Open tasks")],
           ] as const
         ).map(([k, n, l]) => (
-          <a key={k} href={`#${k}`} className={styles.stat} aria-current={bucket === k}>
-            <div className={styles.statNum}>{n}</div>
-            <div className={styles.statLabel}>{l}</div>
+          <a key={k} href={`#${k}`} className={ui.queueStat}>
+            <span className={ui.queueStatTop}><span className={ui.queueStatDot} aria-hidden="true" />{l}</span>
+            <span className={ui.queueStatBottom}><span className={ui.queueStatNum}>{n}</span><span className={ui.queueStatArrow} aria-hidden="true">↗</span></span>
           </a>
         ))}
+      </nav> : null}
+
+      {isOverview ? <OfficeAnalytics /> : null}
+
+      <div className={ui.queueSectionHead}>
+        <div>
+          <p className={ui.sectionKicker}>{tx("লাইভ তালিকা", "LIVE WORKLIST")}</p>
+          <h2 className={ui.queueSectionTitle}>
+            {isOverview ? tx("নতুন আবেদন", "New applications") : bucket === "tasks" ? tx("খোলা কাজ", "Open tasks") : tx("আবেদনসমূহ", "Applications")}
+          </h2>
+        </div>
+        <span className={ui.sectionCount}>{bucket === "tasks" ? q.tasks.length : rows.length} {tx("টি", "items")}</span>
       </div>
 
       {bucket === "tasks" ? (
         q.tasks.length === 0 ? (
-          <p className={styles.hint}>{tx("কোনো খোলা কাজ নেই।", "No open tasks.")}</p>
+          <p className={ui.queueEmpty}>{tx("কোনো খোলা কাজ নেই।", "No open tasks.")}</p>
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{tx("কাজ", "Task")}</th>
-                  <th>{tx("আবেদন", "Application")}</th>
-                  <th>{tx("কারণ", "Reason")}</th>
-                  <th>{tx("দায়িত্ব", "Assigned")}</th>
-                  <th>{tx("শেষ সময়", "Due")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {q.tasks.map((t) => (
-                  <tr key={t.taskId}>
-                    <td>
-                      <Tag>{pretty(t.type)}</Tag> {t.priority !== "NORMAL" ? <Tag tone="err">{t.priority}</Tag> : null}
-                    </td>
-                    <td>
-                      <a className={styles.mono} href={`#app/${t.applicationId}`}>
-                        {t.applicationId}
-                      </a>
-                    </td>
-                    <td>{t.reason}</td>
-                    <td>{pretty(t.assignedRole)}</td>
-                    <td>{new Date(t.dueAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={ui.worklist}>
+            {q.tasks.map((t) => (
+              <article className={ui.workItem} key={t.taskId}>
+                <div className={ui.workItemHead}>
+                  <div className={ui.workItemIdentity}>
+                    <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
+                    <a className={ui.workItemId} href={`#app/${t.applicationId}`}>{t.applicationId}</a>
+                  </div>
+                  <a className={ui.queueOpen} href={`#app/${t.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
+                </div>
+                <div className={ui.workItemTags}>
+                  <Tag>{pretty(t.type)}</Tag>{t.priority !== "NORMAL" ? <Tag tone="err">{t.priority}</Tag> : null}
+                </div>
+                <dl className={ui.workFacts}>
+                  <WorkFact name={tx("কারণ", "Reason")}>{t.reason}</WorkFact>
+                  <WorkFact name={tx("দায়িত্ব", "Assigned")}>{pretty(t.assignedRole)}</WorkFact>
+                  <WorkFact name={tx("শেষ সময়", "Due")}>{new Date(t.dueAt).toLocaleString()}</WorkFact>
+                </dl>
+              </article>
+            ))}
           </div>
         )
       ) : rows.length === 0 ? (
-        <p className={styles.hint}>{tx("এই তালিকায় কোনো আবেদন নেই।", "No applications in this list.")}</p>
+        <p className={ui.queueEmpty}>{tx("এই তালিকায় কোনো আবেদন নেই।", "No applications in this list.")}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{tx("আবেদন", "Application")}</th>
-                <th>{tx("আবেদনকারী", "Applicant")}</th>
-                <th>{tx("মাধ্যম", "Channel")}</th>
-                <th>{tx("সমস্যা", "Matter")}</th>
-                <th>{tx("অপেক্ষা", "Waiting")}</th>
-                <th>{tx("প্রস্তাবিত অগ্রাধিকার", "Suggested priority")}</th>
-                <th>{tx("যাচাই", "Verification")}</th>
-                <th>{tx("ধাপ", "Stage")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((a) => {
-                const openTasks = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE").length;
-                return (
-                  <tr key={a.applicationId}>
-                    <td>
-                      <a className={styles.mono} href={`#app/${a.applicationId}`}>
-                        {a.applicationId}
-                      </a>
-                      {a.caseId ? <div className={styles.mono}>{a.caseId}</div> : null}
-                    </td>
-                    <td>
-                      {a.data.applicant.fullName ?? "—"}
-                      {a.data.filedBy.kind !== "SELF" ? <div className={styles.hint}>{pretty(a.data.filedBy.kind)}</div> : null}
-                    </td>
-                    <td>{a.channel.code}</td>
-                    <td>{label(MATTERS, a.data.matter.category, lang)}</td>
-                    <td>
-                      {daysSince(a.submittedAt)} {tx("দিন", "d")}
-                    </td>
-                    <td>
-                      <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
-                    </td>
-                    <td>
-                      <VerifiedBadge a={a} />
-                    </td>
-                    <td>
-                      {STAGE_LABEL[subStage(a)]?.[lang] ?? subStage(a)}
-                      {openTasks ? <div className={styles.hint}>{openTasks} {tx("খোলা কাজ", "open task(s)")}</div> : null}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={ui.worklist}>
+          {rows.map((a) => {
+            const openTasks = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE").length;
+            return (
+              <article className={ui.workItem} key={a.applicationId}>
+                <div className={ui.workItemHead}>
+                  <div className={ui.workItemIdentity}>
+                    <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
+                    <a className={ui.workItemId} href={`#app/${a.applicationId}`}>{a.applicationId}</a>
+                    {a.caseId ? <span className={ui.workCaseId}>{a.caseId}</span> : null}
+                  </div>
+                  <a className={ui.queueOpen} href={`#app/${a.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
+                </div>
+                <dl className={ui.workFacts}>
+                  <WorkFact name={tx("আবেদনকারী", "Applicant")}>
+                    {a.data.applicant.fullName ?? "—"}
+                    {a.data.filedBy.kind !== "SELF" ? <span className={ui.workSub}>{pretty(a.data.filedBy.kind)}</span> : null}
+                  </WorkFact>
+                  <WorkFact name={tx("সমস্যা", "Matter")}>{label(MATTERS, a.data.matter.category, lang)}</WorkFact>
+                  <WorkFact name={tx("মাধ্যম", "Channel")}>{a.channel.code}</WorkFact>
+                  <WorkFact name={tx("অপেক্ষা", "Waiting")}>{daysSince(a.submittedAt)} {tx("দিন", "d")}</WorkFact>
+                  <WorkFact name={tx("প্রস্তাবিত অগ্রাধিকার", "Suggested priority")}>
+                    <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
+                  </WorkFact>
+                  <WorkFact name={tx("যাচাই", "Verification")}><VerifiedBadge a={a} /></WorkFact>
+                  <WorkFact name={tx("ধাপ", "Stage")}>
+                    {STAGE_LABEL[subStage(a)]?.[lang] ?? subStage(a)}
+                    {openTasks ? <span className={ui.workSub}>{openTasks} {tx("খোলা কাজ", "open task(s)")}</span> : null}
+                  </WorkFact>
+                </dl>
+              </article>
+            );
+          })}
         </div>
       )}
     </>
@@ -1286,6 +1304,7 @@ function PathwayStep({ a, run }: StepProps) {
             ))}
           </Row>
         </div>
+        {p.type === "LAWYER" ? <LawyerAssignPanel a={a} run={run} /> : null}
       </>
     );
   }
@@ -1381,5 +1400,336 @@ function SidePanel({ a }: { a: ApplicationRecord }) {
         </Link>
       </details>
     </aside>
+  );
+}
+
+/* ------------------------------ panel lawyer (LAWYER pathway) ------------------------------ */
+
+const COMPLETION_OUTCOMES = ["JUDGMENT", "SETTLED", "WITHDRAWN_BY_CLIENT", "OTHER"] as const;
+
+function LawyerAssignPanel({ a, run }: StepProps) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const db = useDlasDb();
+  const now = useClock();
+  const rules = useLawyerRules();
+  const suggestions = useMemo(() => suggestLawyers(db, a, now), [db, a, now]);
+  const s = activeAssignment(a);
+  const m = a.lawyer;
+  const [lawyerId, setLawyerId] = useState("");
+  const [note, setNote] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [reason, setReason] = useState("");
+  const [completing, setCompleting] = useState(false);
+  const [outcome, setOutcome] = useState<(typeof COMPLETION_OUTCOMES)[number]>("JUDGMENT");
+  const [doneReason, setDoneReason] = useState("");
+  const hearings = [...(m?.hearings ?? [])].sort((x, y) => x.at.localeCompare(y.at));
+  const alerts = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE" && (t.type === "LAWYER_UPDATE_OVERDUE" || t.type === "LAWYER_REASSIGN_REVIEW" || t.type === "LAWYER_INACTIVITY_REVIEW" || t.type === "LAWYER_ASSIGNMENT"));
+  const reassignAlert = alerts.find((t) => t.type === "LAWYER_REASSIGN_REVIEW");
+  const top = suggestions.find((x) => x.available && !x.previouslyOnCase) ?? suggestions[0];
+  const chosen = lawyerId || top?.lawyer.lawyerId || "";
+  const nameOf = (assignmentId: string | null) => m?.assignments.find((x) => x.assignmentId === assignmentId)?.lawyerName ?? "—";
+  const worked = (m?.assignments ?? []).filter((x) => x.status === "ACCEPTED" || x.status === "WITHDRAWN" || x.status === "COMPLETED");
+  const alertTitle = (type: string) =>
+    type === "LAWYER_REASSIGN_REVIEW"
+      ? tx("শুনানি মিস — অন্য আইনজীবী দিন", "Missed hearings — assign another lawyer")
+      : type === "LAWYER_INACTIVITY_REVIEW"
+        ? tx("একাধিক মামলায় শুনানি মিস — পর্যালোচনা", "Missed hearings across cases — review")
+        : type === "LAWYER_ASSIGNMENT"
+          ? tx("আইনজীবী নিয়োগ দিন", "Assign a panel lawyer")
+          : tx("আইনজীবীর প্রতিবেদন দেরি", "Lawyer report overdue");
+
+  return (
+    <div className={ui.section}>
+      <div className={ui.sectionHead}>{tx("প্যানেল আইনজীবী", "Panel lawyer")}</div>
+
+      {alerts.map((t) => (
+        <Banner key={t.taskId} tone={t.type === "LAWYER_ASSIGNMENT" ? "warn" : "err"} icon="!">
+          <strong>{alertTitle(t.type)}</strong> — {t.reason}
+        </Banner>
+      ))}
+
+      {m?.completion ? (
+        <Banner tone="ok" icon="✓">
+          <strong>{tx("প্রতিনিধিত্ব সম্পন্ন", "Representation completed")}</strong> — {pretty(m.completion.outcome)} · {m.completion.reason} · {m.completion.byName} · {formatDateTime(m.completion.at, lang)}
+        </Banner>
+      ) : null}
+
+      {s ? (
+        <>
+          <div className={ui.rows}>
+            <Row label={tx("আইনজীবী", "Lawyer")}>
+              <strong>{s.lawyerName}</strong>
+              <Tag tone={s.status === "ACCEPTED" ? "ok" : new Date(s.respondBy).getTime() < now ? "err" : "warn"}>
+                {s.status === "ACCEPTED" ? tx("✓ নিয়োগপ্রাপ্ত", "✓ Assigned") : new Date(s.respondBy).getTime() < now ? tx("উত্তর দেননি — দেরি", "No answer — overdue") : tx("উত্তরের অপেক্ষায়", "Offer sent — awaiting answer")}
+              </Tag>
+              {s.handoverFrom ? <Tag>{tx(`${nameOf(s.handoverFrom)}-এর কাছ থেকে হস্তান্তর`, `Handed over from ${nameOf(s.handoverFrom)}`)}</Tag> : null}
+              <span className={ui.sub}>
+                {tx("প্রস্তাব", "Offered")} {formatDateTime(s.offeredAt, lang)} ·{" "}
+                {s.status === "ACCEPTED" && s.respondedAt ? `${tx("গ্রহণ", "accepted")} ${formatDateTime(s.respondedAt, lang)}` : `${tx("উত্তর দিতে হবে", "respond by")} ${formatDateTime(s.respondBy, lang)}`}
+              </span>
+            </Row>
+            {s.note ? <Row label={tx("নির্দেশনা", "Instructions")}>{s.note}</Row> : null}
+            {s.status === "ACCEPTED" ? (
+              <Row label={tx("উপস্থিতি", "Attendance")}>
+                <Tag tone="ok">{tx(`উপস্থিত ${s.ledger.hearingsAttended}`, `Attended ${s.ledger.hearingsAttended}`)}</Tag>
+                <Tag tone={s.ledger.hearingsMissed ? "err" : "neutral"}>{tx(`মিস ${s.ledger.hearingsMissed}/${rules.missedHearingsBeforeReassign}`, `Missed ${s.ledger.hearingsMissed} of ${rules.missedHearingsBeforeReassign} allowed`)}</Tag>
+                {s.ledger.hearingsNotHeld ? <Tag>{tx(`হয়নি ${s.ledger.hearingsNotHeld}`, `Not held ${s.ledger.hearingsNotHeld}`)}</Tag> : null}
+                {s.ledger.hearingsUnreported ? <Tag tone="warn">{tx(`প্রতিবেদন বাকি ${s.ledger.hearingsUnreported}`, `Report due ${s.ledger.hearingsUnreported}`)}</Tag> : null}
+              </Row>
+            ) : null}
+          </div>
+          {withdrawing ? (
+            <div className={ui.contactBox} style={{ marginTop: "var(--s-3)" }}>
+              <label className={styles.field}>
+                <span className={styles.label}>{tx("কেন অন্য আইনজীবী (কমপক্ষে ১০ অক্ষর)", "Why reassign (at least 10 characters)")}</span>
+                <textarea className={styles.textarea} value={reason} onChange={(e) => setReason(e.target.value)} />
+              </label>
+              <p className={styles.hint}>
+                {tx(
+                  "বর্তমান আইনজীবীর প্রবেশাধিকার বাতিল হবে; তাঁর উপস্থিতির হিসাব পেমেন্টের জন্য সংরক্ষিত থাকবে। নতুন আইনজীবী গ্রহণ করলে পুরো ইতিহাস ও নথি দেখতে পাবেন।",
+                  "The current lawyer's access is revoked; their attendance record is kept for payment. The new lawyer sees the full history and documents once they accept.",
+                )}
+              </p>
+              <div className={styles.actions} style={{ marginTop: 0 }}>
+                <Button
+                  variant="destructive"
+                  disabled={reason.trim().length < 10}
+                  onClick={() =>
+                    run(() => {
+                      DlaoLawyerService.withdraw(a.applicationId, reason);
+                      setWithdrawing(false);
+                      setReason("");
+                    })
+                  }
+                >
+                  {tx("প্রত্যাহার করে নতুন আইনজীবী বাছুন", "Withdraw & choose another lawyer")}
+                </Button>
+                <Button variant="secondary" onClick={() => setWithdrawing(false)}>
+                  {tx("বাতিল", "Cancel")}
+                </Button>
+              </div>
+            </div>
+          ) : !m?.completion ? (
+            <div className={ui.bar}>
+              <Button
+                variant={reassignAlert ? "primary" : "secondary"}
+                onClick={() => {
+                  setWithdrawing(true);
+                  if (reassignAlert && !reason) setReason(tx(`${s.ledger.hearingsMissed}টি শুনানি মিস করেছেন`, `Missed ${s.ledger.hearingsMissed} hearings on this case`));
+                }}
+              >
+                {tx("অন্য আইনজীবী দিন", "Assign another lawyer")}
+              </Button>
+              {s.status === "ACCEPTED" ? (
+                <Button variant="secondary" onClick={() => setCompleting(true)}>
+                  {tx("প্রতিনিধিত্ব সম্পন্ন", "Complete representation")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      ) : m?.completion ? null : suggestions.length === 0 ? (
+        <Banner tone="warn" icon="!">
+          {tx("এই জেলার প্যানেলে কোনো আইনজীবী নিবন্ধিত নেই। আইনজীবীরা /lawyer থেকে সাইন আপ করলে এখানে দেখাবে।", "No lawyers are registered on this district's panel yet. Lawyers who sign up at /lawyer appear here.")}
+        </Banner>
+      ) : (
+        <>
+          <div className={ui.advice}>
+            <Tag tone="ink">{tx("ইঞ্জিনের পরামর্শ — বাছাই আপনার", "Engine suggestion — you choose")}</Tag>{" "}
+            {tx("প্রাপ্যতা (চলমান মামলা), মামলার ধরন ও সাম্প্রতিক শুনানি মিসের ভিত্তিতে সাজানো।", "Ranked by availability (active cases), specialisation and recent missed hearings.")}
+          </div>
+          <div className={ui.options}>
+            {suggestions.map((x, i) => (
+              <button key={x.lawyer.lawyerId} type="button" className={ui.option} aria-pressed={chosen === x.lawyer.lawyerId} onClick={() => setLawyerId(x.lawyer.lawyerId)}>
+                <span className={ui.optionTitle}>
+                  {x.lawyer.name}
+                  {x === top ? <Tag tone="ok">{tx("প্রস্তাবিত", "Suggested")}</Tag> : null}
+                  {!x.available ? <Tag tone="err">{tx("সীমায়", "At capacity")}</Tag> : null}
+                  {x.previouslyOnCase ? <Tag tone="warn">{tx("আগে ছিলেন", "Was on case")}</Tag> : null}
+                </span>
+                <span className={ui.optionText}>
+                  #{i + 1} · {x.reasons.map((r) => r[lang]).join(" · ")}
+                </span>
+                <span className={ui.optionText}>
+                  {x.lawyer.barEnrolmentNo} · {x.lawyer.practiceAreas.map((c) => label(MATTERS, c, lang)).join(", ") || "—"}
+                </span>
+              </button>
+            ))}
+          </div>
+          <label className={styles.field} style={{ marginTop: "var(--s-4)" }}>
+            <span className={styles.label}>{tx("আইনজীবীর জন্য নির্দেশনা (ঐচ্ছিক)", "Instructions for the lawyer (optional)")}</span>
+            <textarea className={styles.textarea} value={note} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <div className={ui.bar}>
+            <Button
+              disabled={!chosen}
+              onClick={() =>
+                run(() => {
+                  DlaoLawyerService.assign(a.applicationId, { lawyerId: chosen, note });
+                  setNote("");
+                  setLawyerId("");
+                })
+              }
+            >
+              {tx("আইনজীবীকে প্রস্তাব পাঠান", "Send offer to this lawyer")}
+            </Button>
+            <span className={styles.hint}>{tx(`আইনজীবীকে ${rules.offerResponseHours} ঘণ্টার মধ্যে গ্রহণ বা প্রত্যাখ্যান করতে হবে`, `The lawyer must accept or decline within ${rules.offerResponseHours} h`)}</span>
+          </div>
+        </>
+      )}
+
+      {completing && !m?.completion ? (
+        <div className={ui.contactBox} style={{ marginTop: "var(--s-3)" }}>
+          <div className={styles.grid}>
+            <label className={styles.field}>
+              <span className={styles.label}>{tx("ফলাফল", "Outcome")}</span>
+              <select className={styles.select} value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)}>
+                {COMPLETION_OUTCOMES.map((o) => (
+                  <option key={o} value={o}>
+                    {pretty(o)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.label}>{tx("কারণ / বিবরণ (কমপক্ষে ১০ অক্ষর)", "Reason / details (at least 10 characters)")}</span>
+              <input className={styles.input} value={doneReason} onChange={(e) => setDoneReason(e.target.value)} />
+            </label>
+          </div>
+          <p className={styles.hint}>{tx("সব আইনজীবীর উপস্থিত শুনানির হিসাব পেমেন্ট পর্যালোচনায় যাবে।", "Every lawyer's attended-hearing count moves to payment review.")}</p>
+          <div className={styles.actions} style={{ marginTop: 0 }}>
+            <Button
+              disabled={doneReason.trim().length < 10}
+              onClick={() =>
+                run(() => {
+                  DlaoLawyerService.complete(a.applicationId, { outcome, reason: doneReason });
+                  setCompleting(false);
+                })
+              }
+            >
+              {tx("সম্পন্ন করুন", "Complete")}
+            </Button>
+            <Button variant="secondary" onClick={() => setCompleting(false)}>
+              {tx("বাতিল", "Cancel")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {hearings.length ? (
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("শুনানি (সব আইনজীবী)", "Hearings (all lawyers)")}</div>
+          <div className={ui.rows}>
+            {hearings.map((h) => {
+              const st = hearingState(h, now);
+              const missed = hearingMissed(h, now);
+              const u = m?.updates.find((x) => x.updateId === h.updateId);
+              return (
+                <Row key={h.hearingId} label={formatDateTime(h.at, lang)}>
+                  <span>{h.court}</span>
+                  <Tag>{nameOf(h.assignmentId)}</Tag>
+                  <Tag tone={h.result === "ATTENDED" ? "ok" : missed ? "err" : st === "UPDATE_DUE" ? "warn" : "neutral"}>
+                    {h.result === "ATTENDED"
+                      ? tx("✓ উপস্থিত", "✓ Attended")
+                      : h.result === "NOT_HELD"
+                        ? tx("শুনানি হয়নি", "Not held")
+                        : h.result === "MISSED"
+                          ? tx("✗ মিস (আইনজীবীর প্রতিবেদন)", "✗ Missed (lawyer reported)")
+                          : missed
+                            ? tx("✗ মিস — প্রতিবেদন আসেনি", "✗ Missed — no report")
+                            : st === "UPDATE_DUE"
+                              ? tx("প্রতিবেদন বাকি", "Report due")
+                              : tx("আসন্ন", "Upcoming")}
+                  </Tag>
+                  {u ? (
+                    <span className={ui.sub}>
+                      {pretty(u.outcome)} · “{u.note}” {u.late ? `· ${tx("দেরিতে", "late")}` : ""} <Tag>{tx("আইনজীবীর প্রতিবেদন", "Lawyer reported")}</Tag>
+                    </span>
+                  ) : null}
+                </Row>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {worked.length ? (
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("উপস্থিতি ও পেমেন্ট হিসাব", "Attendance & payment ledger")}</div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>{tx("আইনজীবী", "Lawyer")}</th>
+                  <th>{tx("উপস্থিত", "Attended")}</th>
+                  <th>{tx("মিস", "Missed")}</th>
+                  <th>{tx("হয়নি", "Not held")}</th>
+                  <th>{tx("প্রতিবেদন সময়মতো / দেরিতে", "Reports on time / late")}</th>
+                  <th>{tx("পেমেন্ট", "Payment")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {worked.map((x) => (
+                  <tr key={x.assignmentId}>
+                    <td>
+                      {x.lawyerName} <Tag tone={x.status === "WITHDRAWN" ? "warn" : x.status === "COMPLETED" ? "ok" : "neutral"}>{pretty(x.status)}</Tag>
+                    </td>
+                    <td>{x.ledger.hearingsAttended}</td>
+                    <td style={x.ledger.hearingsMissed ? { color: "var(--red)", fontWeight: 600 } : undefined}>{x.ledger.hearingsMissed}</td>
+                    <td>{x.ledger.hearingsNotHeld}</td>
+                    <td>
+                      {x.ledger.updatesOnTime} / {x.ledger.updatesLate}
+                    </td>
+                    <td>
+                      {x.payment ? (
+                        <>
+                          <Tag tone={x.payment.status === "DLAO_REVIEW" ? "ok" : x.payment.status === "PENDING_CASE_COMPLETION" ? "warn" : "neutral"}>{pretty(x.payment.status)}</Tag>
+                          <div className={styles.hint}>
+                            {tx(`${x.payment.payableHearings}টি শুনানি × জেলা ফি`, `${x.payment.payableHearings} hearing(s) × district fee`)} ({x.payment.eligibleAmount})
+                          </div>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className={styles.hint}>{rules.feeBasis}</p>
+        </div>
+      ) : null}
+
+      {m?.access.length ? (
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("মামলার রেকর্ডে প্রবেশাধিকার", "Access to the case record")}</div>
+          <div className={ui.rows}>
+            {m.access.map((g) => (
+              <Row key={g.assignmentId} label={g.lawyerName}>
+                {g.revokedAt ? <Tag tone="err">{tx("বাতিল", "Revoked")}</Tag> : <Tag tone="ok">{tx("সক্রিয়", "Active")}</Tag>}
+                <span className={ui.sub}>
+                  {tx("দেওয়া", "Granted")} {formatDateTime(g.grantedAt, lang)}
+                  {g.revokedAt ? ` · ${tx("বাতিল", "revoked")} ${formatDateTime(g.revokedAt, lang)} — ${g.revokeReason ?? ""}` : ""}
+                </span>
+              </Row>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {(m?.assignments ?? []).filter((x) => x.status === "DECLINED").length ? (
+        <div className={ui.rows} style={{ marginTop: "var(--s-3)" }}>
+          {m!.assignments
+            .filter((x) => x.status === "DECLINED")
+            .map((x) => (
+              <Row key={x.assignmentId} label={tx("প্রত্যাখ্যান", "Declined")}>
+                {x.lawyerName} <span className={ui.sub}>“{x.declineReason}”</span>
+              </Row>
+            ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

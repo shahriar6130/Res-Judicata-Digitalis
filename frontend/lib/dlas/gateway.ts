@@ -514,6 +514,7 @@ export const IntakeGateway = {
         taskIds: [],
         audit: [],
         review: null,
+        lawyer: null,
         closedAt: null,
         version: 1,
         createdAt: s.createdAt,

@@ -6,8 +6,9 @@ import { useCitizenCases, useCitizenNotifications } from "@/lib/dlas/citizen-vie
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
+import { useLawyerProfile } from "@/lib/lawyer-profile";
 import { useUdcProfile } from "@/lib/udc-profile";
-import { CitizenAuth, DlaoAuth, readDb, UdcAuth } from "@/lib/dlas";
+import { CitizenAuth, DlaoAuth, LawyerAuth, readDb, UdcAuth, useLawyerWork, useOfficeQueue } from "@/lib/dlas";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -26,7 +27,6 @@ import {
   Play,
   Scale,
   Shield,
-  User,
   Users,
   Briefcase,
   ChevronRight,
@@ -368,16 +368,17 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
   ],
   dlo: [
     // Step 2 — the office's queue from dlas.db.v1 (see components/dlao/dlao-workspace.tsx)
+    { href: "/dashboard/dlo#overview", label: "navOverview", key: "overview", Icon: Home },
     { href: "/dashboard/dlo#new", label: "dlaoNavNew", key: "new", Icon: Briefcase },
     { href: "/dashboard/dlo#review", label: "dlaoNavReview", key: "review", Icon: Clock },
     { href: "/dashboard/dlo#decided", label: "dlaoNavDecided", key: "decided", Icon: Check },
     { href: "/dashboard/dlo#tasks", label: "dlaoNavTasks", key: "tasks", Icon: AlertCircle },
   ],
   lawyer: [
-    { href: "/dashboard/lawyer", label: "navAssignedCases", key: "assigned", Icon: Briefcase },
+    { href: "/dashboard/lawyer#overview", label: "navOverview", key: "overview", Icon: Home },
+    { href: "/dashboard/lawyer#assigned", label: "navAssignedCases", key: "assigned", Icon: Briefcase },
     { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
     { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
-    { href: "/dashboard/lawyer#assigned", label: "navProfile", key: "profile", Icon: User },
   ],
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
@@ -402,6 +403,16 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const router = useRouter();
   const { lang, t } = useI18n();
   const items = getLegacyItems(role);
+  // Always subscribe so the hook order is stable. Only surface the
+  // counts when the role actually maps onto the DLO queue buckets.
+  const queue = useOfficeQueue();
+  const work = useLawyerWork();
+  const badges: Record<string, number> | undefined =
+    role === "dlo"
+      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length }
+      : role === "lawyer"
+        ? { assigned: work.offers.length, reports: work.due.length + work.overdue.length, calendar: work.upcoming.length }
+        : undefined;
 
   // The legacy sidebar mirrors the citizen pattern: the active tab is
   // determined by `window.location.hash`, not by `usePathname()` (which
@@ -420,8 +431,10 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   // DLO and UDC need an inline profile panel at the bottom. Other roles
   // fall back to the wordmark-only chrome.
-  const showProfile = role === "dlo" || role === "udc";
-  const dloProfile = useDloProfile();
+  const showProfile = role === "dlo" || role === "udc" || role === "lawyer";
+  const officerProfile = useDloProfile();
+  const lawyerProfile = useLawyerProfile();
+  const dloProfile = role === "lawyer" ? lawyerProfile : officerProfile;
   const udcProfile = useUdcProfile();
 
   const isUdc = role === "udc";
@@ -451,7 +464,7 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   return (
     <aside
-      className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
+      className={`${styles.sidebar} ${styles.legacy} ${role === "dlo" || role === "lawyer" ? styles.dloSidebar : ""} ${open ? styles.open : ""}`}
       lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
@@ -463,8 +476,12 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
         />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
+        {role === "dlo" || role === "lawyer" ? <div className={styles.dloNavHeading}>
+          <span>{lang === "bn" ? "কর্মক্ষেত্র" : "WORKSPACE"}</span>
+          <strong>{role === "dlo" ? (lang === "bn" ? "অফিসের তালিকা" : "Office queue") : (lang === "bn" ? "আইনজীবীর কাজ" : "Lawyer work")}</strong>
+        </div> : null}
         <ul className={styles.legacyList}>
-          {items.map((item) => renderLegacyItem(item, pathname, currentHash, onNavigate, t))}
+          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : currentHash, onNavigate, t, badges?.[item.key]))}
         </ul>
       </nav>
       {showProfile ? (
@@ -525,19 +542,7 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
             </button>
             {kebabOpen ? (
               <div className={styles.legacyKebabMenu} role="menu">
-                <button
-                  type="button"
-                  className={styles.legacyKebabItem}
-                  role="menuitem"
-                  onClick={() => setKebabOpen(false)}
-                  title={t("profileComingSoon")}
-                >
-                  {t("profileSettings")}
-                  <span className={styles.legacyComingSoonTag}>
-                    {t("profileComingSoon")}
-                  </span>
-                </button>
-                {role === "dlo" || role === "udc" ? (
+                {role === "dlo" || role === "udc" || role === "lawyer" ? (
                   <button
                     type="button"
                     className={styles.legacyKebabItem}
@@ -547,6 +552,9 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
                       if (role === "dlo") {
                         DlaoAuth.logout();
                         router.replace("/dlo");
+                      } else if (role === "lawyer") {
+                        LawyerAuth.logout();
+                        router.replace("/lawyer");
                       } else {
                         UdcAuth.logout();
                         router.replace("/portal/udc");
@@ -584,6 +592,7 @@ function renderLegacyItem(
   currentHash: string,
   onNavigate: SidebarProps["onNavigate"],
   t: (key: MessageKey) => string,
+  badge?: number,
 ) {
   const [itemPath, itemHash = ""] = item.href.split("#");
   const currentPath = pathname ?? "";
@@ -620,6 +629,11 @@ function renderLegacyItem(
           <Icon size={18} />
         </span>
         <span className={styles.legacyLabel}>{t(item.label)}</span>
+        {badge ? (
+          <span className={styles.navBadge} aria-label={`${badge} ${t(item.label)}`}>
+            {badge}
+          </span>
+        ) : null}
       </button>
     </li>
   );
@@ -683,7 +697,6 @@ const UDC_NAV: UdcSection[] = [
     ],
   },
   { id: "sync",        kind: "link", labelKey: "udcNavSyncCentre",     Icon: Briefcase, href: "/dashboard/udc#sync-centre" },
-  { id: "conflict",    kind: "link", labelKey: "udcNavConflictReview", Icon: AlertCircle, href: "/dashboard/udc#conflict" },
   { id: "applications",kind: "link", labelKey: "udcNavApplications",   Icon: FileText,   href: "/dashboard/udc#applications" },
 ];
 
@@ -734,6 +747,7 @@ function ChevronGlyph({ size = 14 }: { size?: number }) {
 
 function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const { current: currentHash } = useHashRoute();
   const router = useRouter();
   const { lang, t } = useI18n();
   const udcProfile = useUdcProfile();
@@ -789,13 +803,6 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
   );
 
   const currentPath = (pathname ?? "").split("#")[0];
-  const currentHash = (() => {
-    if (typeof window === "undefined") return "";
-    const full = (pathname ?? "").split("#")[1] ?? "";
-    if (full) return full;
-    return (window.location.hash ?? "").replace(/^#/, "");
-  })();
-
   // The Intake section is "active" (parent highlighted) when any of
   // its children is active — even if the section is currently
   // collapsed. A sub-item is considered active when the current hash
@@ -877,7 +884,7 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   return (
     <aside
-      className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
+      className={`${styles.sidebar} ${styles.legacy} ${styles.udcSidebar} ${open ? styles.open : ""}`}
       lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
@@ -889,6 +896,11 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
         />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "কর্মক্ষেত্র" : "WORKSPACE"}</span>
+        <button type="button" className={`${styles.legacyLink} ${!currentHash || currentHash === "dashboard" ? styles.legacyLinkActive : ""}`} onClick={() => navigateTo("/dashboard/udc#dashboard")} aria-current={!currentHash || currentHash === "dashboard" ? "page" : undefined}>
+          <span className={styles.legacyIcon} aria-hidden><Home size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "সারসংক্ষেপ" : "Overview"}</span>
+        </button>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "আবেদনের কাজ" : "APPLICATION WORK"}</span>
         <ul className={styles.legacyList}>
           {UDC_NAV.map((section) => {
             if (section.kind === "link") {
@@ -984,6 +996,10 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
             );
           })}
         </ul>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "সহায়তা" : "SUPPORT"}</span>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#clarification-tasks")}><span className={styles.legacyIcon} aria-hidden><Check size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "স্পষ্টীকরণ কাজ" : "Clarification tasks"}</span></button>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#status-visit")}><span className={styles.legacyIcon} aria-hidden><Users size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "অবস্থা জানার পরিদর্শন" : "Status visit"}</span></button>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#history")}><span className={styles.legacyIcon} aria-hidden><Clock size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "ইতিহাস" : "History"}</span></button>
       </nav>
 
       <div
@@ -1038,7 +1054,7 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
                 onClick={() => {
                   setKebabOpen(false);
                   UdcAuth.logout();
-                  router.replace("/portal/udc");
+                  router.replace("/udc");
                 }}
               >
                 {t("profileLogout")}

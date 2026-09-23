@@ -35,10 +35,12 @@ Successful prototype sign-in routes directly to the matching dashboard. For citi
 
 ### Panel-lawyer dashboard
 
+- `/dashboard/lawyer` has hash views `#overview` (default), `#assigned`, `#reports`, and `#calendar`; the sidebar links open the matching focused view.
 - Allow assignment acceptance or reasoned decline in the local prototype.
 - Show reporting deadlines and missing obligations.
 - Collect attendance, outcome, and next date as separate required fields.
 - Label the resulting update as self-reported evidence rather than verified truth.
+- This legacy dashboard uses labelled sample cases and session-only state; it does not claim to send a decline reason or report to an officer.
 
 ### Administrator dashboard
 
@@ -66,12 +68,15 @@ Successful prototype sign-in routes directly to the matching dashboard. For citi
 - [x] Colours and fonts come exclusively from shared tokens.
 - [x] Queue rows and evidence layouts stack without horizontal page overflow.
 - [x] Sign-in portals render visible, responsive law-mark imagery with vignette framing and grid overlay.
+- [x] DLO and Lawyer sign-in pages use distinct role imagery, side placement, labelled role captions and token accent seams while keeping the same form behavior and Bangla/English toggle.
+- [x] The DLO art label stays close to the left edge of its image at desktop, tablet, and mobile sizes without clipping.
 
 ## Step 1 — Access & Application (shared record)
 
 - Citizen portal `/`: sign up with name + mobile number; log in with the mobile number only (no password). The wizard is prefilled from the account and the session records `meta.citizenId`; the phone is still verified by OTP before submitting.
 - Citizen dashboard (home greeting, sidebar profile, My cases, case detail) shows the LOGGED-IN citizen and their own applications from `dlas.db.v1` (`lib/dlas/citizen-view.ts`): filed after login, or any door where the applicant/representative phone matches the account. No hard-coded citizen data remains: profile, cases, case detail, notifications (derived from own applications, open tasks, simulated SMS and complaints; "mark all read" stored on the account), unread badge and "My legal aid centre" (district office from the latest application; officer shown only once assigned) all read `dlas.db.v1`.
-- UDC portal `/portal/udc`: sign up with name + mobile + UDC centre + district; log in with the mobile only. `/dashboard/udc` requires a logged-in operator. The operator id/name/centre come from the account (no `udc-001`, no demo operator). UDC demo seed data (Nuching/Rangamati/Bandarban drafts, conflicts, measurements) and the Nuching jury-mode/demo pages were removed; the dashboard, applications list and sidebar show only the operator's own work from `dlas.db.v1` (+ live offline-queue status). Interpreter records and document captures are entered by the operator (real file, operator marks unreadable).
+- `#notifications` groups unread and earlier items, shows each item's title, supporting text and localised timestamp, and keeps a visible path to the related view. The unread count and mark-all-read control reflect the existing account-backed read state.
+- UDC login `/udc` (legacy `/portal/udc` also works): sign up with name + mobile + UDC centre + district; log in with the mobile only. `/dashboard/udc` requires a logged-in operator. The operator id/name/centre come from the account (no `udc-001`, no demo operator). UDC demo seed data (Nuching/Rangamati/Bandarban drafts, conflicts, measurements) and the Nuching jury-mode/demo pages were removed; the dashboard, applications list and sidebar show only the operator's own work from `dlas.db.v1` (+ live offline-queue status). The UDC overview shows a start-application action, operator-scoped counts, recent intakes and links to consent, documents, status visits and sync. The sidebar groups work destinations; network diagnostics expand on request. Consent and document routes open their respective panels. Interpreter records and document captures are entered by the operator (real file, operator marks unreadable).
 - Citizen "UDC" tab lists UDC centres for the district of the citizen's latest application, from `dlas.db.v1.udcCentres`: a demo directory (2 per district, labelled "demo directory", no names/phones) plus every signed-up UDC operator's centre (listed first).
 - Four doors write ONE canonical JSON record through `IntakeGateway` (`frontend/lib/dlas/`):
   - Citizen: "Lodge a complaint" = the 5-step intake wizard at `/dashboard/citizen#intake` (`#complaint` is an alias; the separate old complaint form was removed as redundant), via `CitizenDoor`. Step 1 now also asks for the district and verifies the mobile number by OTP (simulated SMS); step 5 requires a safe contact time. Family/neighbour filing records the filer as a representative.
@@ -87,6 +92,9 @@ Successful prototype sign-in routes directly to the matching dashboard. For citi
 
 - `/dlo`: officer sign-up (name, mobile, office type DLAO/SCLAC/LLAC, district) and log-in by mobile; log-out from the sidebar menu. `/dashboard/dlo` requires a logged-in officer.
 - The old hard-coded officer dashboard (demo cases, alerts, assignments, timeline) was removed. `/dashboard/dlo` is the office queue (New · In verification · Decided · Follow-up tasks) and a 5-step review workspace, all from `dlas.db.v1`.
+- `/dashboard/dlo` and `#overview` show a live active-workload count, linked totals for all four buckets, composition/matter/channel charts when applications exist, and a new-application worklist. `#new`, `#review`, `#decided`, and `#tasks` show only their respective worklist. The DLO sidebar exposes these five destinations with office counts. Counts and charts derive from the signed-in officer's office queue; the overview does not create or change review records.
+- Every application and follow-up task record provides an explicit **Open application** link to `#app/<APP-ID>` in addition to the linked application reference.
+- Office worklists use responsive labelled records, retaining all queue fields without horizontal scrolling. The application action remains visible with the record header.
 - Steps follow the Step-2 diagram: received → identity → documents & facts → vulnerability & eligibility (advisory recommendation from the JSON ruleset) → human decision. Yes creates Case ID `DLAS-YYYY-NNNNN` and allows eligibility notes; No requires a reason, notifies the applicant and closes the application (REJECTED). Blocked steps open follow-up tasks.
 - Divergence from the earlier Prompt 12 draft: Case ID creation and rejection are part of this step because the Step-2 diagram includes them; pathway selection (mediation / lawyer / referral) remains the next step.
 - Citizen side updates automatically: status, timeline, Case ID, "not accepted — reason" and notifications.

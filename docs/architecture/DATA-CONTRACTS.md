@@ -304,3 +304,44 @@ An application shows **UNVERIFIED** until `review.verifiedAt` is set, i.e. the o
 
 Officer scope: DLAO sees its district, LLAC sees labour matters of its district, SCLAC sees all.
 The eligibility ruleset is a **working draft** stored in the JSON; correct it there (new version) after checking the Legal Aid Services Policy text — the UI always shows the version used.
+
+## 7. Step 3 — Panel lawyer (`/lawyer` sign-in, `/dashboard/lawyer`)
+
+Accounts: `db.lawyers[]` — `{ lawyerId: "LAW-XXXXXX", name, phone (login), district (panel), barEnrolmentNo, practiceAreas[], audit[] }`; session key `dlas.lawyer.current`.
+Rules (editable JSON, written on first use): `db.lawyerRules` — `{ version, offerResponseHours: 48, updateDueHours: 48, missedHearingsBeforeReassign: 2, patternCases: 3, patternWindowDays: 90, maxActiveCases: 10, feeBasis }`.
+
+```
+DLAO chooses pathway LAWYER (Step 2)            → task LAWYER_ASSIGNMENT (DLAO)
+Engine suggests lawyers (ADVISORY)               suggestLawyers(): district panel ranked by specialisation, availability (active cases vs maxActiveCases), recent missed hearings; previous lawyers on the case ranked last
+DLAO offers the case                             DlaoLawyerService.assign()  → assignment OFFERED, LAWYER_RESPONSE task for the lawyer, SMS to lawyer (simulated); audit records the engine rank
+Lawyer accepts                                   LawyerService.accept()      → ACCEPTED, access grant FULL_CASE_RECORD, client told (safe-contact rules); on a reassignment the upcoming hearings move to the new lawyer
+Lawyer declines (reason) / no answer in 48 h     decline() / sweep           → DLAO task LAWYER_ASSIGNMENT / LAWYER_UPDATE_OVERDUE (OFFER_RESPONSE) — assign another
+Lawyer records a hearing                         addHearing()                → hearing (assignmentId = responsible lawyer), HEARING_UPDATE_DUE (due = hearing + 48 h)
+Lawyer reports                                   submitUpdate()              → hearing.result ATTENDED | MISSED (did not attend) | NOT_HELD; provenance LAWYER_REPORTED
+No report by the deadline                        sweep                       → hearing counts as MISSED, DLAO alert LAWYER_UPDATE_OVERDUE (no chase call), reminder SMS to the lawyer
+Missed ≥ missedHearingsBeforeReassign on a case  submitUpdate() / sweep      → DLAO task LAWYER_REASSIGN_REVIEW "assign another lawyer" (human decision)
+DLAO reassigns                                   DlaoLawyerService.withdraw()→ WITHDRAWN, old lawyer's access revoked, payment frozen PENDING_CASE_COMPLETION, new LAWYER_ASSIGNMENT task
+Missed hearings on ≥ patternCases cases (90 d)   sweep                       → separate LAWYER_INACTIVITY_REVIEW (T1 pattern — review only, not a finding)
+DLAO completes representation                    DlaoLawyerService.complete()→ stage OUTCOME; every assignment's payment → DLAO_REVIEW with the attended-hearing count
+```
+
+```jsonc
+"lawyer": {
+  "assignments": [{ "assignmentId": "ASN-…", "lawyerId": "LAW-…", "lawyerName": "…", "status": "OFFERED|ACCEPTED|DECLINED|WITHDRAWN|COMPLETED",
+                    "offeredAt": "…", "offeredBy": "OFC-…", "offeredByName": "…", "note": "…", "respondBy": "…", "respondedAt": "…",
+                    "declineReason": null, "responseOverdueFlaggedAt": null, "handoverFrom": "ASN-… (previous)", "reassignFlaggedAt": null,
+                    "ledger":  { "hearingsAttended": 1, "hearingsMissed": 2, "hearingsNotHeld": 0, "hearingsUnreported": 0, "updatesOnTime": 0, "updatesLate": 2, "updatedAt": "…" },
+                    "payment": { "status": "ACCRUING|PENDING_CASE_COMPLETION|DLAO_REVIEW", "payableHearings": 1,
+                                 "completedStages": [{ "hearingId": "HRG-…", "at": "…", "result": "ATTENDED" }],
+                                 "missedHearings": 2, "eligibleAmount": "DEMO_RATE", "note": "…", "at": "…" } }],
+  "hearings":    [{ "hearingId": "HRG-…", "assignmentId": "ASN-…", "result": "ATTENDED|MISSED|NOT_HELD|null", "at": "…", "court": "…",
+                    "purpose": null, "addedBy": "LAW-…", "addedAt": "…", "updateDueAt": "…", "updateId": null, "overdueFlaggedAt": null, "clientNotifiedAt": null }],
+  "updates":     [{ "updateId": "UPD-…", "hearingId": "HRG-…", "attendance": "ATTENDED|NOT_ATTENDED|NOT_HELD",
+                    "outcome": "ADJOURNED|HEARD|ORDER_PASSED|JUDGMENT|SETTLED|OTHER", "nextDate": null, "note": "…", "by": "LAW-…", "byName": "…", "at": "…", "late": false }],
+  "access":      [{ "lawyerId": "LAW-…", "lawyerName": "…", "assignmentId": "ASN-…", "scope": "FULL_CASE_RECORD", "grantedAt": "…", "revokedAt": null, "revokeReason": null }],
+  "completion":  { "outcome": "JUDGMENT|SETTLED|WITHDRAWN_BY_CLIENT|OTHER", "reason": "…", "by": "OFC-…", "byName": "…", "at": "…" }
+}
+```
+
+Access: an offered lawyer sees only the case summary and the officer's note; the full record (client, safe-contact rules, documents, all earlier hearings and reports) opens only while an access grant is active, and every lawyer action checks it. A new lawyer sees the previous lawyer's hearings read-only and cannot report on them.
+The deadline sweep runs while the DLAO or lawyer workspace is open (on every record change and once a minute) and writes only on new alerts. The citizen sees "Panel lawyer assigned" (each lawyer), each hearing date, and — before travelling — "No lawyer report for the … hearing" when a report is overdue (A5).

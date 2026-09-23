@@ -683,6 +683,100 @@
   border-radius: 2px;
 }
 
+.legacy .navBadge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.udcSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.udcSidebar .nav { padding: var(--s-6) var(--s-4); }
+.udcNavHeading { display: block; margin: var(--s-6) var(--s-4) var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--sidebar-border); color: var(--sidebar-muted); font-size: var(--t-label); font-weight: var(--weight-semibold); letter-spacing: .09em; }
+.udcSidebar .udcNavHeading:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.udcSidebar .legacyLink, .udcSidebar .legacySectionToggle { min-height: 44px; padding: var(--s-3) var(--s-4); font-size: var(--t-small); }
+.udcSidebar .legacySubLink { min-height: 40px; font-size: var(--t-label); }
+.udcSidebar .legacyLinkActive, .udcSidebar .legacySubLinkActive, .udcSidebar .legacySectionActive { box-shadow: none; }
+.udcSidebar .legacyLink:focus-visible, .udcSidebar .legacySectionToggle:focus-visible, .udcSidebar .legacySubLink:focus-visible { outline-color: var(--sidebar-fg); }
+
+/* Officer and lawyer navigation follows the black, hairline-led dashboard direction. */
+.dloSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.dloSidebar .nav { padding: var(--s-8) var(--s-4); }
+.dloNavHeading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0 var(--s-2) var(--s-6);
+  padding-bottom: var(--s-6);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+.dloNavHeading span {
+  color: var(--sidebar-muted);
+  font-size: var(--t-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dloNavHeading strong {
+  color: var(--sidebar-fg);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-sub);
+}
+.dloSidebar .legacyList { gap: var(--s-2); }
+.dloSidebar .legacyList .listItem:nth-child(2) {
+  margin-top: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--sidebar-border);
+}
+.dloSidebar .legacyLink {
+  min-height: 48px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+.dloSidebar .legacyLink:hover { border-color: var(--sidebar-border); }
+.dloSidebar .legacyLinkActive {
+  color: var(--sidebar-active-fg);
+  background: var(--sidebar-active-bg);
+  border-color: var(--sidebar-active-bg);
+  box-shadow: none;
+}
+.dloSidebar .legacyLinkActive::before { display: none; }
+.dloSidebar .legacyLink:focus-visible,
+.dloSidebar .legacyKebabBtn:focus-visible,
+.dloSidebar .legacyKebabItem:focus-visible {
+  outline-color: var(--yellow);
+}
+.dloSidebar .navBadge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--s-2);
+  color: var(--sidebar-fg);
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--r-2);
+  font-size: var(--t-label);
+}
+.dloSidebar .legacyLinkActive .navBadge {
+  color: var(--sidebar-fg);
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-bg);
+}
+.dloSidebar .legacyProfilePanel { padding: var(--s-4) var(--s-6); }
+.dloSidebar .legacyProfileAvatar { border-radius: var(--r-2); }
+
 /* Legacy profile panel — pinned to the bottom of the dark sidebar so
    the operator always sees who they are signed in as. Sits after the
    `.nav` block (which has `flex: 1`) so it anchors without needing
@@ -948,6 +1042,10 @@
 .sidebar:lang(en) .comingSoonTag,
 .sidebar:lang(en) .legacyProfileStatusLabel {
   letter-spacing: 0.04em;
+}
+.dloSidebar:lang(en),
+.dloSidebar:lang(en) * {
+  font-family: var(--font-serif);
 }
 /* New notifications: the Notifications item glows until they are read. */
 .navItemGlow {

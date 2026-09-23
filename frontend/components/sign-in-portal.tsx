@@ -11,7 +11,7 @@ import { Wordmark } from "@/components/wordmark";
 import { useI18n } from "@/lib/i18n";
 import { PORTAL_ART } from "@/lib/portal-art";
 import type { Role } from "@/lib/roles";
-import { CitizenAuth, DISTRICTS, DlaoAuth, UdcAuth } from "@/lib/dlas";
+import { CitizenAuth, DISTRICTS, DlaoAuth, LawyerAuth, MATTERS, UdcAuth, type MatterCategory } from "@/lib/dlas";
 
 /* ------------------------------------------------------------------ *
  *  Rotated vertical role label that sits near the bottom-right of the
@@ -71,6 +71,9 @@ export function SignInPortal({ role }: SignInPortalProps) {
   const router = useRouter();
   const { lang, t } = useI18n();
   const art = PORTAL_ART[role.id] ?? PORTAL_ART.citizen;
+  const isDlo = role.id === "dlo";
+  const isLawyer = role.id === "lawyer";
+  const isUdc = role.id === "udc";
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +109,7 @@ export function SignInPortal({ role }: SignInPortalProps) {
         role.id === "citizen" ? styles.pageCitizen : "",
         role.id === "dlo" ? styles.pageDlo : "",
         role.id === "lawyer" ? styles.pageLawyer : "",
+        isUdc ? styles.pageUdc : "",
         role.id === "admin" ? styles.pageAdmin : "",
       ]
         .filter(Boolean)
@@ -118,13 +122,23 @@ export function SignInPortal({ role }: SignInPortalProps) {
         </div>
         <LawMark image={art.image} />
         <RotatedRoleLabel role={role} lang={lang} />
+        {isDlo || isLawyer || isUdc ? (
+          <div className={styles.artCaption}>
+            <span>{isUdc ? (lang === "bn" ? "কমিউনিটি সেবা" : "COMMUNITY SERVICE") : isDlo ? (lang === "bn" ? "অফিসের পর্যালোচনা" : "OFFICE REVIEW") : (lang === "bn" ? "মামলার প্রতিনিধিত্ব" : "CASE REPRESENTATION")}</span>
+            <strong>{isUdc ? (lang === "bn" ? "মানুষের পাশে, প্রতিটি ধাপে" : "Helping people at every step") : isDlo ? (lang === "bn" ? "যাচাই থেকে সিদ্ধান্ত" : "From review to decision") : (lang === "bn" ? "নিয়োগ থেকে শুনানি" : "From assignment to hearing")}</strong>
+          </div>
+        ) : null}
       </div>
 
       <section className={styles.panel}>
         <div className={styles.shell}>
           <div className={styles.header}>
-            <h1 className={styles.title}>{t("signInTitle")}</h1>
-            <p className={styles.supporting}>{role.description[lang]}</p>
+            {isDlo || isLawyer || isUdc ? <p className={styles.roleIdentity}>
+              <span className={styles.roleIdentityDot} aria-hidden="true" />
+              {isUdc ? (lang === "bn" ? "ইউনিয়ন ডিজিটাল সেন্টার" : "UNION DIGITAL CENTRE") : isDlo ? (lang === "bn" ? "জেলা লিগ্যাল এইড অফিস" : "DISTRICT LEGAL AID OFFICE") : (lang === "bn" ? "প্যানেল আইনজীবী" : "PANEL LAWYER")}
+            </p> : null}
+            <h1 className={styles.title}>{isUdc ? (lang === "bn" ? "উদ্যোক্তা প্রবেশ" : "UDC operator access") : isDlo ? (lang === "bn" ? "কর্মকর্তা প্রবেশ" : "Officer access") : isLawyer ? (lang === "bn" ? "আইনজীবী প্রবেশ" : "Lawyer access") : t("signInTitle")}</h1>
+            <p className={styles.supporting}>{isUdc ? (lang === "bn" ? "সহায়তাপ্রাপ্ত আবেদন শুরু করুন, চলমান খসড়া ও সিঙ্কের কাজ দেখুন।" : "Start assisted applications and manage your drafts and sync work.") : isDlo ? (lang === "bn" ? "আপনার অফিসের আবেদন যাচাই করুন এবং সিদ্ধান্ত নথিভুক্ত করুন।" : "Review your office applications and record decisions.") : isLawyer ? (lang === "bn" ? "নিয়োগপ্রাপ্ত মামলা ও শুনানির প্রতিবেদন পরিচালনা করুন।" : "Manage assigned cases and hearing reports.") : role.description[lang]}</p>
           </div>
 
           {role.id === "citizen" ? (
@@ -133,6 +147,8 @@ export function SignInPortal({ role }: SignInPortalProps) {
             <UdcAuthForm home={role.home} />
           ) : role.id === "dlo" ? (
             <DlaoAuthForm home={role.home} />
+          ) : role.id === "lawyer" ? (
+            <LawyerAuthForm home={role.home} />
           ) : (
           <form
             className={styles.form}
@@ -480,6 +496,118 @@ function DlaoAuthForm({ home }: { home: string }) {
               </select>
             </div>
           ) : null}
+        </>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className={styles.formError}>
+          {error}
+        </p>
+      ) : null}
+
+      <Button type="submit" disabled={pending}>
+        {pending ? t("signingIn") : mode === "login" ? t("signInAction") : tx("অ্যাকাউন্ট খুলুন", "Create account")}
+      </Button>
+    </form>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Panel lawyer: sign-up (name + mobile + district panel + bar
+ *  enrolment no. + practice areas) and login (mobile only).
+ *  Accounts live in dlas.db.v1.lawyers (lib/dlas/lawyer.ts).
+ * ------------------------------------------------------------------ */
+function LawyerAuthForm({ home }: { home: string }) {
+  const { lang, t } = useI18n();
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [district, setDistrict] = useState("");
+  const [bar, setBar] = useState("");
+  const [areas, setAreas] = useState<MatterCategory[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const selectStyle = { padding: "var(--control-pad-y) var(--control-pad-x)", border: "var(--control-border)", borderRadius: "var(--control-radius)", font: "inherit", background: "var(--white)" } as const;
+
+  const messages: Record<string, string> = {
+    INVALID_NAME: tx("আপনার নাম লিখুন।", "Enter your name."),
+    INVALID_PHONE: tx("সঠিক ১১ সংখ্যার মোবাইল নম্বর লিখুন (01XXXXXXXXX)।", "Enter a valid 11-digit mobile number (01XXXXXXXXX)."),
+    INVALID_DISTRICT: tx("আপনি কোন জেলার প্যানেলে আছেন বাছাই করুন।", "Choose the district panel you are on."),
+    INVALID_BAR_NO: tx("বার কাউন্সিল সনদ নম্বর লিখুন।", "Enter your Bar Council enrolment number."),
+    PHONE_TAKEN: tx("এই নম্বরে আগেই অ্যাকাউন্ট আছে — লগইন করুন।", "This number already has an account — log in instead."),
+    NOT_FOUND: tx("এই নম্বরে কোনো অ্যাকাউন্ট নেই — সাইন আপ করুন।", "No account for this number — sign up first."),
+  };
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const r = mode === "login" ? LawyerAuth.login(phone) : LawyerAuth.signUp({ name, phone, district, barEnrolmentNo: bar, practiceAreas: areas });
+    if (!r.ok) {
+      setError(messages[r.error]);
+      if (r.error === "PHONE_TAKEN") setMode("login");
+      if (r.error === "NOT_FOUND") setMode("signup");
+      return;
+    }
+    setError(null);
+    setPending(true);
+    router.push(home);
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate>
+      <div role="tablist" style={{ display: "flex", gap: "var(--s-2)" }}>
+        <Button type="button" variant={mode === "login" ? "primary" : "secondary"} role="tab" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>
+          {tx("লগইন", "Log in")}
+        </Button>
+        <Button type="button" variant={mode === "signup" ? "primary" : "secondary"} role="tab" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setError(null); }}>
+          {tx("সাইন আপ", "Sign up")}
+        </Button>
+      </div>
+
+      {mode === "signup" ? (
+        <Field id="lawyer-name" label={tx("আপনার নাম", "Your name")} name="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+      ) : null}
+
+      <Field
+        id="lawyer-phone"
+        label={t("mobileNumber")}
+        name="phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder={t("mobilePlaceholder")}
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+
+      {mode === "signup" ? (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-1)" }}>
+            <label htmlFor="lawyer-district">{tx("জেলা প্যানেল", "District panel")}</label>
+            <select id="lawyer-district" value={district} onChange={(e) => setDistrict(e.target.value)} style={selectStyle}>
+              <option value="">{tx("বাছাই করুন", "Select")}</option>
+              {DISTRICTS.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.label[lang]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Field id="lawyer-bar" label={tx("বার কাউন্সিল সনদ নম্বর", "Bar Council enrolment no.")} name="bar" type="text" value={bar} onChange={(e) => setBar(e.target.value)} />
+          <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--s-2)" }}>
+            <legend style={{ marginBottom: "var(--s-2)" }}>{tx("যে ধরনের মামলা করেন (ঐচ্ছিক)", "Practice areas (optional)")}</legend>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--s-2)" }}>
+              {MATTERS.filter((m) => m.code !== "OTHER").map((m) => {
+                const on = areas.includes(m.code);
+                return (
+                  <Button key={m.code} type="button" variant={on ? "primary" : "secondary"} aria-pressed={on} onClick={() => setAreas(on ? areas.filter((x) => x !== m.code) : [...areas, m.code])}>
+                    {m.label[lang]}
+                  </Button>
+                );
+              })}
+            </div>
+          </fieldset>
         </>
       ) : null}
 

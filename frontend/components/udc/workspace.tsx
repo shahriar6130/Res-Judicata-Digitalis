@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { NetworkBar } from "./primitives/network-bar";
-import { LanguageToggle } from "@/components/language-toggle";
 import { useI18n } from "@/lib/i18n";
 import { UdcDashboardPanel } from "./panels/dashboard.panel";
 import { UdcNewIntakePanel } from "./panels/new-intake.panel";
@@ -94,7 +93,7 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
           <h1 className={styles.pageTitle}>{lang === "bn" ? "ইউডিসি লগইন প্রয়োজন" : "UDC login required"}</h1>
           <p className={styles.bannerInfo}>
             {lang === "bn" ? "সহায়তাপ্রাপ্ত আবেদন শুরু করতে আগে লগইন বা সাইন আপ করুন।" : "Log in or sign up before starting assisted applications."}{" "}
-            <Link href="/portal/udc" className={styles.cardLink}>
+            <Link href="/udc" className={styles.cardLink}>
               {lang === "bn" ? "লগইন / সাইন আপ →" : "Log in / sign up →"}
             </Link>
           </p>
@@ -104,14 +103,14 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
     if (view === "intake-new") {
       return <UdcNewIntakePanel role={role} />;
     }
-    if (view === "intake" && params.temporaryId) {
-      return <UdcIntakeWorkspacePanel temporaryId={params.temporaryId} role={role} />;
-    }
     if (view === "intake" && params.section === "documents" && params.temporaryId) {
       return <UdcDocumentsPanel temporaryId={params.temporaryId} role={role} />;
     }
     if (view === "intake" && params.section === "consent" && params.temporaryId) {
       return <UdcConsentPanel temporaryId={params.temporaryId} role={role} />;
+    }
+    if (view === "intake" && params.temporaryId) {
+      return <UdcIntakeWorkspacePanel temporaryId={params.temporaryId} role={role} />;
     }
     if (view === "offline-queue") {
       return <UdcOfflineQueuePanel role={role} />;
@@ -158,19 +157,10 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
 
   return (
     <div className={styles.udcShell}>
-      {/* Floating top network control. Rendered once for every sub-view
-          so it stays visible while the user scrolls or navigates by
-          hash. Colour flips live with the NetworkConditionService. */}
       <div className={styles.udcStickyTop}>
         <NetworkBar lang={lang} />
       </div>
       <div className={styles.udcShellBody}>
-        {/* Language toggle sits in NORMAL flow right below the floating
-            connection bar — no sticky/absolute/fixed positioning. It
-            scrolls away naturally with the rest of the page content. */}
-        <div className={styles.udcLangRow}>
-          <LanguageToggle />
-        </div>
         {renderPanel()}
       </div>
     </div>

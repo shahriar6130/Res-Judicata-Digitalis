@@ -174,3 +174,8 @@ export function safeTimeLabel(sc: { safeTime: SafeTime | null; window?: { day: D
   if (sc.window) return `${label(DAYS, sc.window.day, lang)} ${sc.window.time}`;
   return label(SAFE_TIMES, sc.safeTime, lang);
 }
+
+/** Date+time in the citizen's locale. */
+export function formatDateTime(iso: string, lang: "bn" | "en"): string {
+  return new Intl.DateTimeFormat(lang === "bn" ? "bn-BD" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+}

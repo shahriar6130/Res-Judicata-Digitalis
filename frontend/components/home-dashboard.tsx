@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { StatusPill } from "@/components/status-pill";
+import { CitizenUploadsCard } from "@/components/dlas/citizen-uploads-card";
 import { Bell, Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
 import styles from "./home-dashboard.module.css";
 
@@ -101,6 +102,8 @@ export function HomeDashboard() {
           </span>
         </button>
       ) : null}
+
+      <CitizenUploadsCard />
 
       <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>
         <button

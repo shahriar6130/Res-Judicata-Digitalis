@@ -28,6 +28,8 @@ export function emptyDb(): DlasDb {
     citizens: [],
     udcOperators: [],
     officers: [],
+    lawyers: [],
+    lawyerRules: null,
     udcCentres: demoUdcDirectory(new Date(0).toISOString()),
     eligibilityRulesets: [],
     sessions: [],
@@ -60,6 +62,8 @@ function parse(raw: string | null): DlasDb {
       citizens: Array.isArray(p.citizens) ? p.citizens : [],
       udcOperators: Array.isArray(p.udcOperators) ? p.udcOperators : [],
       officers: Array.isArray(p.officers) ? p.officers : [],
+      lawyers: Array.isArray(p.lawyers) ? p.lawyers : [],
+      lawyerRules: p.lawyerRules ?? null,
       // The demo UDC directory is written into the JSON on first read; it is saved with the next write.
       udcCentres: Array.isArray(p.udcCentres) && p.udcCentres.length ? p.udcCentres : demoUdcDirectory(new Date().toISOString()),
       eligibilityRulesets: Array.isArray(p.eligibilityRulesets) ? p.eligibilityRulesets : [],
@@ -77,6 +81,21 @@ function parse(raw: string | null): DlasDb {
                 }
               : null,
             closedAt: a.closedAt ?? null,
+            lawyer: a.lawyer
+              ? {
+                  ...a.lawyer,
+                  access: a.lawyer.access ?? [],
+                  completion: a.lawyer.completion ?? null,
+                  hearings: a.lawyer.hearings.map((h) => ({ ...h, assignmentId: h.assignmentId ?? null, result: h.result ?? null })),
+                  assignments: a.lawyer.assignments.map((s) => ({
+                    ...s,
+                    handoverFrom: s.handoverFrom ?? null,
+                    reassignFlaggedAt: s.reassignFlaggedAt ?? null,
+                    payment: s.payment ?? null,
+                    ledger: s.ledger ?? { hearingsAttended: 0, hearingsMissed: 0, hearingsNotHeld: 0, hearingsUnreported: 0, updatesOnTime: 0, updatesLate: 0, updatedAt: s.offeredAt },
+                  })),
+                }
+              : null,
           }))
         : [],
       tasks: Array.isArray(p.tasks) ? p.tasks : [],

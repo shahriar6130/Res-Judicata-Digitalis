@@ -10,3 +10,4 @@ export { UdcAuth, useCurrentUdcOperator, type UdcAuthResult } from "./udc-auth";
 export { nidFormatValid, pathwayLabel, recommendPathway } from "./dlao";
 export { DlaoAuth, DlaoReviewService, useCurrentOfficer, useOfficeQueue, useEligibilityRuleset, recommend, factChecklist, officeCode, subStage, bucketOf, type DlaoAuthResult, type QueueBucket } from "./dlao";
 export { FileStore, useStoredFile, FILES_KEY } from "./files";
+export { LawyerAuth, LawyerService, DlaoLawyerService, useCurrentLawyer, useLawyerWork, useLawyerDeadlineSweep, useLawyerRules, useClock, sweepLawyerDeadlines, activeAssignment, hasCaseAccess, suggestLawyers, hearingState, hearingMissed, computeLedger, rulesOf, lawyerDistrictLabel, DEFAULT_LAWYER_RULES, type LawyerAuthResult, type LawyerCase, type HearingState, type LawyerSuggestion } from "./lawyer";

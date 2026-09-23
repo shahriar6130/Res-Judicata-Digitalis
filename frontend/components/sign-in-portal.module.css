@@ -16,6 +16,19 @@
   order: 1;
 }
 
+/* Shared legal-aid theme, with a distinct office and counsel entry point. */
+.pageDlo { --portal-accent: var(--accent-dlo); }
+.pageLawyer { --portal-accent: var(--accent-lawyer); }
+.pageUdc { --portal-accent: var(--accent-udc); }
+.pageUdc .panel { border-left: 3px solid var(--portal-accent); background: var(--white); }
+.pageUdc .shell { max-width: 480px; }
+.pageUdc .artCaption { max-width: 280px; }
+.pageUdc .rotatedRole { left: var(--s-12); right: auto; transform-origin: 0% 100%; }
+.pageDlo .panel { border-right: 3px solid var(--portal-accent); }
+.pageLawyer .panel { border-left: 3px solid var(--portal-accent); background: var(--white); }
+.pageDlo .shell { max-width: 480px; }
+.pageLawyer .shell { max-width: 460px; }
+
 /* Left: black panel with the WebGL sculpture */
 .art {
   position: relative;
@@ -91,6 +104,30 @@
   left: 160px;
   transform-origin: 0% 100%;
 }
+.pageArtRight.pageUdc .rotatedRole { left: var(--s-12); }
+
+/* The rotated word extends left of its anchor by roughly its own type size. */
+.pageDlo .rotatedRole {
+  left: calc(var(--t-portal-dlo-role) + var(--s-4));
+  font-size: var(--t-portal-dlo-role);
+}
+
+.artCaption {
+  position: absolute;
+  z-index: 4;
+  bottom: var(--s-12);
+  left: var(--s-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  max-width: 320px;
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--on-black-muted);
+  color: var(--white);
+}
+.pageDlo .artCaption { left: auto; right: var(--s-8); text-align: right; align-items: flex-end; }
+.artCaption span { color: var(--on-black-muted); font-size: var(--t-label); letter-spacing: 0.08em; }
+.artCaption strong { font-family: var(--font-serif); font-size: var(--t-sub); font-weight: var(--weight-medium); line-height: var(--leading-sub); }
 
 /* Right: login column */
 .panel {
@@ -116,6 +153,20 @@
   flex-direction: column;
   gap: var(--s-2);
 }
+
+.roleIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--line);
+  color: var(--gray);
+  font-size: var(--t-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.07em;
+}
+.roleIdentityDot { flex: none; width: 8px; height: 8px; background: var(--portal-accent); }
 
 .title {
   font-size: var(--t-title);
@@ -152,6 +203,7 @@
 }
 
 @media (max-width: 1024px) {
+  .pageDlo { --t-portal-dlo-role: var(--t-section); }
   .page {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -172,6 +224,16 @@
     padding: var(--s-12) var(--page-pad) var(--s-6);
   }
 
+  .pageDlo .panel { border-right: 0; border-top: 3px solid var(--portal-accent); }
+  .pageLawyer .panel { border-left: 0; border-top: 3px solid var(--portal-accent); }
+  .pageUdc .panel { border-left: 0; border-top: 3px solid var(--portal-accent); }
+  .pageUdc .artCaption { left: var(--page-pad); }
+  .pageUdc .rotatedRole { left: var(--s-6); }
+  .pageArtRight.pageUdc .rotatedRole { left: var(--s-6); }
+  .pageDlo .artCaption { right: var(--page-pad); }
+  .pageLawyer .artCaption { left: var(--page-pad); }
+  .artCaption { bottom: var(--s-6); }
+
   /* On the short stacked image, the rotated caption drops back to a
      small editorial mark so it does not eat the whole panel. */
   .rotatedRole {
@@ -182,6 +244,7 @@
 }
 
 @media (max-width: 640px) {
+  .pageDlo { --t-portal-dlo-role: var(--t-sub); }
   .art {
     height: 224px;
   }
@@ -197,4 +260,8 @@
     letter-spacing: 0.18em;
     bottom: 40px;
   }
+
+  .artCaption { max-width: 55%; bottom: var(--s-4); padding-top: var(--s-2); }
+  .artCaption strong { font-size: var(--t-small); }
+  .artCaption span { font-size: var(--t-label); }
 }

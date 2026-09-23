@@ -82,7 +82,7 @@ export const ROLES: readonly Role[] = [
       bn: "সম্মতি, নথির মান এবং অফলাইন পুনরুদ্ধারসহ সীমিত সহায়তা দিন।",
       en: "Provide bounded assistance with consent, document quality, and offline recovery.",
     },
-    path: "/portal/udc",
+    path: "/udc",
     home: "/dashboard/udc",
     provider: true,
   },

@@ -68,7 +68,12 @@ import type {
   PaymentReconciliation,
   VoiceStatusSession,
   DlaoTaskItem,
+  MediationMatter,
+  MediationSession,
+  SettlementDraft,
+  SigningWorkflow,
 } from "./types";
+import { SettlementDraftingService } from "./services/settlement-drafting.service";
 
 /* Empty envelope used by scenario resets. Mirrors the shape that
    `persistence.ts#EMPTY` exposes but without the singleton caveat. */
@@ -116,6 +121,10 @@ function buildEmptyEnvelope(): StoreEnvelope {
     paymentReconciliations: [],
     voiceStatusSessions: [],
     dlaoTaskItems: [],
+    mediationMatters: [],
+    mediationSessions: [],
+    settlementDrafts: [],
+    signingWorkflows: [],
   };
 }
 
@@ -2317,6 +2326,425 @@ export function seedDemoData(envelope: StoreEnvelope): StoreEnvelope {
     },
   ];
 
+  /* ------------------------------------------------------------------ *
+   *  Mediator case workspace — B2 / Flow 4 / T7 / T11, at
+   *  /mediator/cases/:caseId. Three matters, one per PDF scenario
+   *  (§21), each on a real accepted case already seeded above so the
+   *  DLAO case page, the mediator worklist, and this page all open
+   *  the SAME Case ID and shared record — nothing here is a separate
+   *  mediation database.
+   *
+   *  1. CASE-RAHELA-01 (maintenance) — walked to `party_review`, one
+   *     remote session already failed and fell back to in-person
+   *     (Flow 4's fallback requirement), so "record consent -> sign
+   *     -> outcome" are the live next actions.
+   *  2. CASE-MARZINA-01 (property) — walked to `drafting`, seeded
+   *     with a genuine monetary mismatch between two clauses (the
+   *     same class of inconsistency the case's own example list
+   *     gives for property matters) plus one clause still carrying an
+   *     unresolved templated field, so "human correction" is a real
+   *     next action, not a canned screen.
+   *  3. CASE-SALIM-01 (labour) — walked to `draft_under_review`, one
+   *     party is represented, so the representation/authority check
+   *     is visible before the mediator can move it into party review.
+   *
+   *  All inconsistencies below are computed by the same
+   *  `SettlementDraftingService.runInconsistencyCheck` the live
+   *  drafting workspace calls — never a hand-written duplicate.
+   * ------------------------------------------------------------------ */
+  const emptyChecklist = {
+    finalDraftFrozen: false,
+    partiesReceivedSameVersion: false,
+    languageRecorded: false,
+    plainLanguageExplanationProvided: false,
+    interpreterOrAccessibilitySupportRecorded: false,
+    questionsAndClarificationsRecorded: false,
+    voluntaryConsentRecorded: false,
+    unresolvedIssuesCleared: false,
+    humanLegalReviewCompleted: false,
+    requiredFormalitiesMarked: false,
+  };
+
+  /* ---- Matter 1 — Rahela Begum (maintenance, pre-case) ---- */
+  const mediationMatterId = "MED-2026-RAHELA-01";
+  const mediationSessionFailedId = "MEDS-RAHELA-remote-01";
+  const mediationSessionFallbackId = "MEDS-RAHELA-inperson-01";
+  const settlementDraftId = "SD-2026-RAHELA-01";
+
+  /* ---- Matter 2 — Marzina Begum (property, pre-case) ---- */
+  const marzinaMatterId = "MED-2026-MARZINA-01";
+  const marzinaSessionId = "MEDS-MARZINA-01";
+  const marzinaDraftId = "SD-2026-MARZINA-01";
+
+  /* ---- Matter 3 — Salim Mia (labour, post-case referral) ---- */
+  const salimMatterId = "MED-2026-SALIM-01";
+  const salimSessionId = "MEDS-SALIM-01";
+  const salimDraftId = "SD-2026-SALIM-01";
+
+  const mediationMatters: MediationMatter[] = [
+    {
+      matterId: mediationMatterId,
+      mediationReference: "MREF-RAHELA1",
+      caseId: "CASE-RAHELA-01",
+      applicationId: "APP-2026-RAHELA-01",
+      pathway: "pre_case",
+      registrationSource: "helpline",
+      assignedMediator: "mediator",
+      parties: [
+        { role: "applicant", name: "রাহেলা বেগম", safeContact: "সন্ধ্যা ৬টার পর", preferredLanguage: "bn", participationMode: "hybrid", noticeStatus: "acknowledged", attendanceStatus: "present", contactedAt: "২০২৬-০৮-০২T10:00:00.000Z", contactChannel: "sms", contactResult: "reached" },
+        { role: "respondent", name: "করিম উদ্দিন", preferredLanguage: "bn", participationMode: "in_person", noticeStatus: "acknowledged", attendanceStatus: "present", contactedAt: "২০২৬-০৮-০২T10:05:00.000Z", contactChannel: "sms", contactResult: "reached" },
+      ],
+      matterCategory: "maintenance",
+      state: "party_review",
+      participationMode: "hybrid",
+      sessionIds: [mediationSessionFailedId, mediationSessionFallbackId],
+      documentIds: ["DOC-RAHELA-income-01"],
+      documentReviews: [
+        { documentId: "DOC-RAHELA-income-01", status: "reviewed", reviewedBy: "mediator", reviewedAt: "২০২৬-০৮-০৫T09:00:00.000Z", note: "Payer's income statement — legible, current." },
+      ],
+      settlementDraftIds: [settlementDraftId],
+      history: [
+        { at: "২০২৬-০৮-০১T09:00:00.000Z", actor: "mediator", toState: "registered", reason: "Matter registered from accepted case." },
+        { at: "২০২৬-০৮-০২T10:05:00.000Z", actor: "mediator", fromState: "registered", toState: "party_contact_pending", reason: "Safe-contact check cleared for both parties; contact recorded." },
+        { at: "২০২৬-০৮-০৩T09:00:00.000Z", actor: "mediator", fromState: "party_contact_pending", toState: "scheduled", reason: "Session scheduled." },
+        { at: "২০২৬-০৮-০৩T09:05:00.000Z", actor: "mediator", fromState: "scheduled", toState: "notices_sent", reason: "Notices sent to both parties." },
+        { at: "২০২৬-০৮-০৫T09:00:00.000Z", actor: "mediator", fromState: "notices_sent", toState: "documents_under_review", reason: "Supporting documents received and reviewed." },
+        { at: "২০২৬-০৮-১০T11:00:00.000Z", actor: "mediator", fromState: "documents_under_review", toState: "no_show_rescheduled", reason: "Remote session failed; in-person fallback scheduled." },
+        { at: "২০২৬-০৮-১২T11:00:00.000Z", actor: "mediator", fromState: "no_show_rescheduled", toState: "attendance_confirmed", reason: "Both parties attended the in-person fallback session." },
+        { at: "২০২৬-০৮-১২T12:00:00.000Z", actor: "mediator", fromState: "attendance_confirmed", toState: "in_session", reason: "Mediation session held." },
+        { at: "২০২৬-০৮-১২T13:00:00.000Z", actor: "mediator", fromState: "in_session", toState: "drafting", reason: "Settlement draft generated from mediator notes." },
+        { at: "২০২৬-০৮-১২T13:30:00.000Z", actor: "mediator", fromState: "drafting", toState: "party_review", reason: "Draft human-reviewed; every required clause dispositioned; sent for party consent." },
+      ],
+      auditEventIds: [],
+      createdAt: "২০২৬-০৮-০১T09:00:00.000Z",
+      updatedAt: "২০২৬-০৮-১২T13:30:00.000Z",
+    },
+    {
+      matterId: marzinaMatterId,
+      mediationReference: "MREF-MARZINA1",
+      caseId: "CASE-MARZINA-01",
+      applicationId: "APP-2026-MARZINA-01",
+      pathway: "pre_case",
+      registrationSource: "helpline",
+      assignedMediator: "mediator",
+      parties: [
+        { role: "applicant", name: "মারজিনা বেগম", preferredLanguage: "bn", participationMode: "in_person", noticeStatus: "delivered", attendanceStatus: "pending", contactedAt: "২০২৬-০৮-১৫T10:00:00.000Z", contactChannel: "sms", contactResult: "reached" },
+        { role: "respondent", name: "জসিম উদ্দিন", preferredLanguage: "bn", participationMode: "in_person", noticeStatus: "delivered", attendanceStatus: "pending", contactedAt: "২০২৬-০৮-১৫T10:10:00.000Z", contactChannel: "sms", contactResult: "reached" },
+      ],
+      matterCategory: "property",
+      state: "drafting",
+      participationMode: "in_person",
+      sessionIds: [marzinaSessionId],
+      documentIds: ["DOC-MARZINA-deed-01", "DOC-MARZINA-survey-02"],
+      documentReviews: [
+        { documentId: "DOC-MARZINA-deed-01", status: "reviewed", reviewedBy: "mediator", reviewedAt: "২০২৬-০৮-১৬T09:00:00.000Z", note: "Original deed — current version." },
+        { documentId: "DOC-MARZINA-survey-02", status: "unclear", reviewedBy: "mediator", reviewedAt: "২০২৬-০৮-১৬T09:10:00.000Z", note: "Survey boundary figure differs from the deed; requesting clarification.", followUpTaskId: undefined },
+      ],
+      settlementDraftIds: [marzinaDraftId],
+      history: [
+        { at: "২০২৬-০৮-১৪T09:00:00.000Z", actor: "mediator", toState: "registered", reason: "Matter registered from accepted case." },
+        { at: "২০২৬-০৮-১৫T10:10:00.000Z", actor: "mediator", fromState: "registered", toState: "party_contact_pending", reason: "Both parties contacted." },
+        { at: "২০২৬-০৮-১৬T09:00:00.000Z", actor: "mediator", fromState: "party_contact_pending", toState: "documents_under_review", reason: "Deed and survey received; boundary figures flagged for review." },
+        { at: "২০২৬-০৮-১৮T11:00:00.000Z", actor: "mediator", fromState: "documents_under_review", toState: "attendance_confirmed", reason: "Both parties attended the session." },
+        { at: "২০২৬-০৮-১৮T12:30:00.000Z", actor: "mediator", fromState: "attendance_confirmed", toState: "drafting", reason: "Settlement draft generated from mediator notes; property-description mismatch flagged." },
+      ],
+      auditEventIds: [],
+      createdAt: "২০২৬-০৮-১৪T09:00:00.000Z",
+      updatedAt: "২০২৬-০৮-১৮T12:30:00.000Z",
+    },
+    {
+      matterId: salimMatterId,
+      mediationReference: "MREF-SALIM1",
+      caseId: "CASE-SALIM-01",
+      applicationId: "APP-2026-SALIM-01",
+      pathway: "post_case",
+      referralSource: "DLAO referral after compliance-stage review",
+      registrationSource: "dlao",
+      assignedMediator: "mediator",
+      parties: [
+        { role: "applicant", name: "সালিম মিয়া", representedBy: "Advocate Farida Yasmin (panel lawyer)", preferredLanguage: "bn", participationMode: "in_person", noticeStatus: "sent", attendanceStatus: "pending" },
+        { role: "respondent", name: "মেসার্স রূপসী গার্মেন্টস (নিয়োগকর্তা)", preferredLanguage: "en", participationMode: "in_person", noticeStatus: "sent", attendanceStatus: "pending" },
+      ],
+      matterCategory: "labour",
+      state: "draft_under_review",
+      participationMode: "in_person",
+      sessionIds: [salimSessionId],
+      documentIds: ["DOC-SALIM-authority-01"],
+      documentReviews: [
+        { documentId: "DOC-SALIM-authority-01", status: "reviewed", reviewedBy: "mediator", reviewedAt: "২০২৬-০৯-০৩T09:00:00.000Z", note: "Vakalatnama confirming the panel lawyer's authority to represent Salim Mia." },
+      ],
+      settlementDraftIds: [salimDraftId],
+      history: [
+        { at: "২০২৬-০৯-০১T09:00:00.000Z", actor: "mediator", toState: "registered", reason: "Post-case matter registered on DLAO referral." },
+        { at: "২০২৬-০৯-০১T09:30:00.000Z", actor: "mediator", fromState: "registered", toState: "party_contact_pending", reason: "Representation authority (vakalatnama) verified before contacting the represented party." },
+        { at: "২০২৬-০৯-০৩T09:00:00.000Z", actor: "mediator", fromState: "party_contact_pending", toState: "documents_under_review", reason: "Authority document reviewed." },
+        { at: "২০২৬-০৯-০৫T11:00:00.000Z", actor: "mediator", fromState: "documents_under_review", toState: "attendance_confirmed", reason: "Both sides attended." },
+        { at: "২০২৬-০৯-০৫T13:00:00.000Z", actor: "mediator", fromState: "attendance_confirmed", toState: "drafting", reason: "Draft generated from mediator notes." },
+        { at: "২০২৬-০৯-০৫T13:20:00.000Z", actor: "mediator", fromState: "drafting", toState: "draft_under_review", reason: "Awaiting the mediator's human review and per-clause disposition." },
+      ],
+      auditEventIds: [],
+      createdAt: "২০২৬-০৯-০১T09:00:00.000Z",
+      updatedAt: "২০২৬-০৯-০৫T13:20:00.000Z",
+    },
+  ];
+
+  const mediationSessions: MediationSession[] = [
+    {
+      sessionId: mediationSessionFailedId,
+      matterId: mediationMatterId,
+      caseId: "CASE-RAHELA-01",
+      scheduledFor: "২০২৬-০৮-১০T11:00:00.000Z",
+      expectedDurationMinutes: 60,
+      mode: "remote",
+      remoteInstructions: "Helpline video link shared by SMS.",
+      inPersonFallbackPlanned: true,
+      noticesSent: [
+        { party: "রাহেলা বেগম", channel: "sms", sentAt: "২০২৬-০৮-০৩T09:05:00.000Z", safeContactRespected: true, deliveryState: "delivered", language: "bn" },
+        { party: "করিম উদ্দিন", channel: "sms", sentAt: "২০২৬-০৮-০৩T09:05:00.000Z", safeContactRespected: true, deliveryState: "delivered", language: "bn" },
+      ],
+      attendance: [],
+      mediatorNotes: "",
+      connectionStatus: "failed",
+      status: "rescheduled",
+      createdAt: "২০২৬-০৮-০৩T09:00:00.000Z",
+      auditEventIds: [],
+    },
+    {
+      sessionId: mediationSessionFallbackId,
+      matterId: mediationMatterId,
+      caseId: "CASE-RAHELA-01",
+      scheduledFor: "২০২৬-০৮-১২T11:00:00.000Z",
+      expectedDurationMinutes: 60,
+      mode: "in_person",
+      location: "গাইবান্ধা জেলা আইনি সহায়তা কেন্দ্র",
+      inPersonFallbackPlanned: true,
+      fallbackTriggeredFrom: { previousSessionId: mediationSessionFailedId, reason: "Remote connection failed; falling back to in-person per Flow 4's in-person fallback requirement." },
+      noticesSent: [
+        { party: "রাহেলা বেগম", channel: "in_person", sentAt: "২০২৬-০৮-১০T11:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "bn" },
+        { party: "করিম উদ্দিন", channel: "in_person", sentAt: "২০২৬-০৮-১০T11:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "bn" },
+      ],
+      attendance: [
+        { party: "রাহেলা বেগম", role: "applicant", attended: true, status: "present", represented: false, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false },
+        { party: "করিম উদ্দিন", role: "respondent", attended: true, status: "present", represented: false, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false },
+      ],
+      mediatorNotes: "Payer: করিম উদ্দিন, Payee: রাহেলা বেগম, Amount: 5000, Payment date: প্রতি মাসের ৫ তারিখ, Payment method: মোবাইল ব্যাংকিং, Review date: ২০২৭-০২-১২",
+      structuredNotes: {
+        issuesIdentified: "Monthly maintenance amount and arrears for the prior three months.",
+        documentsConsidered: "Payer's income statement (DOC-RAHELA-income-01).",
+        agreedFacts: "Both parties agree on a monthly figure of 5,000 BDT going forward.",
+        disputedFacts: "The arrears total for the prior three months is still being reconciled.",
+        proposedTerms: "5,000 BDT/month via mobile banking on the 5th; arrears settled separately.",
+        unresolvedTerms: "Exact arrears figure — clause drafted at 3,000 BDT pending confirmation.",
+        followUpRequirements: "Confirm arrears figure with both parties before signing.",
+        sessionResult: "Session held; moving to settlement drafting.",
+        author: "mediator",
+        updatedAt: "২০২৬-০৮-১২T13:00:00.000Z",
+        version: 1,
+      },
+      connectionStatus: "not_applicable",
+      startedAt: "২০২৬-০৮-১২T12:00:00.000Z",
+      endedAt: "২০২৬-০৮-১২T13:00:00.000Z",
+      status: "completed",
+      createdAt: "২০২৬-০৮-১০T11:35:00.000Z",
+      auditEventIds: [],
+    },
+    {
+      sessionId: marzinaSessionId,
+      matterId: marzinaMatterId,
+      caseId: "CASE-MARZINA-01",
+      scheduledFor: "২০২৬-০৮-১৮T11:00:00.000Z",
+      expectedDurationMinutes: 90,
+      mode: "in_person",
+      location: "ঢাকা জেলা আইনি সহায়তা কেন্দ্র",
+      inPersonFallbackPlanned: true,
+      noticesSent: [
+        { party: "মারজিনা বেগম", channel: "in_person", sentAt: "২০২৬-০৮-১৬T09:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "bn" },
+        { party: "জসিম উদ্দিন", channel: "in_person", sentAt: "২০২৬-০৮-১৬T09:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "bn" },
+      ],
+      attendance: [
+        { party: "মারজিনা বেগম", role: "applicant", attended: true, status: "present", represented: false, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false },
+        { party: "জসিম উদ্দিন", role: "respondent", attended: true, status: "present", represented: false, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false },
+      ],
+      mediatorNotes: "Party A: মারজিনা বেগম, Party B: জসিম উদ্দিন, Property: পশ্চিম পাড়া প্লট ১২ (দলিল অনুযায়ী ৫ শতাংশ), Division: প্লট দুই ভাগে বিভক্ত, Possession date: ২০২৬-১০-০১",
+      structuredNotes: {
+        issuesIdentified: "Boundary figure in the survey (৭ শতাংশ) does not match the deed (৫ শতাংশ).",
+        documentsConsidered: "Deed (DOC-MARZINA-deed-01), survey (DOC-MARZINA-survey-02).",
+        agreedFacts: "Both parties agree to divide the plot once the boundary figure is confirmed.",
+        disputedFacts: "Exact plot size — deed and survey disagree.",
+        proposedTerms: "Plot divided in two; possession transfers 2026-10-01.",
+        unresolvedTerms: "Boundary figure must be reconciled before signing; registration formality still pending.",
+        followUpRequirements: "Request a corrected survey or a written clarification from the surveyor.",
+        sessionResult: "Session held; draft generated with the mismatch flagged for correction.",
+        author: "mediator",
+        updatedAt: "২০২৬-০৮-১৮T12:30:00.000Z",
+        version: 1,
+      },
+      connectionStatus: "not_applicable",
+      startedAt: "২০২৬-০৮-১৮T11:00:00.000Z",
+      endedAt: "২০২৬-০৮-১৮T12:30:00.000Z",
+      status: "completed",
+      createdAt: "২০২৬-০৮-১৬T09:00:00.000Z",
+      auditEventIds: [],
+    },
+    {
+      sessionId: salimSessionId,
+      matterId: salimMatterId,
+      caseId: "CASE-SALIM-01",
+      scheduledFor: "২০২৬-০৯-০৫T11:00:00.000Z",
+      expectedDurationMinutes: 60,
+      mode: "in_person",
+      location: "চট্টগ্রাম জেলা আইনি সহায়তা কেন্দ্র",
+      inPersonFallbackPlanned: true,
+      noticesSent: [
+        { party: "সালিম মিয়া", channel: "in_person", sentAt: "২০২৬-০৯-০৩T09:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "bn" },
+        { party: "মেসার্স রূপসী গার্মেন্টস (নিয়োগকর্তা)", channel: "in_person", sentAt: "২০২৬-০৯-০৩T09:30:00.000Z", safeContactRespected: true, deliveryState: "acknowledged", language: "en" },
+      ],
+      attendance: [
+        { party: "সালিম মিয়া", role: "applicant", attended: true, status: "present", represented: true, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false, note: "Represented by Advocate Farida Yasmin; authority verified against the vakalatnama on file." },
+        { party: "মেসার্স রূপসী গার্মেন্টস (নিয়োগকর্তা)", role: "respondent", attended: true, status: "present", represented: false, identityCheck: "completed", interpreterPresent: false, accessibilitySupportProvided: false },
+      ],
+      mediatorNotes: "Employer: মেসার্স রূপসী গার্মেন্টস, Worker: সালিম মিয়া, Dispute: বকেয়া মজুরি ও অন্যায় ছাঁটাই, Remedy: বকেয়া মজুরি পরিশোধ ও ক্ষতিপূরণ, Timeline: ৩০ দিনের মধ্যে",
+      structuredNotes: {
+        issuesIdentified: "Unpaid wages and disputed termination.",
+        documentsConsidered: "Vakalatnama (DOC-SALIM-authority-01).",
+        agreedFacts: "Employer accepts wages were outstanding at termination.",
+        disputedFacts: "Whether the termination itself was lawful.",
+        proposedTerms: "Outstanding wages plus compensation, paid within 30 days.",
+        unresolvedTerms: "Exact compensation figure — still with the mediator for review.",
+        followUpRequirements: "Mediator must review and disposition every required clause before party review opens.",
+        sessionResult: "Session held; draft generated, awaiting human review.",
+        author: "mediator",
+        updatedAt: "২০২৬-০৯-০৫T13:20:00.000Z",
+        version: 1,
+      },
+      connectionStatus: "not_applicable",
+      startedAt: "২০২৬-০৯-০৫T11:00:00.000Z",
+      endedAt: "২০২৬-০৯-০৫T12:00:00.000Z",
+      status: "completed",
+      createdAt: "২০২৬-০৯-০৩T09:00:00.000Z",
+      auditEventIds: [],
+    },
+  ];
+
+  const rahelaDraftClauses = [
+    { clauseId: "maintenance-1", titleBn: "পক্ষগণ", titleEn: "Parties", bodyBn: "প্রদানকারী: করিম উদ্দিন। গ্রহীতা: রাহেলা বেগম।", bodyEn: "Payer: Karim Uddin. Payee: Rahela Begum.", origin: "template" as const, required: true, disposition: "accept" as const, dispositionedBy: "mediator", dispositionedAt: "২০২৬-০৮-১২T13:20:00.000Z" },
+    { clauseId: "maintenance-2", titleBn: "মাসিক ভরণপোষণ", titleEn: "Monthly maintenance", bodyBn: "প্রদানকারী প্রতি মাসে ৫,০০০ টাকা মাসের ৫ তারিখে মোবাইল ব্যাংকিং-এর মাধ্যমে পরিশোধ করবেন।", bodyEn: "The payer shall pay 5000 BDT each month on the 5th, via mobile banking.", origin: "ai_inferred" as const, sourceNote: "Amount, payment date, and method extracted from the mediator's session notes.", required: true, disposition: "accept" as const, dispositionedBy: "mediator", dispositionedAt: "২০২৬-০৮-১২T13:20:00.000Z" },
+    {
+      clauseId: "maintenance-3",
+      titleBn: "সারাংশ",
+      titleEn: "Summary of arrears",
+      bodyBn: "পূর্ববর্তী তিন মাসের বকেয়া মোট ৩,০০০ টাকা হিসাবে পৃথকভাবে নিষ্পত্তি হবে।",
+      bodyEn: "Arrears for the prior three months, totalling 3000 BDT, will be settled separately.",
+      origin: "human_edited" as const,
+      sourceNote: "Mediator added this clause after the session; amount does not match clause 2 — needs review.",
+      required: true,
+      disposition: "mark_unresolved" as const,
+      dispositionedBy: "mediator",
+      dispositionedAt: "২০২৬-০৮-১২T13:25:00.000Z",
+    },
+    { clauseId: "maintenance-4", titleBn: "পর্যালোচনার তারিখ", titleEn: "Review date", bodyBn: "এই ব্যবস্থা ২০২৭-০২-১২-এ পর্যালোচনা করা হবে।", bodyEn: "This arrangement will be reviewed on 2027-02-12.", origin: "ai_inferred" as const, required: true, disposition: "accept" as const, dispositionedBy: "mediator", dispositionedAt: "২০২৬-০৮-১২T13:20:00.000Z" },
+    { clauseId: "maintenance-5", titleBn: "অ-পরিশোধের ফলাফল", titleEn: "Default consequence", bodyBn: "ধারাবাহিক অ-পরিশোধ হলে বিষয়টি মানবিক পর্যালোচনার জন্য ফিরিয়ে আনা হবে।", bodyEn: "Repeated non-payment returns this matter to human review; there is no automatic penalty.", origin: "template" as const, required: true, disposition: "accept" as const, dispositionedBy: "mediator", dispositionedAt: "২০২৬-০৮-১২T13:20:00.000Z" },
+  ];
+
+  const rahelaDraftBase = {
+    draftId: settlementDraftId,
+    matterId: mediationMatterId,
+    caseId: "CASE-RAHELA-01",
+    category: "maintenance" as const,
+    templateId: "TPL-MAINTENANCE-v1",
+    templateVersion: "v1",
+    version: 2,
+    clauses: rahelaDraftClauses,
+    formalityWarning: {
+      bn: "এই খসড়া একটি প্রত্যয়িত আইনি দলিল নয়। মানবিক আইনি পর্যালোচনা, উভয় পক্ষের সম্মতি এবং প্রযোজ্য আনুষ্ঠানিকতা (স্বাক্ষর/সত্যায়ন) সম্পন্ন না হওয়া পর্যন্ত এটি কার্যকর নয়।",
+      en: "This draft is not a certified legal instrument. It has no effect until human legal review, both parties' consent, and applicable formalities (signing/certification) are completed.",
+    },
+    status: "party_consent_pending" as const,
+    reviewedBy: "mediator",
+    reviewedAt: "২০২৬-০৮-১২T13:20:00.000Z",
+    reviewNotes: "Flagging the arrears amount against the monthly amount; every required clause dispositioned before party review.",
+    consent: [
+      { party: "রাহেলা বেগম", consented: false },
+      { party: "করিম উদ্দিন", consented: false },
+    ],
+    consentChecklist: emptyChecklist,
+    auditEventIds: [] as string[],
+    createdAt: "২০২৬-০৮-১২T13:15:00.000Z",
+    updatedAt: "২০২৬-০৮-১২T13:30:00.000Z",
+  };
+
+  const marzinaDraftClauses = [
+    { clauseId: "property-1", titleBn: "পক্ষগণ ও সম্পত্তি", titleEn: "Parties and property", bodyBn: "পক্ষ: মারজিনা বেগম এবং জসিম উদ্দিন। সম্পত্তির বিবরণ/সীমানা: পশ্চিম পাড়া প্লট ১২, দলিল অনুযায়ী ৫ শতাংশ।", bodyEn: "Parties: Marzina Begum and Jasim Uddin. Property description / boundary: West Para Plot 12, 500 sq. ft. per the deed.", origin: "ai_inferred" as const, sourceNote: "Extracted from the mediator's notes referencing the deed.", required: true, disposition: "undisposed" as const },
+    { clauseId: "property-2", titleBn: "জরিপ অনুযায়ী সীমানা", titleEn: "Boundary per survey", bodyBn: "সাম্প্রতিক জরিপ অনুযায়ী প্লটের আয়তন ৭০০ বর্গফুট — দলিলের সাথে অমিল।", bodyEn: "The recent survey records the plot at 700 sq. ft. — this does not match the deed.", origin: "human_edited" as const, sourceNote: "Mediator entered this from the survey document; conflicts with clause 1.", required: true, disposition: "undisposed" as const },
+    { clauseId: "property-3", titleBn: "বিভাজনের শর্ত", titleEn: "Division terms", bodyBn: "সম্মত শর্ত: প্লট দুই ভাগে বিভক্ত হবে।", bodyEn: "Agreed terms: the plot will be divided in two.", origin: "ai_inferred" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "property-4", titleBn: "দখল হস্তান্তরের তারিখ", titleEn: "Possession date", bodyBn: "দখল ২০২৬-১০-০১-এ হস্তান্তরিত হবে।", bodyEn: "Possession transfers on 2026-10-01.", origin: "ai_inferred" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "property-5", titleBn: "নিবন্ধন/আনুষ্ঠানিকতা", titleEn: "Registration / formality note", bodyBn: "এই খসড়া নিবন্ধনের বিকল্প নয়; প্রযোজ্য নিবন্ধন পৃথকভাবে সম্পন্ন করতে হবে।", bodyEn: "This draft does not substitute for registration; applicable registration must be completed separately.", origin: "template" as const, required: true, disposition: "undisposed" as const },
+  ];
+
+  const marzinaDraftBase = {
+    draftId: marzinaDraftId,
+    matterId: marzinaMatterId,
+    caseId: "CASE-MARZINA-01",
+    category: "property" as const,
+    templateId: "TPL-PROPERTY-v1",
+    templateVersion: "v1",
+    version: 1,
+    clauses: marzinaDraftClauses,
+    formalityWarning: {
+      bn: "এই খসড়া একটি প্রত্যয়িত আইনি দলিল নয়। সম্পত্তি হস্তান্তর/বিভাজনের জন্য নিবন্ধনসহ প্রযোজ্য আইনি আনুষ্ঠানিকতা পৃথকভাবে সম্পন্ন করতে হবে।",
+      en: "This draft is not a certified legal instrument. Property division or transfer requires applicable legal formalities, including registration, completed separately.",
+    },
+    status: "draft" as const,
+    consent: [
+      { party: "মারজিনা বেগম", consented: false },
+      { party: "জসিম উদ্দিন", consented: false },
+    ],
+    consentChecklist: emptyChecklist,
+    auditEventIds: [] as string[],
+    createdAt: "২০২৬-০৮-১৮T12:30:00.000Z",
+    updatedAt: "২০২৬-০৮-১৮T12:30:00.000Z",
+  };
+
+  const salimDraftClauses = [
+    { clauseId: "labour-1", titleBn: "পক্ষগণ ও বিরোধের সারাংশ", titleEn: "Parties and dispute summary", bodyBn: "নিয়োগকর্তা: মেসার্স রূপসী গার্মেন্টস। শ্রমিক: সালিম মিয়া। বিরোধ: বকেয়া মজুরি ও অন্যায় ছাঁটাই।", bodyEn: "Employer: Messrs Rupashi Garments. Worker: Salim Mia. Dispute: unpaid wages and disputed termination.", origin: "ai_inferred" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "labour-2", titleBn: "সম্মত প্রতিকার", titleEn: "Agreed remedy", bodyBn: "সম্মত প্রতিকার: বকেয়া মজুরি পরিশোধ ও ক্ষতিপূরণ।", bodyEn: "Agreed remedy: payment of outstanding wages plus compensation.", origin: "ai_inferred" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "labour-3", titleBn: "সময়রেখা", titleEn: "Timeline", bodyBn: "বাস্তবায়নের সময়রেখা: ৩০ দিনের মধ্যে।", bodyEn: "Implementation timeline: within 30 days.", origin: "ai_inferred" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "labour-4", titleBn: "প্রতিনিধিত্ব", titleEn: "Representation note", bodyBn: "শ্রমিক এডভোকেট ফরিদা ইয়াসমিনের মাধ্যমে প্রতিনিধিত্বপ্রাপ্ত; কার্যক্ষমতা যাচাই করা হয়েছে।", bodyEn: "The worker is represented by Advocate Farida Yasmin; authority verified against the vakalatnama on file.", origin: "template" as const, required: true, disposition: "undisposed" as const },
+    { clauseId: "labour-5", titleBn: "প্রতিশোধ-বিরোধী ধারা", titleEn: "Non-retaliation clause", bodyBn: "কোনো পক্ষ এই সমঝোতায় অংশগ্রহণের জন্য শ্রমিকের বিরুদ্ধে প্রতিশোধমূলক ব্যবস্থা নেবে না।", bodyEn: "No party shall retaliate against the worker for participating in this settlement.", origin: "template" as const, required: true, disposition: "undisposed" as const },
+  ];
+
+  const salimDraftBase = {
+    draftId: salimDraftId,
+    matterId: salimMatterId,
+    caseId: "CASE-SALIM-01",
+    category: "labour" as const,
+    templateId: "TPL-LABOUR-v1",
+    templateVersion: "v1",
+    version: 1,
+    clauses: salimDraftClauses,
+    formalityWarning: {
+      bn: "এই খসড়া একটি প্রত্যয়িত আইনি দলিল নয়। মানবিক আইনি পর্যালোচনা ও উভয় পক্ষের সম্মতি ছাড়া এটি কার্যকর নয়।",
+      en: "This draft is not a certified legal instrument. It has no effect without human legal review and both parties' consent.",
+    },
+    status: "draft" as const,
+    consent: [
+      { party: "সালিম মিয়া", consented: false },
+      { party: "মেসার্স রূপসী গার্মেন্টস (নিয়োগকর্তা)", consented: false },
+    ],
+    consentChecklist: emptyChecklist,
+    auditEventIds: [] as string[],
+    createdAt: "২০২৬-০৯-০৫T13:20:00.000Z",
+    updatedAt: "২০২৬-০৯-০৫T13:20:00.000Z",
+  };
+
+  const settlementDrafts: SettlementDraft[] = [
+    { ...rahelaDraftBase, inconsistencies: SettlementDraftingService.runInconsistencyCheck(rahelaDraftBase as SettlementDraft) },
+    { ...marzinaDraftBase, inconsistencies: SettlementDraftingService.runInconsistencyCheck(marzinaDraftBase as SettlementDraft) },
+    { ...salimDraftBase, inconsistencies: SettlementDraftingService.runInconsistencyCheck(salimDraftBase as SettlementDraft) },
+  ];
+
+  const signingWorkflows: SigningWorkflow[] = [];
+
   const dlaoTaskItems: DlaoTaskItem[] = [
     {
       taskId: "dlao-task-malek-verify",
@@ -2447,6 +2875,10 @@ export function seedDemoData(envelope: StoreEnvelope): StoreEnvelope {
     paymentReconciliations,
     voiceStatusSessions,
     dlaoTaskItems,
+    mediationMatters,
+    mediationSessions,
+    settlementDrafts,
+    signingWorkflows,
   };
 }
 

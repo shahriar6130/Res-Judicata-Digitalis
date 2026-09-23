@@ -1,0 +1,359 @@
+/* ------------------------------------------------------------------ *
+ *  Mediator workspace styles. No new colors — reuses the shared
+ *  design tokens from app/tokens.css (see AGENTS.md).
+ * ------------------------------------------------------------------ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: var(--s-8) var(--page-pad) var(--s-12);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-6);
+}
+
+/* Matches components/udc/udc.module.css .udcLangRow — same placement
+   convention used by every workspace's LanguageToggle. */
+.langRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.eyebrow {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
+.title {
+  font-size: var(--t-title);
+  line-height: var(--leading-title);
+  font-weight: var(--weight-semibold);
+  color: var(--black);
+  margin: var(--s-2) 0 0;
+}
+
+.intro {
+  color: var(--gray);
+  font-size: var(--t-small);
+  max-width: 760px;
+}
+
+.backLink {
+  font-size: var(--t-small);
+  color: var(--gray);
+  text-decoration: underline;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-small);
+}
+
+.table th, .table td {
+  text-align: left;
+  padding: var(--s-3) var(--s-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.pillOk { border-color: var(--black); color: var(--black); }
+.pillWarn { border-color: var(--yellow); color: var(--yellow); }
+.pillBlock { border-color: var(--red); color: var(--red); }
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-6);
+  border: 1px solid var(--line);
+}
+
+.sectionHeading {
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray);
+}
+
+.actionsRow {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.clause {
+  border: 1px solid var(--line);
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.clauseTemplate { border-left: 4px solid var(--black); }
+.clauseAiInferred { border-left: 4px solid var(--yellow); background: var(--off-white); }
+.clauseHumanEdited { border-left: 4px solid var(--gray); }
+
+.clauseTitle {
+  font-weight: var(--weight-semibold);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.originBadge {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--gray);
+}
+
+.inconsistency {
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-small);
+}
+
+.formalityWarning {
+  border: 1px solid var(--line);
+  background: var(--off-white);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-small);
+  color: var(--gray);
+}
+
+.errorNote {
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-small);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-size: var(--t-small);
+}
+
+.field textarea, .field input, .field select {
+  border: 1px solid var(--line);
+  padding: var(--s-2);
+  font: inherit;
+  min-height: 44px;
+}
+
+.field label { font-weight: var(--weight-semibold); }
+
+/* ------------------------------------------------------------------ *
+ *  3-area case workspace layout (/mediator/cases/[caseId]).
+ * ------------------------------------------------------------------ */
+
+.caseShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.caseHeader {
+  border-bottom: 1px solid var(--line);
+  padding: var(--s-4) var(--page-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  background: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.breadcrumbRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.breadcrumb {
+  font-size: var(--t-label);
+  color: var(--gray);
+}
+
+.headerTopRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-4);
+  justify-content: space-between;
+}
+
+.headerFacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s-2) var(--s-6);
+  font-size: var(--t-small);
+}
+
+.headerFacts dt { color: var(--gray); font-size: var(--t-label); text-transform: uppercase; }
+.headerFacts dd { margin: 0; }
+
+.primaryActions {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: 1px solid var(--black);
+  background: var(--black);
+  color: var(--white);
+  padding: var(--s-2) var(--s-4);
+  min-height: 44px;
+  font: inherit;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btnSecondary {
+  composes: btn;
+  background: var(--white);
+  color: var(--black);
+}
+
+.btnDanger {
+  composes: btn;
+  background: var(--white);
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.caseBody {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
+  gap: var(--s-6);
+  padding: var(--s-6) var(--page-pad) var(--s-16);
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .caseBody { grid-template-columns: 1fr; }
+}
+
+.stepperCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stepperItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--line);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+.stepperItem:hover { background: var(--off-white); }
+.stepperItemActive { border-left-color: var(--black); background: var(--off-white); font-weight: var(--weight-semibold); }
+
+.stepDot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+.stepDotDone { border-color: var(--black); background: var(--black); }
+.stepDotCurrent { border-color: var(--black); }
+.stepDotBlocked { border-color: var(--red); background: var(--red); }
+
+.centerCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.tabsRow {
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--s-3) var(--s-3);
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  color: var(--gray);
+}
+.tabBtnActive { color: var(--black); border-bottom-color: var(--black); font-weight: var(--weight-semibold); }
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.rightPanel {
+  border: 1px solid var(--line);
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: var(--t-small);
+}
+
+.kv { display: flex; justify-content: space-between; gap: var(--s-2); }
+.kv dt { color: var(--gray); }
+.kv dd { margin: 0; text-align: right; }
+
+.provTag {
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  color: var(--gray);
+  border: 1px solid var(--line);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.timeline { display: flex; flex-direction: column; gap: var(--s-3); font-size: var(--t-small); }
+.timelineItem { border-left: 2px solid var(--line); padding-left: var(--s-3); }
+
+.partyCard { border: 1px solid var(--line); padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+.warnBox { border: 1px solid var(--yellow); background: var(--off-white); padding: var(--s-3); font-size: var(--t-small); }
+.blockBox { border: 1px solid var(--red); color: var(--red); padding: var(--s-3); font-size: var(--t-small); }
+.okBox { border: 1px solid var(--black); padding: var(--s-3); font-size: var(--t-small); }
+
+.checklistRow { display: flex; align-items: flex-start; gap: var(--s-2); }
+.checklistRow input { min-width: 20px; min-height: 20px; margin-top: 2px; }

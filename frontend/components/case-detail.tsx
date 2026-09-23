@@ -4,7 +4,7 @@
  *  Case Detail — Citizen-facing case tracking experience.
  *
  *  Replaces the prior placeholder. The citizen's case ID selects one
- *  of two demo cases from `lib/case-demo.ts`. The component answers
+ *  of the logged-in citizen's own applications (lib/dlas/citizen-view.ts). The component answers
  *  the four questions a real-world litigant asks at every visit:
  *
  *    1. "আমার মামলাটা এখন কোথায় আছে?"      → header + status badge
@@ -29,7 +29,9 @@ import {
   Play,
   Shield,
 } from "@/components/icons";
-import { getCaseById, type CaseRecord, type CaseStatus } from "@/lib/case-demo";
+import type { CaseRecord, CaseStatus } from "@/lib/case-demo";
+import { useCitizenCase } from "@/lib/dlas/citizen-view";
+import { CitizenDocuments } from "@/components/dlas/citizen-documents";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import styles from "./case-detail.module.css";
 
@@ -48,7 +50,7 @@ type Props = {
 
 export function CaseDetail({ caseId, onBack }: Props) {
   const { lang, t } = useI18n();
-  const caseRecord = getCaseById(caseId);
+  const caseRecord = useCitizenCase(caseId);
 
   if (!caseRecord) {
     return (
@@ -80,6 +82,7 @@ export function CaseDetail({ caseId, onBack }: Props) {
           <CaseIdCard caseRecord={caseRecord} t={t} />
           <CurrentStatus caseRecord={caseRecord} t={t} />
         </div>
+        <CitizenDocuments applicationId={caseRecord.id} />
         <NextActionCard caseRecord={caseRecord} t={t} onConfirmSafeTime={() => {}} />
         <CaseTimeline caseRecord={caseRecord} t={t} />
         <CaseActions caseRecord={caseRecord} t={t} />
@@ -87,7 +90,6 @@ export function CaseDetail({ caseId, onBack }: Props) {
           <MediatorCard caseRecord={caseRecord} t={t} />
           <CommunicationCard caseRecord={caseRecord} t={t} />
         </div>
-        <CaseDocuments caseRecord={caseRecord} t={t} />
         <CaseInformation caseRecord={caseRecord} t={t} />
         <SafetyNotice t={t} />
       </div>
@@ -692,93 +694,6 @@ function CommunicationCard({
         </div>
       ) : null}
     </article>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- *  Documents list — 4 hairline rows.
- *  Each row gets a small icon (FileText/Bell), the doc name, the meta
- *  line, and a CTA or pending pill on the right.
- * ------------------------------------------------------------------ */
-
-const DOC_LABEL_KEYS: Record<
-  "application" | "voice" | "id" | "agreement",
-  MessageKey
-> = {
-  application: "docApplication",
-  voice: "docVoiceStatement",
-  id: "docIdProof",
-  agreement: "docAgreementDraft",
-};
-
-const DOC_STATUS_KEYS = {
-  filed: "docStatusFiled",
-  verified: "docStatusVerified",
-  pending: "docStatusPending",
-} as const satisfies Record<string, MessageKey>;
-
-function docIconFor(kind: "application" | "voice" | "id" | "agreement") {
-  if (kind === "voice") return <Bell size={18} aria-hidden />;
-  return <FileText size={18} aria-hidden />;
-}
-
-function CaseDocuments({
-  caseRecord,
-  t,
-}: {
-  caseRecord: CaseRecord;
-  t: T;
-}) {
-  const { lang } = useI18n();
-  const pick = (bn: string, en: string) => (lang === "bn" ? bn : en);
-
-  return (
-    <section
-      className={styles.documentsCard}
-      aria-labelledby="documents-heading"
-    >
-      <h2 id="documents-heading" className={styles.cardHeading}>
-        {t("documentsHeading")}
-      </h2>
-
-      {caseRecord.documents.length === 0 ? (
-        <p className={styles.emptyState}>{t("documentsEmpty")}</p>
-      ) : (
-        <ul className={styles.documentsList}>
-          {caseRecord.documents.map((doc) => {
-            const isPending = doc.status === "pending";
-            return (
-              <li key={doc.id} className={styles.documentRow}>
-                <span className={styles.documentIcon} aria-hidden>
-                  {docIconFor(doc.kind)}
-                </span>
-                <div className={styles.documentMeta}>
-                  <p className={styles.documentName}>{t(DOC_LABEL_KEYS[doc.kind])}</p>
-                  <p className={styles.documentStatus}>
-                    {doc.metaBn
-                      ? pick(doc.metaBn, doc.metaEn ?? "")
-                      : t(DOC_STATUS_KEYS[doc.status])}
-                  </p>
-                </div>
-                {isPending ? (
-                  <span className={styles.documentPendingPill}>
-                    {t(DOC_STATUS_KEYS.pending)}
-                  </span>
-                ) : doc.kind === "agreement" ? (
-                  <button type="button" className={styles.documentCta}>
-                    {t("docDownloadLabel")}
-                  </button>
-                ) : (
-                  <button type="button" className={styles.documentCta}>
-                    {t("docViewLabel")}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
   );
 }
 

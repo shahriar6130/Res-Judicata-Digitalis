@@ -111,7 +111,8 @@ export function UdcSyncCentrePanel({ role = "udc" }: { role?: string }) {
   }
 
   async function seedAndDetect(temporaryId: string) {
-    SimulatedDlasServer.__seedConflict(temporaryId, "২০২৬-০৭-১২", "dlao_field_verification");
+    // SIMULATED: a DLAO field visit recorded a different incident date on the server.
+    SimulatedDlasServer.__seedConflict(temporaryId, new Date().toISOString().slice(0, 10), "dlao_field_verification");
     const draft = await OfflineStore.get(temporaryId);
     if (draft) {
       ConflictResolutionService.detectForDraft(draft);
@@ -126,6 +127,11 @@ export function UdcSyncCentrePanel({ role = "udc" }: { role?: string }) {
     const d = await IntegrityVerificationService.digestDraft(draft);
     setLastEvent(`integrity digest → ${d.hex.slice(0, 18)}…`);
   }
+
+  // Latest real draft (not a keystroke auto-save scratch copy) to run the conflict simulator on.
+  const latestRealDraft = (Array.isArray(draftsState) ? draftsState : [])
+    .filter((d) => !d.temporaryId.startsWith("OFF-NEW-"))
+    .sort((a, b) => (b.lastModified ?? "").localeCompare(a.lastModified ?? ""))[0]?.temporaryId;
 
   const counts = useMemo(() => {
     const list = Array.isArray(draftsState) ? draftsState : [];
@@ -365,9 +371,11 @@ export function UdcSyncCentrePanel({ role = "udc" }: { role?: string }) {
             <button
               type="button"
               className={`${styles.btn} ${styles.btnSm}`}
-              onClick={() => seedAndDetect("OFF-NUCH-01")}
+              disabled={!latestRealDraft}
+              onClick={() => latestRealDraft && seedAndDetect(latestRealDraft)}
+              title={latestRealDraft ?? ""}
             >
-              {lang === "bn" ? "Nuching কনফ্লিক্ট সিমুলেট করুন" : "Simulate Nuching conflict"}
+              {lang === "bn" ? "সর্বশেষ খসড়ায় কনফ্লিক্ট সিমুলেট করুন" : "Simulate a conflict on the latest draft"}
             </button>
           </div>
           <ul className={styles.queueList}>

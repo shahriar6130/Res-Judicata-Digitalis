@@ -1,62 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useI18n, type MessageKey } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
+import { CitizenAuth } from "@/lib/dlas";
+import { useCitizenNotifications, useCurrentCitizen, type CitizenNotification } from "@/lib/dlas/citizen-view";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Bell, Check, Shield, User } from "@/components/icons";
 import styles from "./notification-list.module.css";
 
 /* ------------------------------------------------------------------ *
- *  NotificationList — fully mocked for the prototype.
- *  Five realistic entries (mediator reply, hearing reminder, doc
- *  verified, agreement ready, profile incomplete). Read state is
- *  component-local so a refresh resets the demo. "Mark all as read"
- *  clears the unread dots.
+ *  NotificationList — built from the logged-in citizen's own records
+ *  in dlas.db.v1 (applications, open tasks, simulated SMS).
+ *  "Mark all as read" is stored on the account, so it survives reload.
  * ------------------------------------------------------------------ */
 
-type NotificationItem = {
-  id: string;
-  titleKey: MessageKey;
-  bodyKey: MessageKey;
-  timeKey: MessageKey;
-  icon: "shield" | "user" | "check" | "bell";
-  href: string;
-  /** Defaults to unread for the first N entries. */
-  defaultUnread: boolean;
-};
-
-const MOCK_ITEMS: NotificationItem[] = [
-  { id: "n1", titleKey: "notification1Title", bodyKey: "notification1Body", timeKey: "notification1Time", icon: "shield", href: "cases", defaultUnread: true },
-  { id: "n2", titleKey: "notification2Title", bodyKey: "notification2Body", timeKey: "notification2Time", icon: "user", href: "cases/SHK-DEMO-007", defaultUnread: true },
-  { id: "n3", titleKey: "notification3Title", bodyKey: "notification3Body", timeKey: "notification3Time", icon: "check", href: "cases/SHK-DEMO-011", defaultUnread: false },
-  { id: "n4", titleKey: "notification4Title", bodyKey: "notification4Body", timeKey: "notification4Time", icon: "check", href: "cases/SHK-DEMO-014", defaultUnread: false },
-  { id: "n5", titleKey: "notification5Title", bodyKey: "notification5Body", timeKey: "notification5Time", icon: "bell", href: "home", defaultUnread: false },
-];
-
 export function NotificationList() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { navigate } = useHashRoute();
-  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
-
-  const items = useMemo(
-    () =>
-      MOCK_ITEMS.map((item) => ({
-        ...item,
-        isUnread: item.defaultUnread && !readIds.has(item.id),
-      })),
-    [readIds],
-  );
-
-  const allRead = items.every((i) => !i.isUnread);
+  const me = useCurrentCitizen();
+  const items = useCitizenNotifications();
+  const allRead = items.every((i) => !i.unread);
+  const unreadCount = items.filter((i) => i.unread).length;
+  const dateFormatter = new Intl.DateTimeFormat(lang === "bn" ? "bn-BD" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
+  const groups = [
+    { key: "new", title: lang === "bn" ? "নতুন" : "New", items: items.filter((i) => i.unread) },
+    { key: "earlier", title: lang === "bn" ? "আগের বিজ্ঞপ্তি" : "Earlier", items: items.filter((i) => !i.unread) },
+  ];
 
   function markAllRead() {
-    setReadIds(new Set(MOCK_ITEMS.map((i) => i.id)));
+    if (me) CitizenAuth.markNotificationsRead(me.citizenId);
   }
 
   return (
     <section className={styles.section} aria-label={t("notificationListHeading")}>
       <header className={styles.header}>
-        <h1 className={styles.heading}>{t("notificationListHeading")}</h1>
+        <div>
+          <p className={styles.eyebrow}>{lang === "bn" ? "আপনার খবর" : "YOUR UPDATES"}</p>
+          <h1 className={styles.heading}>{t("notificationListHeading")}</h1>
+          <p className={styles.summary} aria-live="polite">
+            {unreadCount > 0
+              ? (lang === "bn" ? `${unreadCount}টি নতুন বিজ্ঞপ্তি` : `${unreadCount} new ${unreadCount === 1 ? "notification" : "notifications"}`)
+              : (lang === "bn" ? "সব বিজ্ঞপ্তি পড়া হয়েছে" : "All notifications read")}
+          </p>
+        </div>
         <button
           type="button"
           className={styles.markAllBtn}
@@ -67,7 +52,7 @@ export function NotificationList() {
         </button>
       </header>
 
-      {allRead ? (
+      {items.length === 0 ? (
         <div className={styles.empty}>
           <div className={styles.emptyIcon} aria-hidden>
             <Check size={28} />
@@ -76,39 +61,44 @@ export function NotificationList() {
           <p className={styles.emptySub}>{t("notificationAllCaughtUpSub")}</p>
         </div>
       ) : (
-        <ul className={styles.list}>
-          {items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className={`${styles.row} ${item.isUnread ? styles.rowUnread : ""}`}
-                onClick={() => navigate(item.href)}
-              >
-                <span
-                  className={`${styles.unreadDot} ${item.isUnread ? styles.unreadDotOn : ""}`}
-                  aria-hidden
-                />
-                <span className={styles.iconWrap} aria-hidden>
-                  <NotificationIcon name={item.icon} />
-                </span>
-                <span className={styles.body}>
-                  <span className={styles.title}>{t(item.titleKey)}</span>
-                  <span className={styles.sub}>{t(item.bodyKey)}</span>
-                  <span className={styles.time}>{t(item.timeKey)}</span>
-                </span>
-                {item.isUnread ? (
-                  <span className={styles.badge}>{t("notificationUnreadBadge")}</span>
-                ) : null}
-              </button>
-            </li>
-          ))}
-        </ul>
+        groups.filter((group) => group.items.length > 0).map((group) => (
+          <div className={styles.group} key={group.key}>
+            <h2 className={styles.groupHeading}>{group.title}<span>{group.items.length}</span></h2>
+            <ul className={styles.list}>
+              {group.items.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={`${styles.row} ${item.unread ? styles.rowUnread : ""}`}
+                    onClick={() => {
+                      if (me && item.unread) CitizenAuth.markNotificationsRead(me.citizenId);
+                      navigate(item.href);
+                    }}
+                  >
+                    <span className={styles.iconWrap} aria-hidden><NotificationIcon name={item.icon} /></span>
+                    <span className={styles.body}>
+                      <span className={styles.titleLine}>
+                        <span className={styles.title}>{item.title[lang]}</span>
+                        {item.unread ? <span className={styles.badge}>{t("notificationUnreadBadge")}</span> : null}
+                      </span>
+                      <span className={styles.sub}>{item.body[lang]}</span>
+                      <span className={styles.meta}>
+                        <time dateTime={item.at}>{dateFormatter.format(new Date(item.at))}</time>
+                        <span className={styles.openCue}>{lang === "bn" ? "বিস্তারিত দেখুন" : "View details"} <span aria-hidden="true">→</span></span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
       )}
     </section>
   );
 }
 
-function NotificationIcon({ name }: { name: NotificationItem["icon"] }) {
+function NotificationIcon({ name }: { name: CitizenNotification["icon"] }) {
   switch (name) {
     case "shield": return <Shield size={20} />;
     case "user": return <User size={20} />;

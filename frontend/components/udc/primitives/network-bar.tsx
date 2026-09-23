@@ -23,6 +23,13 @@ const ICONS: Record<NetworkProfileKind, string> = {
   offline: "✕",
   reconnected: "↻",
 };
+const PROFILE_LABELS: Record<NetworkProfileKind, { bn: string; en: string }> = {
+  normal: { bn: "স্বাভাবিক", en: "Normal" },
+  slow: { bn: "ধীর", en: "Slow" },
+  intermittent: { bn: "বিচ্ছিন্ন", en: "Intermittent" },
+  offline: { bn: "অফলাইন", en: "Offline" },
+  reconnected: { bn: "পুনঃসংযুক্ত", en: "Reconnected" },
+};
 
 /**
  * Pick the colour modifier class for the current profile.
@@ -62,27 +69,22 @@ export function NetworkBar({ lang = "en" }: { lang?: "bn" | "en" }) {
       <span className={styles.networkBarLabel}>
         {lang === "bn" ? profile.statusLabel.bn : profile.statusLabel.en}
       </span>
-      <span className={styles.networkBarKind}>{profile.kind}</span>
-      <span className={styles.networkBarStats}>
-        <span><strong>{profile.latencyMs}</strong><small> ms</small></span>
-        <span><strong>{Math.round(profile.packetLoss * 100)}</strong><small>% loss</small></span>
-        <span><strong>{Math.round(profile.bandwidthBps / 1000)}</strong><small> kbps</small></span>
-      </span>
-      <div className={styles.networkBarControls}>
-        {PROFILES.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={`${styles.networkBarBtn} ${
-              p === profile.kind ? styles.networkBarBtnActive : ""
-            }`}
-            onClick={() => NetworkConditionService.setProfile(p)}
-            aria-pressed={p === profile.kind}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
+      <span className={styles.networkBarKind}>{PROFILE_LABELS[profile.kind][lang]}</span>
+      <details className={styles.networkDetails}>
+        <summary>{lang === "bn" ? "সংযোগ পরীক্ষা" : "Connection tools"}</summary>
+        <div className={styles.networkDetailsBody}>
+          <span className={styles.networkBarStats}>
+            <span><strong>{profile.latencyMs}</strong><small> ms</small></span>
+            <span><strong>{Math.round(profile.packetLoss * 100)}</strong><small>% {lang === "bn" ? "ক্ষতি" : "loss"}</small></span>
+            <span><strong>{Math.round(profile.bandwidthBps / 1000)}</strong><small> kbps</small></span>
+          </span>
+          <div className={styles.networkBarControls}>
+            {PROFILES.map((p) => (
+              <button key={p} type="button" className={`${styles.networkBarBtn} ${p === profile.kind ? styles.networkBarBtnActive : ""}`} onClick={() => NetworkConditionService.setProfile(p)} aria-pressed={p === profile.kind}>{PROFILE_LABELS[p][lang]}</button>
+            ))}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

@@ -1,0 +1,287 @@
+/* Office analytics — three small chart cards under the stat tiles on
+   the DLAO queue views. Tokens only, matches dlao.module.css card
+   chrome so they read as part of the same surface. */
+
+.analytics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: var(--s-8) 0 var(--s-6);
+}
+
+@media (max-width: 1100px) {
+  .analytics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .analytics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- card ---- */
+
+.card {
+  border-top: 1px solid var(--dlo-line);
+  padding: var(--s-4) 0;
+  min-width: 0;
+}
+
+.cardHead {
+  min-height: 68px;
+  margin-bottom: var(--s-4);
+}
+
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 2px;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+
+.cardSub {
+  font-size: var(--t-label);
+  color: var(--gray);
+  margin: 0;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-height: 160px;
+}
+
+/* ---- donut ---- */
+
+.compositionBody {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--s-4);
+  align-items: center;
+}
+
+@media (max-width: 700px) {
+  .compositionBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+.donutWrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  justify-self: center;
+}
+
+.donut {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  /* Important: each segment uses its own stroke-width so the visible
+     thickness is consistent regardless of segment count. */
+}
+
+.donutTrack {
+  fill: var(--off-white);
+  stroke: var(--line);
+  stroke-width: 6;
+}
+
+.donutSegment {
+  fill: transparent;
+  stroke-width: 6;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 0;
+}
+
+.donutTotal {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.donutCaption {
+  font-size: var(--t-label);
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+/* ---- legend ---- */
+
+.legend {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legendRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-2);
+  font-size: var(--t-small);
+  padding: 4px 0;
+  border-top: 1px dashed var(--line);
+}
+
+.legendRow:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.legendLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--ink);
+  margin: 0;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.legendValue {
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  color: var(--ink);
+  margin: 0;
+}
+
+.legendPct {
+  color: var(--gray);
+}
+
+/* ---- vertical bars (matter) ---- */
+
+.barsVertical {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: var(--s-2);
+  height: 150px;
+}
+
+.barCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.barCount {
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  color: var(--ink);
+  line-height: 1;
+}
+
+.barFill {
+  width: 100%;
+  min-height: 6px;
+  border-radius: 4px 4px 0 0;
+  transition: width 220ms var(--ease, ease), height 220ms var(--ease, ease);
+}
+
+.barLabel {
+  font-size: 11px;
+  color: var(--gray);
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ---- horizontal bars (channel) ---- */
+
+.barsHorizontal {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 90px 1fr 88px;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-small);
+}
+
+@media (max-width: 700px) {
+  .barRow {
+    grid-template-columns: 80px 1fr 70px;
+    font-size: var(--t-label);
+  }
+}
+
+.barRowLabel {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barRowTrack {
+  height: 10px;
+  background: var(--off-white);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.barRowFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 220ms var(--ease, ease);
+}
+
+.barRowCount {
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  text-align: right;
+  color: var(--ink);
+}
+
+.barRowPct {
+  color: var(--gray);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barFill,
+  .barRowFill {
+    transition: none;
+  }
+}

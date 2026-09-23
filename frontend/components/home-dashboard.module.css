@@ -86,27 +86,6 @@
   outline-offset: 2px;
 }
 
-.actionCardLodge {
-  background: var(--surface-card-lodge);
-  color: var(--surface-card-lodge-fg);
-  border-color: var(--surface-card-lodge);
-  position: relative;
-  overflow: hidden;
-}
-
-.actionCardLodge::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 4px;
-  background: var(--surface-card-lodge-accent);
-}
-
-.actionCardLodge:hover {
-  border-color: var(--surface-card-lodge-accent);
-  transform: translateY(-1px);
-}
-
 .actionIcon {
   flex: 0 0 auto;
   display: flex;
@@ -118,12 +97,6 @@
   background: var(--off-white);
   color: var(--ink);
   border: 1px solid var(--surface-card-border);
-}
-
-.actionIconLodge {
-  background: var(--surface-card-lodge-accent);
-  color: var(--surface-card-lodge);
-  border-color: var(--surface-card-lodge-accent);
 }
 
 .actionBody {
@@ -142,19 +115,10 @@
   line-height: 1.2;
 }
 
-.actionCardLodge .actionTitle {
-  color: var(--surface-card-lodge-fg);
-}
-
 .actionDesc {
   font-size: var(--t-body);
   line-height: var(--leading-body);
   color: var(--gray);
-}
-
-.actionCardLodge .actionDesc {
-  color: var(--surface-card-lodge-fg);
-  opacity: 0.85;
 }
 
 .actionCta {
@@ -283,5 +247,75 @@
 @media (min-width: 901px) and (max-width: 1100px) {
   .actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* New-notification alert — glows until opened. */
+.alert {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  text-align: left;
+  padding: var(--s-4) var(--s-6);
+  border-radius: var(--r-4);
+  border: 1px solid rgba(198, 106, 0, 0.45);
+  background: #fff8e8;
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-sans, inherit);
+  cursor: pointer;
+  animation: alertGlow 1.8s ease-in-out infinite;
+}
+
+.alertIcon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--status-pending);
+  color: var(--white);
+}
+
+.alertBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.alertTitle {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.alertSub {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.alertCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+@keyframes alertGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 196, 48, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(244, 196, 48, 0.35), 0 0 22px rgba(244, 196, 48, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert {
+    animation: none;
   }
 }

@@ -1,11 +1,14 @@
 "use client";
 
-import { listCitizenCases, type CitizenCaseSummary } from "@/lib/case-demo";
+import type { CitizenCaseSummary } from "@/lib/case-demo";
+import { useCitizenCases, useCitizenNotifications, useCurrentCitizen } from "@/lib/dlas/citizen-view";
+import { CitizenAuth } from "@/lib/dlas";
 import { useI18n } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { StatusPill } from "@/components/status-pill";
-import { Building, ChevronRight, FileText, HelpingHand, Play } from "@/components/icons";
+import { CitizenUploadsCard } from "@/components/dlas/citizen-uploads-card";
+import { Bell, Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
 import styles from "./home-dashboard.module.css";
 
 /* ------------------------------------------------------------------ *
@@ -22,7 +25,7 @@ import styles from "./home-dashboard.module.css";
  *    RECENT CASES
  *    ┌──────────────────────────────────────────┐
  *    │ CASE 07  #DLAS-2026-0847                 │
- *    │ Rahima Begum v. Mohammad Ali             │
+ *    │ <applicant> v. <other party>             │
  *    │ Family violence and maintenance stopped  │
  *    │ ● Active · Updated 18 September          │
  *    │ [View case →]                            │
@@ -53,8 +56,12 @@ function greetingKey(g: Greeting) {
 export function HomeDashboard() {
   const { lang, t } = useI18n();
   const profile = useCitizenProfile();
-  const cases = listCitizenCases();
+  const cases = useCitizenCases();
   const { navigate } = useHashRoute();
+  const me = useCurrentCitizen();
+  const unread = useCitizenNotifications().filter((n) => n.unread);
+  // Most important new item first: a document request, else the newest.
+  const top = unread.find((n) => n.id.startsWith("task-") && n.title.en.startsWith("Document needed")) ?? unread[0];
 
   const greeting = greetingFor(new Date());
   const greetingText = t(greetingKey(greeting));
@@ -70,36 +77,46 @@ export function HomeDashboard() {
         <p className={styles.subhead}>{t("homeHowCanWeHelp")}</p>
       </header>
 
-      <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>
+      {top ? (
         <button
           type="button"
-          className={`${styles.actionCard} ${styles.actionCardLodge}`}
-          onClick={() => navigate("complaint")}
+          className={styles.alert}
+          onClick={() => {
+            if (me) CitizenAuth.markNotificationsRead(me.citizenId);
+            navigate(top.href);
+          }}
         >
-          <span className={`${styles.actionIcon} ${styles.actionIconLodge}`} aria-hidden>
-            <HelpingHand size={26} />
+          <span className={styles.alertIcon} aria-hidden>
+            <Bell size={20} />
           </span>
-          <span className={styles.actionBody}>
-            <span className={styles.actionTitle}>{t("homeActionLodgeTitle")}</span>
-            <span className={styles.actionDesc}>{t("homeActionLodgeDesc")}</span>
+          <span className={styles.alertBody}>
+            <span className={styles.alertTitle}>{top.title[lang]}</span>
+            <span className={styles.alertSub}>
+              {top.body[lang]}
+              {unread.length > 1 ? ` · +${unread.length - 1} ${lang === "bn" ? "আরও নতুন" : "more new"}` : ""}
+            </span>
           </span>
-          <span className={styles.actionCta}>
-            {t("homeActionStart")}
+          <span className={styles.alertCta}>
+            {lang === "bn" ? "খুলুন" : "Open"}
             <ChevronRight size={16} aria-hidden />
           </span>
         </button>
+      ) : null}
 
+      <CitizenUploadsCard />
+
+      <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>
         <button
           type="button"
           className={styles.actionCard}
           onClick={() => navigate("intake")}
         >
           <span className={styles.actionIcon} aria-hidden>
-            <Play size={26} />
+            <HelpingHand size={26} />
           </span>
           <span className={styles.actionBody}>
-            <span className={styles.actionTitle}>{t("navIntake")}</span>
-            <span className={styles.actionDesc}>{t("intakeIntro")}</span>
+            <span className={styles.actionTitle}>{t("homeActionLodgeTitle")}</span>
+            <span className={styles.actionDesc}>{t("homeActionLodgeDesc")}</span>
           </span>
           <span className={styles.actionCta}>
             {t("homeActionStart")}

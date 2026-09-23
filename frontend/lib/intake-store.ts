@@ -80,11 +80,10 @@ export type MatterCategory =
   | "labour"
   | "other";
 
-export type ContactSlot =
-  | "friday_morning"
-  | "while_at_work"
-  | "evening"
-  | "anytime";
+/** "anytime", or "custom" = a specific day + time the citizen enters. */
+export type ContactSlot = "anytime" | "custom";
+
+export type ContactDay = "SUN" | "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT";
 
 /**
  * One document the citizen attached. In the prototype we keep the
@@ -103,6 +102,10 @@ export type IntakeDocument = {
 };
 
 export type IntakeDraft = {
+  /** Citizen account that owns this draft (lib/dlas/citizen-auth). A draft
+   *  never carries over to a different logged-in account. */
+  ownerId?: string;
+
   /* --- Step 1: Identity --- */
   name: string;
   phone: string;
@@ -110,6 +113,10 @@ export type IntakeDraft = {
   proxyRel: string;
   proxyName: string;
   proxyPhone: string;
+  /** District code (lib/dlas DISTRICTS) — needed for routing in the shared record. */
+  district: string;
+  /** Applicant's NID number (optional; verified by the DLAO). */
+  nidNumber: string;
 
   /* --- Step 2: Matter --- */
   matter: MatterCategory | null;
@@ -124,6 +131,10 @@ export type IntakeDraft = {
 
   /* --- Step 5: Contact + consent --- */
   contactSlot: ContactSlot | null;
+  /** Only when contactSlot === "custom". */
+  contactDay: ContactDay | "";
+  /** "HH:MM" (24h), only when contactSlot === "custom". */
+  contactTime: string;
   specialInstructions: string;
   consentOk: boolean;
 };
@@ -166,12 +177,16 @@ export function emptyDraft(): IntakeDraft {
     proxyRel: "",
     proxyName: "",
     proxyPhone: "",
+    district: "",
+    nidNumber: "",
     matter: null,
     partyName: "",
     partyAddress: "",
     description: "",
     documents: [],
     contactSlot: null,
+    contactDay: "",
+    contactTime: "",
     specialInstructions: "",
     consentOk: false,
   };
@@ -189,7 +204,10 @@ export function loadDraft(): IntakeDraft | null {
     const raw = store.getItem(DRAFTS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<IntakeDraft>;
-    return { ...emptyDraft(), ...parsed };
+    const d = { ...emptyDraft(), ...parsed };
+    // Older drafts used fixed slots (friday_morning, evening…) — drop them.
+    if (d.contactSlot !== "anytime" && d.contactSlot !== "custom") d.contactSlot = null;
+    return d;
   } catch {
     return null;
   }

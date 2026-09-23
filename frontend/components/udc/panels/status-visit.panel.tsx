@@ -13,6 +13,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import { useNetwork } from "../primitives/use-network";
+import { UdcAuth } from "@/lib/dlas";
 import styles from "../udc.module.css";
 
 interface Props {
@@ -46,7 +47,7 @@ export function UdcStatusVisitPanel({ sessionId, role = "udc" }: Props) {
     const displayName = intake?.applicantName ?? "—";
     const s = StatusVisitService.beginSession({
       applicationId: appId,
-      udcEntrepreneurId: "udc-001",
+      udcEntrepreneurId: UdcAuth.current()?.operatorId ?? "udc-unknown",
       applicantDisplayName: displayName,
     });
     setSession(s);
@@ -94,10 +95,10 @@ export function UdcStatusVisitPanel({ sessionId, role = "udc" }: Props) {
       <main id="udc-main" className={styles.page}>
         <header className={styles.pageHeader}>
           <span className={styles.pageEyebrow}>
-            {lang === "bn" ? "UDC · নির্ধারিত ৪:০০ অবস্থা পরিদর্শন" : "UDC · scheduled 4 PM status visit"}
+            {lang === "bn" ? "UDC · অবস্থা-জানার পরিদর্শন" : "UDC · status visit"}
           </span>
           <h1 className={styles.pageTitle}>
-            {lang === "bn" ? "আবেদনকারীর উপস্থিতিতে সহায়-দেখা" : "Applicant-assisted view (Nuching present)"}
+            {lang === "bn" ? "আবেদনকারীর উপস্থিতিতে সহায়-দেখা" : "Applicant-assisted view (applicant present)"}
           </h1>
           <p className={styles.pageIntro}>
             {lang === "bn"

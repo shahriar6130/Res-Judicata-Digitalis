@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { listCitizenCases } from "@/lib/case-demo";
+import { usePathname, useRouter } from "next/navigation";
+import { useCitizenCases, useCitizenNotifications } from "@/lib/dlas/citizen-view";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
+import { useLawyerProfile } from "@/lib/lawyer-profile";
 import { useUdcProfile } from "@/lib/udc-profile";
+import { CitizenAuth, DlaoAuth, LawyerAuth, readDb, UdcAuth, useDistrictLawyers, useLawyerNotifications, useLawyerWork, useOfficeQueue } from "@/lib/dlas";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -25,7 +27,6 @@ import {
   Play,
   Scale,
   Shield,
-  User,
   Users,
   Briefcase,
   ChevronRight,
@@ -59,7 +60,7 @@ type SidebarProps = {
  *    │  • Legal Aid Officer                    │
  *    │  • Contact Support                      │
  *    ├─ profile panel ─────────────────────────┤
- *    │  [RB] Rahima Begum          [⋮]         │
+ *    │  [AB] <logged-in citizen>    [⋮]         │
  *    │       Citizen                           │
  *    └─────────────────────────────────────────┘
  *
@@ -92,10 +93,11 @@ function CitizenSidebar({
   onNavigate: SidebarProps["onNavigate"];
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang } = useI18n();
   const profile = useCitizenProfile();
   const { navigate, current } = useHashRoute();
-  const cases = listCitizenCases();
+  const cases = useCitizenCases();
 
   // Track the citizen pathname separately from the hash so the UDC
   // items can compare "same path" without manually string-splitting.
@@ -106,8 +108,8 @@ function CitizenSidebar({
     ? current.slice("cases/".length)
     : null;
 
-  // Notifications unread count (mock — first two entries).
-  const unreadCount = 2;
+  // Unread notifications, derived from the citizen's own records.
+  const unreadCount = useCitizenNotifications().filter((n) => n.unread).length;
 
   function go(hash: string) {
     navigate(hash);
@@ -140,6 +142,7 @@ function CitizenSidebar({
   return (
     <aside
       className={`${styles.sidebar} ${styles.dark} ${open ? styles.open : ""}`}
+      lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
       <div className={styles.brand}>
@@ -160,16 +163,9 @@ function CitizenSidebar({
           <NavItem
             icon={<HelpingHand size={18} />}
             label={t("navLodgeComplaint", lang)}
-            active={current === "complaint"}
-            onClick={() => go("complaint")}
-            prominent
-          />
-
-          <NavItem
-            icon={<Play size={18} />}
-            label={t("navIntake", lang)}
-            active={current === "intake"}
+            active={current === "intake" || current === "complaint"}
             onClick={() => go("intake")}
+            prominent
           />
 
           <p className={styles.subSectionLabel}>{t("sidebarSectionMyCases", lang)}</p>
@@ -223,6 +219,7 @@ function CitizenSidebar({
             active={current === "notifications"}
             onClick={() => go("notifications")}
             badge={unreadCount}
+            glow={unreadCount > 0}
           />
         </div>
 
@@ -282,21 +279,13 @@ function CitizenSidebar({
                 type="button"
                 className={styles.kebabItem}
                 role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon", lang)}
-              >
-                {t("profileSettings", lang)}
-                <span className={styles.comingSoonTag}>{t("profileComingSoon", lang)}</span>
-              </button>
-              <button
-                type="button"
-                className={styles.kebabItem}
-                role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon", lang)}
+                onClick={() => {
+                  setKebabOpen(false);
+                  CitizenAuth.logout();
+                  router.replace("/");
+                }}
               >
                 {t("profileLogout", lang)}
-                <span className={styles.comingSoonTag}>{t("profileComingSoon", lang)}</span>
               </button>
             </div>
           ) : null}
@@ -317,12 +306,14 @@ function NavItem({
   badge,
   prominent,
   sub,
+  glow,
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
   badge?: number;
+  glow?: boolean;
   prominent?: boolean;
   sub?: boolean;
 }) {
@@ -331,6 +322,7 @@ function NavItem({
     active ? styles.navItemActive : "",
     prominent ? styles.navItemProminent : "",
     sub ? styles.navItemSub : "",
+    glow ? styles.navItemGlow : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -345,7 +337,7 @@ function NavItem({
         {icon}
       </span>
       <span className={styles.navLabel}>{label}</span>
-      {badge ? <span className={styles.navBadge}>{badge}</span> : null}
+      {badge ? <span className={`${styles.navBadge} ${glow ? styles.navBadgeGlow : ""}`}>{badge}</span> : null}
     </button>
   );
 }
@@ -375,23 +367,30 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/helpline#accessibility-demo", label: "helplineNavAccessibility", key: "accessibility", Icon: Shield },
   ],
   dlo: [
-    { href: "/dashboard/dlo#case", label: "navCases", key: "case", Icon: Briefcase },
-    { href: "/dashboard/dlo#alerts", label: "navAlerts", key: "alerts", Icon: AlertCircle },
-    { href: "/dashboard/dlo#assignments", label: "navAssignments", key: "assignments", Icon: Check },
-    { href: "/dashboard/dlo#timeline", label: "navTimeline", key: "timeline", Icon: Clock },
+    // Step 2 — the office's queue from dlas.db.v1 (see components/dlao/dlao-workspace.tsx)
+    { href: "/dashboard/dlo#overview", label: "navOverview", key: "overview", Icon: Home },
+    { href: "/dashboard/dlo#new", label: "dlaoNavNew", key: "new", Icon: Briefcase },
+    { href: "/dashboard/dlo#review", label: "dlaoNavReview", key: "review", Icon: Clock },
+    { href: "/dashboard/dlo#decided", label: "dlaoNavDecided", key: "decided", Icon: Check },
+    { href: "/dashboard/dlo#tasks", label: "dlaoNavTasks", key: "tasks", Icon: AlertCircle },
+    { href: "/dashboard/dlo#lawyers", label: "dlaoNavLawyers", key: "lawyers", Icon: Scale },
   ],
   lawyer: [
-    { href: "/dashboard/lawyer", label: "navAssignedCases", key: "assigned", Icon: Briefcase },
+    { href: "/dashboard/lawyer#overview", label: "navOverview", key: "overview", Icon: Home },
+    { href: "/dashboard/lawyer#intake", label: "navCaseIntake", key: "intake", Icon: HelpingHand },
+    { href: "/dashboard/lawyer#cases", label: "navMyCases", key: "cases", Icon: Briefcase },
+    { href: "/dashboard/lawyer#notifications", label: "navNotifications", key: "notifications", Icon: Bell },
+    { href: "/dashboard/lawyer#attendance", label: "navAttendance", key: "attendance", Icon: Check },
     { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
     { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
-    { href: "/dashboard/lawyer#assigned", label: "navProfile", key: "profile", Icon: User },
   ],
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
     { href: "/dashboard/admin#users", label: "navUsers", key: "users", Icon: Users },
+    { href: "/dashboard/admin#cases", label: "navApplications", key: "cases", Icon: Briefcase },
     { href: "/dashboard/admin#rules", label: "navRules", key: "rules", Icon: Shield },
-    { href: "/dashboard/admin#overview", label: "navMetrics", key: "metrics", Icon: Building },
     { href: "/dashboard/admin#audit", label: "navAudit", key: "audit", Icon: Clock },
+    { href: "/dashboard/admin#backup", label: "navBackup", key: "backup", Icon: FileText },
   ],
 };
 
@@ -406,13 +405,43 @@ function getLegacyItems(role: string): LegacyNavItem[] {
 
 function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang, t } = useI18n();
   const items = getLegacyItems(role);
+  // Always subscribe so the hook order is stable. Only surface the
+  // counts when the role actually maps onto the DLO queue buckets.
+  const queue = useOfficeQueue();
+  const work = useLawyerWork();
+  const districtLawyers = useDistrictLawyers();
+  const lawyerUnread = useLawyerNotifications().filter((n) => n.unread).length;
+  const badges: Record<string, number> | undefined =
+    role === "dlo"
+      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length, lawyers: districtLawyers.list.filter((m) => m.overdueReports || m.openSummons || m.todayStatus === "ABSENT").length }
+      : role === "lawyer"
+        ? { intake: work.offers.length, cases: work.accepted.length, notifications: lawyerUnread, reports: work.due.length + work.overdue.length, calendar: work.upcoming.length, attendance: work.today ? 0 : 1 }
+        : undefined;
+
+  // The legacy sidebar mirrors the citizen pattern: the active tab is
+  // determined by `window.location.hash`, not by `usePathname()` (which
+  // strips the hash in Next.js). We subscribe to `hashchange` so the
+  // yellow accent bar follows the active section as the user clicks
+  // around the workspace.
+  const [currentHash, setCurrentHash] = useState<string>("");
+  useEffect(() => {
+    function sync() {
+      setCurrentHash((window.location.hash ?? "").replace(/^#/, ""));
+    }
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
 
   // DLO and UDC need an inline profile panel at the bottom. Other roles
   // fall back to the wordmark-only chrome.
-  const showProfile = role === "dlo" || role === "udc";
-  const dloProfile = useDloProfile();
+  const showProfile = role === "dlo" || role === "udc" || role === "lawyer";
+  const officerProfile = useDloProfile();
+  const lawyerProfile = useLawyerProfile();
+  const dloProfile = role === "lawyer" ? lawyerProfile : officerProfile;
   const udcProfile = useUdcProfile();
 
   const isUdc = role === "udc";
@@ -442,7 +471,8 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   return (
     <aside
-      className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
+      className={`${styles.sidebar} ${styles.legacy} ${role === "dlo" || role === "lawyer" ? styles.dloSidebar : ""} ${open ? styles.open : ""}`}
+      lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
       <div className={styles.brand}>
@@ -453,8 +483,12 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
         />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
+        {role === "dlo" || role === "lawyer" ? <div className={styles.dloNavHeading}>
+          <span>{lang === "bn" ? "কর্মক্ষেত্র" : "WORKSPACE"}</span>
+          <strong>{role === "dlo" ? (lang === "bn" ? "অফিসের তালিকা" : "Office queue") : (lang === "bn" ? "আইনজীবীর কাজ" : "Lawyer work")}</strong>
+        </div> : null}
         <ul className={styles.legacyList}>
-          {items.map((item) => renderLegacyItem(item, pathname, onNavigate, t))}
+          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : currentHash, onNavigate, t, badges?.[item.key], role === "lawyer" && (item.key === "notifications" || item.key === "intake" || item.key === "attendance") && !!badges?.[item.key]))}
         </ul>
       </nav>
       {showProfile ? (
@@ -515,30 +549,41 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
             </button>
             {kebabOpen ? (
               <div className={styles.legacyKebabMenu} role="menu">
-                <button
-                  type="button"
-                  className={styles.legacyKebabItem}
-                  role="menuitem"
-                  onClick={() => setKebabOpen(false)}
-                  title={t("profileComingSoon")}
-                >
-                  {t("profileSettings")}
-                  <span className={styles.legacyComingSoonTag}>
-                    {t("profileComingSoon")}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.legacyKebabItem}
-                  role="menuitem"
-                  onClick={() => setKebabOpen(false)}
-                  title={t("profileComingSoon")}
-                >
-                  {t("profileLogout")}
-                  <span className={styles.legacyComingSoonTag}>
-                    {t("profileComingSoon")}
-                  </span>
-                </button>
+                {role === "dlo" || role === "udc" || role === "lawyer" ? (
+                  <button
+                    type="button"
+                    className={styles.legacyKebabItem}
+                    role="menuitem"
+                    onClick={() => {
+                      setKebabOpen(false);
+                      if (role === "dlo") {
+                        DlaoAuth.logout();
+                        router.replace("/dlo");
+                      } else if (role === "lawyer") {
+                        LawyerAuth.logout();
+                        router.replace("/lawyer");
+                      } else {
+                        UdcAuth.logout();
+                        router.replace("/portal/udc");
+                      }
+                    }}
+                  >
+                    {t("profileLogout")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.legacyKebabItem}
+                    role="menuitem"
+                    onClick={() => setKebabOpen(false)}
+                    title={t("profileComingSoon")}
+                  >
+                    {t("profileLogout")}
+                    <span className={styles.legacyComingSoonTag}>
+                      {t("profileComingSoon")}
+                    </span>
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
@@ -551,11 +596,14 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 function renderLegacyItem(
   item: LegacyNavItem,
   pathname: string | null,
+  currentHash: string,
   onNavigate: SidebarProps["onNavigate"],
   t: (key: MessageKey) => string,
+  badge?: number,
+  glow?: boolean,
 ) {
   const [itemPath, itemHash = ""] = item.href.split("#");
-  const [currentPath, currentHash = ""] = (pathname ?? "").split("#");
+  const currentPath = pathname ?? "";
   const isActive =
     currentPath === itemPath &&
     (itemHash === "" || itemHash === currentHash);
@@ -565,7 +613,7 @@ function renderLegacyItem(
     <li key={item.key} className={styles.listItem}>
       <button
         type="button"
-        className={`${styles.legacyLink} ${isActive ? styles.legacyLinkActive : ""}`}
+        className={`${styles.legacyLink} ${isActive ? styles.legacyLinkActive : ""} ${glow ? styles.navItemGlow : ""}`}
         onClick={() => {
           onNavigate?.();
           // All legacy items use hash navigation now. Same-path items
@@ -589,6 +637,11 @@ function renderLegacyItem(
           <Icon size={18} />
         </span>
         <span className={styles.legacyLabel}>{t(item.label)}</span>
+        {badge ? (
+          <span className={`${styles.navBadge} ${glow ? styles.navBadgeGlow : ""}`} aria-label={`${badge} ${t(item.label)}`}>
+            {badge}
+          </span>
+        ) : null}
       </button>
     </li>
   );
@@ -652,25 +705,22 @@ const UDC_NAV: UdcSection[] = [
     ],
   },
   { id: "sync",        kind: "link", labelKey: "udcNavSyncCentre",     Icon: Briefcase, href: "/dashboard/udc#sync-centre" },
-  { id: "conflict",    kind: "link", labelKey: "udcNavConflictReview", Icon: AlertCircle, href: "/dashboard/udc#conflict" },
   { id: "applications",kind: "link", labelKey: "udcNavApplications",   Icon: FileText,   href: "/dashboard/udc#applications" },
 ];
 
 const UDC_SIDEBAR_KEY = "shakkho.udc.sidebar.v1";
 
-/** Latest assisted intake id for this UDC — reads the shakkho envelope
- *  directly. Returns undefined on SSR / parse failure / empty state. */
+/** Latest assisted intake (temporaryId) started by the LOGGED-IN operator,
+ *  read from the shared record (dlas.db.v1). Undefined on SSR / empty. */
 function latestAssistedIntakeId(): string | undefined {
   if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem("shakkho.helpline.v1");
-    if (!raw) return undefined;
-    const env = JSON.parse(raw);
-    const list = Array.isArray(env?.assistedIntakes) ? env.assistedIntakes : [];
-    const sorted = [...list].sort((a, b) =>
-      (b?.updatedAt ?? b?.createdAt ?? "").localeCompare(a?.updatedAt ?? a?.createdAt ?? ""),
-    );
-    return sorted[0]?.temporaryId;
+    const me = UdcAuth.current();
+    if (!me) return undefined;
+    const mine = readDb().sessions
+      .filter((s) => s.channel === "UDC_ASSISTED" && s.meta.operatorId === me.operatorId && s.meta.clientRef)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return mine[0]?.meta.clientRef;
   } catch {
     return undefined;
   }
@@ -705,6 +755,8 @@ function ChevronGlyph({ size = 14 }: { size?: number }) {
 
 function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const { current: currentHash } = useHashRoute();
+  const router = useRouter();
   const { lang, t } = useI18n();
   const udcProfile = useUdcProfile();
 
@@ -759,13 +811,6 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
   );
 
   const currentPath = (pathname ?? "").split("#")[0];
-  const currentHash = (() => {
-    if (typeof window === "undefined") return "";
-    const full = (pathname ?? "").split("#")[1] ?? "";
-    if (full) return full;
-    return (window.location.hash ?? "").replace(/^#/, "");
-  })();
-
   // The Intake section is "active" (parent highlighted) when any of
   // its children is active — even if the section is currently
   // collapsed. A sub-item is considered active when the current hash
@@ -847,7 +892,8 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   return (
     <aside
-      className={`${styles.sidebar} ${styles.legacy} ${open ? styles.open : ""}`}
+      className={`${styles.sidebar} ${styles.legacy} ${styles.udcSidebar} ${open ? styles.open : ""}`}
+      lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
       <div className={styles.brand}>
@@ -858,6 +904,11 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
         />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "কর্মক্ষেত্র" : "WORKSPACE"}</span>
+        <button type="button" className={`${styles.legacyLink} ${!currentHash || currentHash === "dashboard" ? styles.legacyLinkActive : ""}`} onClick={() => navigateTo("/dashboard/udc#dashboard")} aria-current={!currentHash || currentHash === "dashboard" ? "page" : undefined}>
+          <span className={styles.legacyIcon} aria-hidden><Home size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "সারসংক্ষেপ" : "Overview"}</span>
+        </button>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "আবেদনের কাজ" : "APPLICATION WORK"}</span>
         <ul className={styles.legacyList}>
           {UDC_NAV.map((section) => {
             if (section.kind === "link") {
@@ -953,6 +1004,10 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
             );
           })}
         </ul>
+        <span className={styles.udcNavHeading}>{lang === "bn" ? "সহায়তা" : "SUPPORT"}</span>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#clarification-tasks")}><span className={styles.legacyIcon} aria-hidden><Check size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "স্পষ্টীকরণ কাজ" : "Clarification tasks"}</span></button>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#status-visit")}><span className={styles.legacyIcon} aria-hidden><Users size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "অবস্থা জানার পরিদর্শন" : "Status visit"}</span></button>
+        <button type="button" className={styles.legacyLink} onClick={() => navigateTo("/dashboard/udc#history")}><span className={styles.legacyIcon} aria-hidden><Clock size={18} /></span><span className={styles.legacyLabel}>{lang === "bn" ? "ইতিহাস" : "History"}</span></button>
       </nav>
 
       <div
@@ -1004,25 +1059,13 @@ function UdcLegacySidebar({ role, open, onNavigate }: SidebarProps) {
                 type="button"
                 className={styles.legacyKebabItem}
                 role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon")}
-              >
-                {t("profileSettings")}
-                <span className={styles.legacyComingSoonTag}>
-                  {t("profileComingSoon")}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={styles.legacyKebabItem}
-                role="menuitem"
-                onClick={() => setKebabOpen(false)}
-                title={t("profileComingSoon")}
+                onClick={() => {
+                  setKebabOpen(false);
+                  UdcAuth.logout();
+                  router.replace("/udc");
+                }}
               >
                 {t("profileLogout")}
-                <span className={styles.legacyComingSoonTag}>
-                  {t("profileComingSoon")}
-                </span>
               </button>
             </div>
           ) : null}

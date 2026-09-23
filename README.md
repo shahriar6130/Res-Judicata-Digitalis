@@ -46,10 +46,13 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` to access the Citizen sign-in portal. You can quickly test citizen login using:
-- **Mobile number:** `a`
-- **Password:** `a`
-- Or click the **Auto-fill** or **Quick enter** buttons on the sign-in form.
+Visit `http://localhost:3000` for the Citizen portal: **Sign up** with name + mobile number, then **Log in** with the mobile number only (no password in the prototype). Accounts are stored in `localStorage["dlas.db.v1"].citizens`.
+
+## Step 1 — Access & Application (shared record)
+
+Every intake door writes the same JSON record to `localStorage["dlas.db.v1"]` and mints one Application ID:
+`/dashboard/citizen#intake` (citizen), `/dashboard/udc/intake/new` (UDC), `/device/ivr` and `/device/ussd` (simulated phones).
+Open `/debug` to inspect any session or application at any step. Contract: `docs/architecture/DATA-CONTRACTS.md`.
 
 ## Shared contract
 

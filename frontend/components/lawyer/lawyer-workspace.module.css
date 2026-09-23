@@ -1,0 +1,69 @@
+.page { display: flex; flex-direction: column; gap: var(--s-8); min-width: 0; color: var(--ink); }
+.header { display: flex; justify-content: space-between; align-items: start; gap: var(--s-6); padding-bottom: var(--s-8); border-bottom: 1px solid var(--line); }
+.eyebrow { color: var(--gray); font-size: var(--t-label); font-weight: var(--weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 var(--s-2); }
+.header h1 { font-family: var(--font-serif); font-size: clamp(var(--t-section), 4vw, var(--t-hero)); line-height: var(--leading-hero); font-weight: var(--weight-semibold); margin: 0; }
+.intro { color: var(--gray); max-width: 640px; margin: var(--s-4) 0 0; line-height: var(--leading-body); }
+.demoLabel { flex: none; border: 1px dashed var(--gray); color: var(--gray); font-size: var(--t-label); padding: var(--s-1) var(--s-2); }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+.metrics div { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-6); border-right: 1px solid var(--line); min-width: 0; }
+.metrics div:last-child { border-right: 0; }
+.metrics strong { font-family: var(--font-serif); font-size: var(--t-title); line-height: 1; font-weight: var(--weight-semibold); }
+.metrics span { color: var(--gray); font-size: var(--t-small); }
+.focus { display: flex; align-items: end; justify-content: space-between; gap: var(--s-8); padding: var(--s-8); background: var(--ink); color: var(--white); }
+.focus h2 { font-family: var(--font-serif); font-size: var(--t-section); line-height: var(--leading-section); margin: 0 0 var(--s-3); }
+.focus p:not(.eyebrow) { color: var(--on-black-muted); max-width: 540px; margin: 0; }
+.focus .eyebrow { color: var(--on-black-muted); }
+.focus button { flex: none; background: var(--white); color: var(--ink); border-color: var(--white); }
+.focus button:hover { background: var(--off-white); }
+.overviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-8); }
+.preview { border-top: 1px solid var(--line); padding-top: var(--s-4); min-width: 0; }
+.preview h2 { font-family: var(--font-serif); font-size: var(--t-sub); line-height: var(--leading-sub); margin: 0 0 var(--s-2); }
+.preview p:not(.eyebrow) { color: var(--gray); margin: 0 0 var(--s-4); }
+.textAction { border: 0; border-bottom: 1px solid var(--ink); padding: var(--s-1) 0; background: transparent; color: var(--ink); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
+.textAction:hover { border-bottom-width: 2px; }
+.mainSection { min-width: 0; }
+.sectionTop { display: flex; justify-content: space-between; align-items: start; gap: var(--s-4); padding-bottom: var(--s-6); border-bottom: 1px solid var(--ink); }
+.sectionTop h2 { font-family: var(--font-serif); font-size: var(--t-section); line-height: var(--leading-section); margin: 0; font-weight: var(--weight-semibold); }
+.state { flex: none; color: var(--ink); border: 1px solid var(--ink); font-size: var(--t-label); padding: var(--s-1) var(--s-2); }
+.details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); margin: 0; padding: var(--s-6) 0; }
+.detail { min-width: 0; }
+.detail dt { color: var(--gray); font-size: var(--t-label); margin-bottom: var(--s-2); }
+.detail dd { margin: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--s-3); padding-top: var(--s-6); border-top: 1px solid var(--line); }
+.inlineForm { padding-top: var(--s-6); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--s-2); }
+.inlineForm label, .reportForm label { display: flex; flex-direction: column; gap: var(--s-2); font-size: var(--t-label); color: var(--gray); }
+.inlineForm textarea { min-height: 120px; resize: vertical; max-width: 680px; }
+.inlineForm textarea, .reportForm select, .reportForm input { border: var(--control-border); border-radius: var(--control-radius); background: var(--white); color: var(--ink); padding: var(--control-pad-y) var(--control-pad-x); font: inherit; }
+.inlineForm textarea:focus-visible, .reportForm select:focus-visible, .reportForm input:focus-visible, .textAction:focus-visible { outline: var(--focus-width) solid var(--ink); outline-offset: 2px; }
+.feedback { border-left: 3px solid var(--ink); background: var(--white); padding: var(--s-4); margin: var(--s-6) 0 0; }
+.savedReason { color: var(--gray); overflow-wrap: anywhere; }
+.sectionIntro { color: var(--gray); padding: var(--s-4) 0; margin: 0; max-width: 680px; }
+.reportForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-6); border-top: 1px solid var(--line); padding-top: var(--s-6); }
+.reportForm label { min-width: 0; }
+.reportForm select, .reportForm input { min-height: 48px; width: 100%; }
+.formAction { grid-column: 1 / -1; }
+.reportResult .details { border-bottom: 1px solid var(--line); }
+.reportResult .textAction { margin-top: var(--s-4); }
+.schedule { list-style: none; padding: 0; margin: 0; }
+.schedule li { display: grid; grid-template-columns: minmax(210px, 1fr) 2fr; gap: var(--s-6); padding: var(--s-6) 0; border-bottom: 1px solid var(--line); }
+.schedule time { display: flex; align-items: center; gap: var(--s-4); }
+.schedule time strong { font-family: var(--font-serif); font-size: var(--t-title); line-height: 1; }
+.schedule time span, .schedule li > div span { color: var(--gray); }
+.schedule li > div { display: flex; flex-direction: column; gap: var(--s-1); }
+
+@media (max-width: 750px) {
+  .header, .focus { flex-direction: column; align-items: stretch; }
+  .focus button { align-self: flex-start; }
+  .metrics { grid-template-columns: 1fr; }
+  .metrics div { border-right: 0; border-bottom: 1px solid var(--line); padding: var(--s-4) 0; }
+  .metrics div:last-child { border-bottom: 0; }
+  .overviewGrid, .reportForm { grid-template-columns: 1fr; }
+  .details { grid-template-columns: 1fr 1fr; }
+  .schedule li { grid-template-columns: 1fr; gap: var(--s-4); }
+}
+@media (max-width: 480px) {
+  .details { grid-template-columns: 1fr; }
+  .sectionTop { flex-direction: column; }
+  .focus { padding: var(--s-6); }
+  .focus button, .actions button, .formAction button { width: 100%; }
+}

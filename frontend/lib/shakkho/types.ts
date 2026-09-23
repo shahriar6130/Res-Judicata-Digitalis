@@ -18,7 +18,11 @@ export type ApplicationChannel =
   | "portal"
   | "in_person"
   | "udc"
-  | "referral";
+  | "referral"
+  /* Canonical DLAS doors mirrored from lib/dlas (read-only projections). */
+  | "ivr"
+  | "ussd"
+  | "mobile_app";
 
 export type ApplicationStatus =
   | "draft"

@@ -141,7 +141,9 @@ let bootstrapped = false;
 async function bootstrap(): Promise<void> {
   if (bootstrapped) return;
   bootstrapped = true;
-  const drafts = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
+  const all = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
+  // Drop drafts from the retired UDC demo seed so only real work shows.
+  const drafts = all ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : all;
   if (drafts && drafts.length) {
     memFallback.drafts = drafts;
   }
@@ -161,7 +163,9 @@ void bootstrap;
 export const OfflineStore = {
   async list(): Promise<OfflineDraft[]> {
     if (!isBrowser()) return [];
-    const drafts = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
+    const all = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
+  // Drop drafts from the retired UDC demo seed so only real work shows.
+  const drafts = all ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : all;
     if (!drafts) return memFallback.drafts;
     const next = { ...snap, drafts };
     if (!sameSnap(snap, next)) {

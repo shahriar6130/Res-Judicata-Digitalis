@@ -1,0 +1,65 @@
+/* CitizenUploadsCard — "Documents needed" card on the home dashboard.
+   Mirrors the visual treatment of citizen-documents.tsx so a citizen
+   who lands on home gets the same affordance they would see on the
+   case-detail page (and vice versa). */
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-4);
+  padding: var(--s-6);
+  font-family: var(--font-sans);
+}
+
+.cardNeeded {
+  border-color: color-mix(in srgb, var(--status-pending) 45%, var(--white));
+  background: color-mix(in srgb, var(--status-pending) 6%, var(--white));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-pending) 12%, transparent);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 var(--s-2);
+  color: var(--ink);
+}
+
+.pulse {
+  width: var(--s-3);
+  height: var(--s-3);
+  border-radius: 999px;
+  background: var(--status-pending);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-pending) 60%, transparent);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.lead {
+  font-size: var(--t-small);
+  color: var(--gray);
+  margin: 0 0 var(--s-3);
+  max-width: 720px;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}

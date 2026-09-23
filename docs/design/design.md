@@ -23,6 +23,10 @@ the text toggle changes the entire visible interface to English and persists the
 - A subtle vertical vignette gradient ensures high contrast for the top-bar Wordmark and language toggle, while retaining clear visibility of the central justice sculpture.
 - A geometric hairline grid (`--grid-line`, `--grid-size`) overlays the art pane, maintaining the technical editorial aesthetic.
 - Each role portal alternates image and side layout (left vs right) along with its distinctive role accent chip.
+- `/dlo` keeps the art on the right and uses the office review image, a red seam, and officer-specific copy. `/lawyer` keeps the art on the left but uses the alternate justice image, a green seam, and case-representation copy. Both use the same split layout, serif hierarchy, restrained hairlines, and responsive stacked treatment. Their role captions and accent dots retain text labels so colour is never the only distinction.
+- On desktop, the Lawyer art and form columns each occupy the viewport height. The longer sign-up form scrolls within its column, leaving no gap below the image and keeping the image crop and form starting position steady. Tablet and mobile use a stacked image with fixed responsive heights and normal page scrolling.
+- On `/dlo`, the rotated **DLO** image label uses the larger `--t-portal-dlo-role` type token and sits close to the image's left edge. Its anchor accounts for the rotated text width so it stays visible; tablet and mobile sizes step down with the existing type scale.
+- `/udc` is the dedicated operator entry page; `/portal/udc` remains available. It places the alternate justice image on the right and pairs a token-based amber seam with UDC-specific service copy. The existing mobile-only login and operator registration fields are unchanged.
 - For testing convenience, the Citizen sign-in portal (`/`) provides a quick-test credential prompt (`mobile: "a"`, `password: "a"`) with **Auto-fill** and **Quick enter** buttons that immediately navigate to `/dashboard/citizen`.
 
 ## Shared dashboard shell
@@ -43,18 +47,50 @@ Lead with one safe status sentence and one verified next action. Keep case infor
 shared-device safety. Citizen actions are separate neutral controls: confirm, dispute, and request a
 callback. Source detail is collapsed until requested.
 
+Citizen notifications at `/dashboard/citizen#notifications` group new and earlier updates under
+hairline headings. Each entry shows a full title and supporting text, a localised timestamp, a
+labelled new state, and a clear route into the related detail. The unread treatment uses a dark
+rule and text label, never colour alone. The mark-all control stays visible and has a 44px target;
+the list reflows without horizontal scrolling.
+Notifications, the home document reminder, and case links are derived only from applications owned
+by the signed-in citizen through their citizen session or matching applicant/representative phone.
+An open document or missing-info task is never itself a reason to show another citizen's case.
+The home document-upload section is conditional: show its upload actions when an owned, open
+application has an outstanding document, and omit the section entirely when none is pending.
+
 ### DLAO
 
-Lead with the exception/intervention queue. Each row shows visible priority text, the plain-language
-reason, case reference, promise/evidence state, and age. The evidence drawer displays conflicting
-values side by side. A consequential resolution stays disabled until an authorised backend decision
-gate exists.
+Lead with the signed-in officer's applications and follow-up tasks. Each worklist row shows its
+application reference, applicant, channel, matter, waiting time, suggested priority, verification
+state and review stage. The review workspace keeps identity, documents, eligibility and officer
+decision as distinct steps, with the source record and audit trail available alongside them.
+
+The implemented `/dashboard/dlo` Overview (`#overview`, also the default route) uses a dark
+editorial header with the active workload count, four linked queue totals, three compact charts,
+and a new-application worklist. The `#new`, `#review`, `#decided`, and `#tasks` pages lead directly
+with their worklist and do not repeat the charts or summary tiles. The black DLO sidebar separates
+Overview from the queue links with a hairline, shows office counts beside labelled links, and uses
+a light active state with a visible keyboard focus outline. All colours and fonts come from tokens.
+The worklist uses stacked, hairline-separated records instead of a wide table. Details wrap into
+fewer columns as the viewport narrows, so the page needs no horizontal scrolling; opening an
+application keeps the existing review workspace.
+Each application and follow-up record also has a labelled, outlined **Open application** control,
+so the application ID is not the only way to enter the review.
 
 ### Panel lawyer
 
-Show assignments and deadlines as hairline sections. Accept and decline are explicit actions.
-Hearing updates keep attendance, outcome, and next date as separate labelled inputs so one value
-cannot imply another.
+`/dashboard/lawyer` uses one focused section per sidebar destination: Overview, Assignments,
+Reports, and Schedule. The overview leads with one next action and a small set of explained
+counts. Assignment details, report obligations, and hearing dates use hairline sections rather
+than decorative cards. Accept and reasoned decline are explicit actions. Hearing updates keep
+attendance, outcome, and next date as separate labelled inputs so one value cannot imply another.
+The dashboard labels its sample data and session-only feedback as simulated. On narrow screens,
+metrics, detail fields, and hearing rows stack without horizontal page scrolling.
+
+### UDC operator
+
+`/dashboard/udc` leads with a new assisted application action, operator-scoped work counts, recent intakes, and a short service tool list. Submitted records open the operator's applications list; unfinished intakes return to their workspace. The sidebar groups Overview, application work, and support destinations. Connection status stays visible as a compact strip while its diagnostic and simulation controls expand on request. Consent and document destinations open their dedicated intake panels. The global dashboard header owns the Bangla/English toggle, so UDC does not repeat it in the content area. On smaller screens, the hero, counts, and records wrap into columns without horizontal page scrolling.
+UDC subpages share a white, amber-edged heading surface, serif titles, and clear keyboard focus. Their queue rows and form grids stack at narrow widths.
 
 ### Administrator
 
@@ -73,6 +109,13 @@ issue may be resolved with a recorded human reason and audit event.
 
 ## State and simulation treatment
 
+The citizen intake wizard uses the same token-based interaction pattern for choice
+cards, acting-for pills, safe-contact slots, progress buttons, and upload controls.
+Hover on pointer devices gives unselected choices a light surface and a clear ink
+outline without changing their size; selected choices retain their stronger selected
+state. Keyboard focus has a separate visible outline. Touch devices do not keep a
+sticky hover treatment, and reduced-motion preferences remove transitions.
+
 States are text inside thin rectangular outlines. `DISPUTED` and `MISSING` use the red token;
 `STALE` uses a dashed gray outline; other states use black or gray. Priority uses an 8px dot plus
 text: yellow Watch, black Needs action, red Escalated.
@@ -86,3 +129,11 @@ live message, court record, or backend mutation occurred.
 At tablet width, two-column content becomes one column and queue rows become stacked records. At
 mobile width, page padding reduces to 16px, actions fill the available width, evidence comparisons
 stack, and wide content never causes horizontal page scrolling.
+
+## /device (IVR, USSD) and /debug
+
+- Styles: `frontend/components/dlas/dlas.module.css`, tokens only. New token `--font-mono` (JSON and ids).
+- /device pages show a step trail, the handset, and a right-hand **Live record** panel with the JSON being written. The citizen wizard and UDC screens keep their own design; UDC workspace gains a "Shared record" section.
+- Simulated external services (SMS gateway, telephone network, speech-to-text, USSD gateway) always carry a dashed "Simulated" tag.
+- IVR and USSD are rendered as a dark handset; prompts, keypad and transcript are bilingual (Bangla default).
+- The `/device/ivr` and `/device/ussd` pages now share an editorial introduction with a three-step getting-started guide, a labelled two-mode switch, and a clear active-workspace heading. The dark handset is the primary surface, with a flatter bezel, readable screen, larger keypad targets, and distinct call/end actions. Conversation and live-record panels sit alongside the handset on wide screens and stack below it on narrower screens; empty conversation copy explains what appears after starting. Mode switching uses a labelled current-page state, and the simulated network or gateway tag remains visible.

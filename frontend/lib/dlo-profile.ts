@@ -1,3 +1,4 @@
+import { DISTRICTS, useCurrentOfficer } from "./dlas";
 /* ------------------------------------------------------------------ *
  *  District Legal Aid Officer profile — surfaced at the bottom of the
  *  sidebar so the operator always sees who they are signed in as.
@@ -20,14 +21,13 @@ export type DloProfile = {
  * Hardcoded for the prototype. When real auth lands, only this constant
  * (and the hook below) needs to change — every consumer stays the same.
  */
-export const DLO_PROFILE: DloProfile = {
-  nameBn: "মোঃ আরিফ হোসেন",
-  nameEn: "Md. Arif Hossain",
-  roleBn: "জেলা আইনি সহায়তা কর্মকর্তা",
-  roleEn: "District Legal Aid Officer",
-  initials: "AH",
-};
-
+/** The logged-in officer (dlas.db.v1.officers). Neutral placeholder when logged out. */
 export function useDloProfile(): DloProfile {
-  return DLO_PROFILE;
+  const me = useCurrentOfficer();
+  if (!me) return { nameBn: "লগইন করা হয়নি", nameEn: "Not logged in", roleBn: "কর্মকর্তা", roleEn: "Officer", initials: "?" };
+  const d = DISTRICTS.find((x) => x.code === me.district);
+  const roleEn = me.officeType === "SCLAC" ? "SCLAC officer" : `${me.officeType} officer${d ? ` · ${d.label.en}` : ""}`;
+  const roleBn = me.officeType === "SCLAC" ? "SCLAC কর্মকর্তা" : `${me.officeType} কর্মকর্তা${d ? ` · ${d.label.bn}` : ""}`;
+  const initials = me.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+  return { nameBn: me.name, nameEn: me.name, roleBn, roleEn, initials };
 }

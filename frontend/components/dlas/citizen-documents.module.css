@@ -1,0 +1,114 @@
+/* Citizen case page — documents needed / submitted. */
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: 10px;
+  padding: 24px;
+  font-family: var(--font-sans, inherit);
+}
+
+.needed {
+  border-color: color-mix(in srgb, var(--status-pending) 45%, white);
+  background: color-mix(in srgb, var(--status-pending) 6%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-pending) 12%, transparent);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--status-pending);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-pending) 60%, transparent);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.lead {
+  font-size: 15px;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.empty {
+  font-size: 15px;
+  color: #4b5563;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--off-white);
+  color: var(--ink);
+  flex: none;
+}
+
+.meta {
+  flex: 1;
+  min-width: 180px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sub {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
+}
+
+.okPill {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #11703a;
+  background: color-mix(in srgb, var(--green) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--green) 35%, white);
+}

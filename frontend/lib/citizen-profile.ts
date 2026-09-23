@@ -1,3 +1,5 @@
+import { useCurrentCitizen } from "./dlas/citizen-view";
+
 /* ------------------------------------------------------------------ *
  *  Single source of identity for the citizen-facing experience.
  *  The home greeting AND the sidebar profile panel both consume this
@@ -15,22 +17,21 @@ export type CitizenProfile = {
 };
 
 /**
- * Hardcoded for the prototype. Values mirror the canonical demo case
- * (CASE_007 complainant) so the chrome and the case data feel like
- * the same person's story.
- */
-export const CITIZEN_PROFILE: CitizenProfile = {
-  nameBn: "রহিমা বেগম",
-  nameEn: "Rahima Begum",
-  roleBn: "নাগরিক",
-  roleEn: "Citizen",
-  initials: "RB",
-};
-
-/**
- * Hook form so callers can be swapped to a real auth context later
- * without changing the call sites.
+ * The logged-in citizen (sign-up name + phone, lib/dlas/citizen-auth.ts).
+ * Falls back to a neutral "Citizen" label when nobody is logged in —
+ * never to the demo person.
  */
 export function useCitizenProfile(): CitizenProfile {
-  return CITIZEN_PROFILE;
+  const me = useCurrentCitizen();
+  if (!me) {
+    return { nameBn: "নাগরিক", nameEn: "Citizen", roleBn: "নাগরিক", roleEn: "Citizen", initials: "?" };
+  }
+  const initials =
+    me.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "?";
+  return { nameBn: me.name, nameEn: me.name, roleBn: "নাগরিক", roleEn: "Citizen", initials };
 }

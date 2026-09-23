@@ -5,7 +5,6 @@ import { useHashRoute } from "@/lib/use-hash-route";
 import {
   Briefcase,
   Building,
-  Mail,
   MapPin,
   MessageCircle,
   Phone,
@@ -14,9 +13,12 @@ import {
   User,
 } from "@/components/icons";
 import styles from "./udc-section.module.css";
+import { useMyOffice } from "@/lib/dlas/citizen-view";
 
 /* ------------------------------------------------------------------ *
- *  UdcSection — rich mock content for the 4 sub-tabs under
+ *  UdcSection — the citizen's legal aid centre, derived from their own
+ *  latest application in dlas.db.v1 (useMyOffice). No invented officer,
+ *  phone numbers or counts. 4 sub-tabs under
  *  `#udc`. Driven entirely from the URL hash; tab state is
  *  maintained by `role-dashboard.tsx` (which passes `tab` in).
  *
@@ -97,6 +99,9 @@ export function UdcSection({ lang, tab }: { lang: Lang; tab: UdcTab }) {
 
 function OverviewPane({ lang }: { lang: Lang }) {
   const { t } = useI18n();
+  const office = useMyOffice();
+  const none = lang === "bn" ? "এখনো আবেদন নেই" : "No application yet";
+  const pad = (n: number) => String(n).padStart(2, "0");
   return (
     <div className={styles.pane}>
       <div className={styles.paneHeader}>
@@ -106,10 +111,10 @@ function OverviewPane({ lang }: { lang: Lang }) {
       </div>
 
       <div className={styles.kpis}>
-        <Kpi label={t("udcKpiOffice")} value="01" sub={lang === "bn" ? "জয়পুরহাট" : "Joypurhat"} />
-        <Kpi label={t("udcKpiOfficer")} value="02" sub={lang === "bn" ? "১ নিয়োজিত" : "1 assigned to you"} />
-        <Kpi label={t("udcKpiOpenCases")} value="06" sub={lang === "bn" ? "আপনার এলাকায়" : "in your area"} />
-        <Kpi label={t("udcKpiAvgResponse")} value="06h" sub={lang === "bn" ? "গড় প্রথম পদক্ষেপ" : "median first action"} />
+        <Kpi label={t("udcKpiOffice")} value={office.district ? office.district[lang] : "—"} sub={office.officeName ? office.officeName[lang] : none} />
+        <Kpi label={t("udcKpiOfficer")} value="—" sub={lang === "bn" ? "অফিসার পর্যালোচনার পর নিযুক্ত হবেন" : "Assigned after officer review"} />
+        <Kpi label={lang === "bn" ? "আপনার আবেদন" : "Your applications"} value={pad(office.applications)} sub={office.latestApplicationId ?? none} />
+        <Kpi label={lang === "bn" ? "চলমান কাজ" : "Open actions"} value={pad(office.openTasks)} sub={lang === "bn" ? "আপনার আবেদনে" : "on your applications"} />
       </div>
 
       <div className={styles.statusStrip}>
@@ -127,13 +132,23 @@ function OverviewPane({ lang }: { lang: Lang }) {
         <PreviewCard
           icon={<Building size={20} />}
           title={t("udcOfficeNameLabel")}
-          body="জয়পুরহাট জেলা আইনি সহায়তা কেন্দ্র"
+          body={office.officeName ? office.officeName[lang] : none}
+          cta={{ label: t("udcViewOnMap"), href: "#udc/office" }}
+        />
+        <PreviewCard
+          icon={<MapPin size={20} />}
+          title={lang === "bn" ? "কাছের ইউডিসি কেন্দ্র" : "UDC centres in your district"}
+          body={
+            office.udcCentres.length
+              ? office.udcCentres.slice(0, 2).map((c) => c.name[lang]).join(" · ")
+              : none
+          }
           cta={{ label: t("udcViewOnMap"), href: "#udc/office" }}
         />
         <PreviewCard
           icon={<User size={20} />}
-          title={t("udcOfficerName")}
-          body={t("udcOfficerDesignation")}
+          title={t("udcOfficerNameLabel")}
+          body={lang === "bn" ? "এখনো নিযুক্ত হয়নি" : "Not assigned yet"}
           cta={{ label: t("udcViewOnMap"), href: "#udc/officer" }}
         />
         <PreviewCard
@@ -191,7 +206,9 @@ function hourNow(): number {
  * ------------------------------------------------------------------ */
 
 function OfficePane() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const office = useMyOffice();
+  const none = lang === "bn" ? "আবেদন জমা দিলে আপনার জেলার অফিস দেখা যাবে" : "Your district office appears once you apply";
   return (
     <div className={styles.pane}>
       <div className={styles.officeGrid}>
@@ -202,37 +219,23 @@ function OfficePane() {
               <dt>
                 <Building size={16} aria-hidden /> {t("udcOfficeNameLabel")}
               </dt>
-              <dd>{t("udcOfficeAddressLine1")}</dd>
+              <dd>{office.officeName ? office.officeName[lang] : none}</dd>
             </div>
             <div className={styles.metaRow}>
               <dt>
                 <MapPin size={16} aria-hidden /> {t("udcOfficeAddressLabel")}
               </dt>
-              <dd>
-                {t("udcOfficeAddressLine1")}
-                <br />
-                {t("udcOfficeAddressLine2")}
-              </dd>
+              <dd>{office.district ? office.district[lang] : "—"}</dd>
             </div>
             <div className={styles.metaRow}>
               <dt>
                 <Phone size={16} aria-hidden /> {t("udcOfficePhoneLabel")}
               </dt>
               <dd>
-                <a href="tel:+8801700000000" className={styles.link}>
-                  +880 1700-000000
+                <a href="tel:16699" className={styles.link}>
+                  16699
                 </a>
-                <span className={styles.metaHint}> · 02-XXXXXXX</span>
-              </dd>
-            </div>
-            <div className={styles.metaRow}>
-              <dt>
-                <Mail size={16} aria-hidden /> {t("udcOfficeEmailLabel")}
-              </dt>
-              <dd>
-                <a href={`mailto:${t("udcContactEmailBody")}`} className={styles.link}>
-                  {t("udcContactEmailBody")}
-                </a>
+                <span className={styles.metaHint}> · {lang === "bn" ? "জাতীয় আইনি সহায়তা হেল্পলাইন" : "national legal aid helpline"}</span>
               </dd>
             </div>
           </dl>
@@ -242,7 +245,7 @@ function OfficePane() {
           <h3 className={styles.cardTitle}>{t("udcOfficeHoursHeading")}</h3>
           <table className={styles.hoursTable}>
             <tbody>
-              <HoursRow dayKey="udcOfficeHoursSun" closed />
+              <HoursRow dayKey="udcOfficeHoursSun" hours="09:00 – 17:00" />
               <HoursRow dayKey="udcOfficeHoursMon" hours="09:00 – 17:00" />
               <HoursRow dayKey="udcOfficeHoursTue" hours="09:00 – 17:00" />
               <HoursRow dayKey="udcOfficeHoursWed" hours="09:00 – 17:00" />
@@ -253,6 +256,41 @@ function OfficePane() {
           </table>
         </article>
       </div>
+
+      <article className={styles.intakeCard}>
+        <h3 className={styles.cardTitle}>
+          <MapPin size={18} aria-hidden />{" "}
+          {lang === "bn"
+            ? `ইউডিসি কেন্দ্র — ${office.district ? office.district.bn : "আপনার জেলা"}`
+            : `UDC centres — ${office.district ? office.district.en : "your district"}`}
+        </h3>
+        {office.udcCentres.length === 0 ? (
+          <p className={styles.metaHint}>{none}</p>
+        ) : (
+          <dl className={styles.metaList}>
+            {office.udcCentres.map((c) => (
+              <div key={c.centreId} className={styles.metaRow}>
+                <dt>
+                  <Building size={16} aria-hidden /> {c.name[lang]}
+                </dt>
+                <dd>
+                  {c.area[lang]} · {c.hours[lang]}
+                  {c.operatorName ? ` · ${lang === "bn" ? "উদ্যোক্তা" : "Operator"}: ${c.operatorName}` : ""}
+                  <span className={styles.metaHint}>
+                    {" "}
+                    · {c.source === "DEMO_DIRECTORY" ? (lang === "bn" ? "ডেমো তালিকা" : "demo directory") : lang === "bn" ? "নিবন্ধিত কেন্দ্র" : "registered centre"}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <p className={styles.metaHint}>
+          {lang === "bn"
+            ? "তালিকাটি আপনার সর্বশেষ আবেদনের জেলা অনুযায়ী।"
+            : "Listed by the district of your latest application."}
+        </p>
+      </article>
 
       <article className={styles.intakeCard}>
         <h3 className={styles.cardTitle}>
@@ -316,7 +354,8 @@ function HoursRow({
  * ------------------------------------------------------------------ */
 
 function OfficerPane() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const office = useMyOffice();
   return (
     <div className={styles.pane}>
       <article className={styles.officerCard}>
@@ -325,9 +364,12 @@ function OfficerPane() {
         </div>
         <div className={styles.officerInfo}>
           <p className={styles.officerEyebrow}>{t("udcOfficerNameLabel")}</p>
-          <h3 className={styles.officerName}>{t("udcOfficerName")}</h3>
+          <h3 className={styles.officerName}>{lang === "bn" ? "এখনো নিযুক্ত হয়নি" : "Not assigned yet"}</h3>
           <p className={styles.officerDesignation}>
-            <Scale size={14} aria-hidden /> {t("udcOfficerDesignation")}
+            <Scale size={14} aria-hidden />{" "}
+            {lang === "bn"
+              ? "জেলা লিগ্যাল এইড অফিসার আপনার আবেদন পর্যালোচনা করে নিযুক্ত করবেন"
+              : "The District Legal Aid Officer assigns one after reviewing your application"}
           </p>
         </div>
       </article>
@@ -337,25 +379,19 @@ function OfficerPane() {
           <dt>
             <MapPin size={14} aria-hidden /> {t("udcOfficerArea")}
           </dt>
-          <dd>{t("udcOfficerAreaValue")}</dd>
+          <dd>{office.district ? office.district[lang] : "—"}</dd>
         </div>
         <div className={styles.statRow}>
           <dt>
             <Phone size={14} aria-hidden /> {t("udcOfficerContactTime")}
           </dt>
-          <dd>{t("udcOfficerContactTimeValue")}</dd>
+          <dd>{office.safeTime ? office.safeTime[lang] : "—"}</dd>
         </div>
         <div className={styles.statRow}>
           <dt>
-            <Briefcase size={14} aria-hidden /> {t("udcOfficerAssignedCases")}
+            <Briefcase size={14} aria-hidden /> {lang === "bn" ? "আপনার আবেদন" : "Your applications"}
           </dt>
-          <dd>{t("udcOfficerCasesCount")}</dd>
-        </div>
-        <div className={styles.statRow}>
-          <dt>
-            <Shield size={14} aria-hidden /> {t("udcOfficerExperience")}
-          </dt>
-          <dd>{t("udcOfficerExperienceValue")}</dd>
+          <dd>{office.applications}</dd>
         </div>
       </dl>
 
@@ -447,21 +483,6 @@ function ContactPane({ lang }: { lang: Lang }) {
             label: t("udcViewOnMap"),
             href: "#udc/office",
           }}
-        />
-        <ContactCard
-          icon={<Mail size={22} />}
-          title={t("udcContactEmailTitle")}
-          body={t("udcContactEmailBody")}
-          action={{
-            label: lang === "bn" ? "ইমেইল পাঠান" : "Send email",
-            href: `mailto:${t("udcContactEmailBody")}`,
-          }}
-        />
-        <ContactCard
-          icon={<Briefcase size={22} />}
-          title={t("udcContactPostalTitle")}
-          body={t("udcContactPostalBody")}
-          note={t("udcContactPostalAddress")}
         />
       </div>
     </div>

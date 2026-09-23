@@ -29,7 +29,9 @@ export function Wordmark({ variant = "default", roleLabel, roleSubLabel }: Wordm
   const { t } = useI18n();
 
   const className = [styles.wordmark]
-    .concat(variant === "onDark" ? [styles.onDark] : [])
+    .concat(
+      variant === "onDark" || variant === "compact" ? [styles.onDark] : [],
+    )
     .concat(variant === "onSidebar" ? [styles.onSidebar] : [])
     .concat(roleLabel ? [styles.hasRoleBadge] : [])
     .join(" ");

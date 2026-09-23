@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Noto_Serif_Bengali } from "next/font/google";
+import { Inter, Noto_Sans_Bengali, Noto_Serif_Bengali, Playfair_Display } from "next/font/google";
 import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
@@ -15,6 +15,19 @@ const bengali = Noto_Serif_Bengali({
   display: "swap",
 });
 
+// Readable sans for dense work screens (DLO review): --font-sans in tokens.css
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const bengaliSans = Noto_Sans_Bengali({
+  subsets: ["bengali"],
+  variable: "--font-bengali-sans",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "সাক্ষ্য · Verified Legal Aid Operations",
   description:
@@ -27,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" className={`${playfair.variable} ${bengali.variable}`}>
+    <html lang="bn" className={`${playfair.variable} ${bengali.variable} ${inter.variable} ${bengaliSans.variable}`}>
       <body>
         <I18nProvider>{children}</I18nProvider>
       </body>

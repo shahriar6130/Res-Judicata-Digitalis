@@ -72,18 +72,17 @@
   min-height: 40px;
 }
 
-.dark .navItem:hover {
-  background: var(--sidebar-dark-hover);
-}
-
 .dark .navItem:focus-visible {
   outline: var(--focus-width) solid var(--sidebar-dark-accent);
   outline-offset: 2px;
 }
 
 .dark .navItemActive {
-  background: var(--sidebar-dark-active-bg);
-  color: var(--sidebar-dark-active-fg);
+  /* Active main-section nav item: dark fill with yellow text + yellow
+     left accent — matches .navItemSub and .channelItemActive so the
+     whole sidebar reads as one design system. */
+  background: var(--sidebar-dark-bg);
+  color: var(--yellow);
   font-weight: var(--weight-semibold);
 }
 
@@ -94,25 +93,20 @@
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: var(--sidebar-dark-accent);
+  background: var(--yellow);
   border-radius: 2px;
 }
 
 .dark .navItemProminent {
-  background: var(--sidebar-dark-accent);
+  background: var(--yellow);
   color: var(--sidebar-dark-bg);
   font-weight: var(--weight-bold);
   min-height: 48px;
   padding: var(--s-3) var(--s-4);
 }
 
-.dark .navItemProminent:hover {
-  background: #ffce4d;
-  color: var(--sidebar-dark-bg);
-}
-
 .dark .navItemProminent.navItemActive {
-  background: var(--sidebar-dark-accent);
+  background: var(--yellow);
   color: var(--sidebar-dark-bg);
 }
 
@@ -124,7 +118,16 @@
 }
 
 .dark .navItemSub.navItemActive {
-  color: var(--sidebar-dark-fg);
+  /* Active sub-item: invert to a dark fill so the label reads on a
+     light background instead of light-on-light. The yellow accent
+     strip on the left still tells the eye which section is current. */
+  background: var(--sidebar-dark-bg);
+  color: var(--yellow);
+  font-weight: var(--weight-semibold);
+}
+
+.dark .navItemSub.navItemActive::before {
+  background: var(--yellow);
 }
 
 .dark .navIcon {
@@ -216,17 +219,18 @@
   font-family: var(--font-serif);
 }
 
-.dark .channelItem:hover {
-  background: var(--sidebar-dark-hover);
-}
-
 .dark .channelItem:focus-visible {
   outline: var(--focus-width) solid var(--sidebar-dark-accent);
   outline-offset: 2px;
 }
 
 .dark .channelItemActive {
-  background: var(--sidebar-dark-active-bg);
+  /* Active case channel: dark fill with yellow text + yellow accent
+     bar on the left so it matches the rest of the dark sidebar's
+     active treatment. The previous off-white background hid the
+     off-white text — same fix as .navItemSub below. */
+  background: var(--sidebar-dark-bg);
+  color: var(--yellow);
 }
 
 .dark .channelItemActive::before {
@@ -236,8 +240,23 @@
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: var(--sidebar-dark-accent);
+  background: var(--yellow);
   border-radius: 2px;
+}
+
+.dark .channelItemActive .channelParties,
+.dark .channelItemActive .channelId,
+.dark .channelItemActive .channelNumber {
+  color: var(--yellow);
+}
+
+.dark .channelItemActive .channelParties {
+  opacity: 0.92;
+}
+
+.dark .channelItemActive .channelId,
+.dark .channelItemActive .channelNumber {
+  opacity: 0.7;
 }
 
 .dark .channelIcon {
@@ -249,7 +268,7 @@
 }
 
 .dark .channelItemActive .channelIcon {
-  color: var(--sidebar-dark-accent);
+  color: var(--yellow);
 }
 
 .dark .channelBody {
@@ -343,7 +362,7 @@
 
 .dark .profileRole {
   font-size: 11px;
-  color: var(--sidebar-dark-muted);
+  color: var(--white);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   line-height: 1.2;
@@ -511,7 +530,7 @@
   top: 8px;
   bottom: 8px;
   width: 3px;
-  background: var(--sidebar-accent);
+  background: var(--yellow);
   border-radius: 2px;
 }
 
@@ -596,7 +615,7 @@
   top: 8px;
   bottom: 8px;
   width: 3px;
-  background: var(--sidebar-accent);
+  background: var(--yellow);
   border-radius: 2px;
 }
 
@@ -646,11 +665,6 @@
   text-overflow: ellipsis;
 }
 
-.legacy .legacyLink:hover {
-  background: var(--sidebar-hover-bg);
-  color: var(--sidebar-fg);
-}
-
 .legacy .legacyLinkActive {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-fg);
@@ -665,9 +679,103 @@
   top: 8px;
   bottom: 8px;
   width: 3px;
-  background: var(--sidebar-accent);
+  background: var(--yellow);
   border-radius: 2px;
 }
+
+.legacy .navBadge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.udcSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.udcSidebar .nav { padding: var(--s-6) var(--s-4); }
+.udcNavHeading { display: block; margin: var(--s-6) var(--s-4) var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--sidebar-border); color: var(--sidebar-muted); font-size: var(--t-label); font-weight: var(--weight-semibold); letter-spacing: .09em; }
+.udcSidebar .udcNavHeading:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.udcSidebar .legacyLink, .udcSidebar .legacySectionToggle { min-height: 44px; padding: var(--s-3) var(--s-4); font-size: var(--t-small); }
+.udcSidebar .legacySubLink { min-height: 40px; font-size: var(--t-label); }
+.udcSidebar .legacyLinkActive, .udcSidebar .legacySubLinkActive, .udcSidebar .legacySectionActive { box-shadow: none; }
+.udcSidebar .legacyLink:focus-visible, .udcSidebar .legacySectionToggle:focus-visible, .udcSidebar .legacySubLink:focus-visible { outline-color: var(--sidebar-fg); }
+
+/* Officer and lawyer navigation follows the black, hairline-led dashboard direction. */
+.dloSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.dloSidebar .nav { padding: var(--s-8) var(--s-4); }
+.dloNavHeading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0 var(--s-2) var(--s-6);
+  padding-bottom: var(--s-6);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+.dloNavHeading span {
+  color: var(--sidebar-muted);
+  font-size: var(--t-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dloNavHeading strong {
+  color: var(--sidebar-fg);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-sub);
+}
+.dloSidebar .legacyList { gap: var(--s-2); }
+.dloSidebar .legacyList .listItem:nth-child(2) {
+  margin-top: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--sidebar-border);
+}
+.dloSidebar .legacyLink {
+  min-height: 48px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+.dloSidebar .legacyLink:hover { border-color: var(--sidebar-border); }
+.dloSidebar .legacyLinkActive {
+  color: var(--sidebar-active-fg);
+  background: var(--sidebar-active-bg);
+  border-color: var(--sidebar-active-bg);
+  box-shadow: none;
+}
+.dloSidebar .legacyLinkActive::before { display: none; }
+.dloSidebar .legacyLink:focus-visible,
+.dloSidebar .legacyKebabBtn:focus-visible,
+.dloSidebar .legacyKebabItem:focus-visible {
+  outline-color: var(--yellow);
+}
+.dloSidebar .navBadge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--s-2);
+  color: var(--sidebar-fg);
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--r-2);
+  font-size: var(--t-label);
+}
+.dloSidebar .legacyLinkActive .navBadge {
+  color: var(--sidebar-fg);
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-bg);
+}
+.dloSidebar .legacyProfilePanel { padding: var(--s-4) var(--s-6); }
+.dloSidebar .legacyProfileAvatar { border-radius: var(--r-2); }
 
 /* Legacy profile panel — pinned to the bottom of the dark sidebar so
    the operator always sees who they are signed in as. Sits after the
@@ -934,4 +1042,45 @@
 .sidebar:lang(en) .comingSoonTag,
 .sidebar:lang(en) .legacyProfileStatusLabel {
   letter-spacing: 0.04em;
+}
+.dloSidebar:lang(en),
+.dloSidebar:lang(en) * {
+  font-family: var(--font-serif);
+}
+/* New notifications: the Notifications item glows until they are read. */
+.navItemGlow {
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(244, 196, 48, 0.55);
+  background: rgba(244, 196, 48, 0.08);
+  animation: navGlow 1.8s ease-in-out infinite;
+}
+
+.navBadgeGlow {
+  background: var(--yellow) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 0 0 0 rgba(244, 196, 48, 0.7);
+  animation: badgePulse 1.8s ease-out infinite;
+}
+
+@keyframes navGlow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(244, 196, 48, 0.35), 0 0 0 0 rgba(244, 196, 48, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(244, 196, 48, 0.9), 0 0 14px 2px rgba(244, 196, 48, 0.35);
+  }
+}
+
+@keyframes badgePulse {
+  to {
+    box-shadow: 0 0 0 8px rgba(244, 196, 48, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navItemGlow,
+  .navBadgeGlow {
+    animation: none;
+  }
 }

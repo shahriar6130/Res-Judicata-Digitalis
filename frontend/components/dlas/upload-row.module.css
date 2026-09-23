@@ -1,0 +1,78 @@
+/* UploadRow — used by citizen-documents.tsx (case detail) and
+   citizen-uploads-card.tsx (home dashboard). Shared row layout so
+   the upload affordance looks identical in both places. */
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--off-white);
+  color: var(--ink);
+  flex: none;
+}
+
+.iconWarn {
+  background: color-mix(in srgb, var(--status-pending) 18%, white);
+  color: #8a4b00;
+}
+
+.meta {
+  flex: 1;
+  min-width: 180px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sub {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
+}
+
+.note {
+  font-size: 14px;
+  color: #1f2937;
+  margin: 2px 0 0;
+}
+
+.err {
+  font-size: 14px;
+  color: #b3261e;
+  margin: 4px 0 0;
+}
+
+.upload {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

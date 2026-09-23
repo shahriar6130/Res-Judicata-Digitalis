@@ -62,6 +62,10 @@ const EMPTY: StoreEnvelope = {
   paymentReconciliations: [],
   voiceStatusSessions: [],
   dlaoTaskItems: [],
+  mediationMatters: [],
+  mediationSessions: [],
+  settlementDrafts: [],
+  signingWorkflows: [],
 };
 
 function emptyEnvelope(): StoreEnvelope {
@@ -146,6 +150,11 @@ export function read(): StoreEnvelope {
       paymentReconciliations: Array.isArray(parsed.paymentReconciliations) ? parsed.paymentReconciliations : [],
       voiceStatusSessions: Array.isArray(parsed.voiceStatusSessions) ? parsed.voiceStatusSessions : [],
       dlaoTaskItems: Array.isArray(parsed.dlaoTaskItems) ? parsed.dlaoTaskItems : [],
+
+      mediationMatters: Array.isArray(parsed.mediationMatters) ? parsed.mediationMatters : [],
+      mediationSessions: Array.isArray(parsed.mediationSessions) ? parsed.mediationSessions : [],
+      settlementDrafts: Array.isArray(parsed.settlementDrafts) ? parsed.settlementDrafts : [],
+      signingWorkflows: Array.isArray(parsed.signingWorkflows) ? parsed.signingWorkflows : [],
     };
   } catch {
     return emptyEnvelope();
@@ -197,6 +206,10 @@ function shallowEqual(a: StoreEnvelope, b: StoreEnvelope): boolean {
   if (a.paymentReconciliations.length !== b.paymentReconciliations.length) return false;
   if (a.voiceStatusSessions.length !== b.voiceStatusSessions.length) return false;
   if (a.dlaoTaskItems.length !== b.dlaoTaskItems.length) return false;
+  if (a.mediationMatters.length !== b.mediationMatters.length) return false;
+  if (a.mediationSessions.length !== b.mediationSessions.length) return false;
+  if (a.settlementDrafts.length !== b.settlementDrafts.length) return false;
+  if (a.signingWorkflows.length !== b.signingWorkflows.length) return false;
   if (a.demoTimeOffsetMs !== b.demoTimeOffsetMs) return false;
   return true;
 }

@@ -87,6 +87,11 @@ import { LawyerAuditService } from "./services/lawyer-audit.service";
 import { VoiceStatusService } from "./services/voice-status.service";
 import { DlaoTaskService } from "./services/dlao-task.service";
 
+/* Prompt 10 — mediation & settlement (B2, Flow 4, T7). */
+import { MediationService } from "./services/mediation.service";
+import { SettlementDraftingService } from "./services/settlement-drafting.service";
+import { SettlementSigningService } from "./services/settlement-signing.service";
+
 export * from "./types";
 export { useHelplineStore, read, write, resetScenario };
 export {
@@ -168,6 +173,11 @@ export {
   LawyerAuditService,
   VoiceStatusService,
   DlaoTaskService,
+
+  /* Prompt 10 */
+  MediationService,
+  SettlementDraftingService,
+  SettlementSigningService,
 };
 
 /* Ensures the seed runs once per browser. Call from the workspace

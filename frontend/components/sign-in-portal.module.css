@@ -27,7 +27,17 @@
 .pageDlo .panel { border-right: 3px solid var(--portal-accent); }
 .pageLawyer .panel { border-left: 3px solid var(--portal-accent); background: var(--white); }
 .pageDlo .shell { max-width: 480px; }
-.pageLawyer .shell { max-width: 460px; }
+.pageLawyer .shell { max-width: 460px; margin: var(--s-12) auto 0; }
+.pageLawyer .footer { margin-top: auto; }
+/* Keep both columns at viewport height; long registration content scrolls
+   within the form column, so the image never changes crop or leaves a gap. */
+.pageLawyer { height: 100dvh; overflow: hidden; }
+.pageLawyer .art {
+  position: relative;
+  height: 100dvh;
+  min-height: 0;
+}
+.pageLawyer .panel { height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 /* Left: black panel with the WebGL sculpture */
 .art {
@@ -212,6 +222,13 @@
     min-height: 0;
     height: 280px;
   }
+  .pageLawyer .art {
+    position: relative;
+    min-height: 0;
+    height: 280px;
+  }
+  .pageLawyer { height: auto; min-height: 100dvh; overflow: visible; }
+  .pageLawyer .panel { height: auto; min-height: calc(100dvh - 280px); overflow: visible; }
 
   .artTop {
     top: var(--s-4);
@@ -226,6 +243,7 @@
 
   .pageDlo .panel { border-right: 0; border-top: 3px solid var(--portal-accent); }
   .pageLawyer .panel { border-left: 0; border-top: 3px solid var(--portal-accent); }
+  .pageLawyer .shell { margin: 0 auto; }
   .pageUdc .panel { border-left: 0; border-top: 3px solid var(--portal-accent); }
   .pageUdc .artCaption { left: var(--page-pad); }
   .pageUdc .rotatedRole { left: var(--s-6); }
@@ -248,6 +266,8 @@
   .art {
     height: 224px;
   }
+  .pageLawyer .art { height: 224px; }
+  .pageLawyer .panel { min-height: calc(100dvh - 224px); }
 
   .panel {
     min-height: calc(100dvh - 224px);

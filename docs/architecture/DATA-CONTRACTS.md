@@ -343,5 +343,44 @@ DLAO completes representation                    DlaoLawyerService.complete()→
 }
 ```
 
+### 7.1 Engine shortlist, auto-cascade, daily attendance
+
+```
+DLAO clicks "Assign lawyer"        DlaoLawyerService.createShortlist() → lawyer.shortlists[] (top rules.shortlistSize = 5)
+   score (0–100) = workload 35 × (1 − active/maxActiveCases) + win rate 30 × win% + attendance 25 × present% (0 if absent today) + specialisation 10
+   (no record yet for win% / attendance = neutral 50 %; lawyers who already declined / expired / were removed on this case are left out)
+DLAO picks one of the 5            assign()  → offer (offeredVia DLAO_CHOICE), lawyer notified (Case intake + SMS)
+Lawyer accepts                     → shortlist ACCEPTED, candidate ACCEPTED
+Lawyer declines (reason ≥ 10)      → candidate DECLINED + reason → engine offers the next PENDING candidate (offeredVia AUTO_NEXT), no DLAO step
+No answer by respondBy             sweep → assignment EXPIRED, candidate NO_RESPONSE → next candidate (AUTO_NEXT)
+All 5 declined / no answer         → shortlist EXHAUSTED, DLAO task LAWYER_ASSIGNMENT "ask the engine for a new shortlist"
+Lawyer registers attendance        LawyerAuth.markAttendance(PRESENT|ABSENT) → lawyers[].attendance[{ date, status, at }] (one per day, changes audited)
+DLAO completes representation      outcome WON | LOST | SETTLED | WITHDRAWN_BY_CLIENT | OTHER → feeds each lawyer's win %
+```
+
+```jsonc
+"shortlists": [{ "shortlistId": "SHL-…", "createdAt": "…", "by": "OFC-…", "byName": "…", "rulesVersion": "LAWYER-RULES-demo-v1",
+                 "status": "ACTIVE|ACCEPTED|EXHAUSTED|CANCELLED",
+                 "candidates": [{ "lawyerId": "LAW-…", "name": "…", "rank": 1, "score": 72.5,
+                                  "breakdown": { "workload": 35, "winRate": 15, "attendance": 12.5, "specialisation": 10 },
+                                  "stats": { "activeCases": 0, "capacity": 10, "won": 0, "lost": 0, "winPct": null, "presentDays": 0, "absentDays": 0,
+                                             "attendancePct": null, "absentToday": false, "matchesMatter": true },
+                                  "outcome": "PENDING|OFFERED|ACCEPTED|DECLINED|NO_RESPONSE", "reason": null, "offeredAt": null }] }]
+```
+Lawyer dashboard: today's attendance (Present / Absent + last 14 days), Case intake (offers with case details; client identity/contact and files open only after acceptance), My cases (expandable list with every detail), Notifications (derived from the record; `lawyers[].notificationsReadAt`), Attendance history, Hearing reports, Calendar.
+
+### 7.2 DLAO lawyer monitoring (`/dashboard/dlo#lawyers`, `#lawyer/<LAW-ID>`)
+
+Read model `useDistrictLawyers()` (lib/dlas/lawyer-monitor.ts): every lawyer on the officer's district panel (SCLAC: all) with today's attendance, 30-day attendance, active cases vs capacity, won/lost, missed hearings (90 d), overdue reports, open offers, last report, and each case's next hearing and latest update; plus a feed of the latest hearing reports. Most urgent lawyers first.
+
+```
+DLAO logs a call (made from their phone)   DlaoLawyerMonitor.logCall()        → contacts[] CALL (REACHED | NO_ANSWER | WRONG_NUMBER)
+DLAO summons the lawyer                    DlaoLawyerMonitor.summon()         → contacts[] SUMMONS (appearAt, place, reason) status SENT, SMS (simulated)
+Lawyer acknowledges                        LawyerContactService.acknowledge() → ACKNOWLEDGED
+DLAO records the result                    DlaoLawyerMonitor.resolveSummons() → ATTENDED | MISSED
+DLAO sends a reminder / message            DlaoLawyerMonitor.remind()         → contacts[] REMINDER, SMS (simulated)
+```
+`lawyers[].contacts[]`: `{ contactId: "CON-…", kind, at, by, byName, applicationId, note, callOutcome, appearAt, place, status: LOGGED|SENT|ACKNOWLEDGED|ATTENDED|MISSED, acknowledgedAt, resolvedAt, resolutionNote }` — audited on the lawyer and, when tied to a case, on the case. The lawyer sees summons (red banner on Overview + Acknowledge), messages and missed calls in Notifications.
+
 Access: an offered lawyer sees only the case summary and the officer's note; the full record (client, safe-contact rules, documents, all earlier hearings and reports) opens only while an access grant is active, and every lawyer action checks it. A new lawyer sees the previous lawyer's hearings read-only and cannot report on them.
 The deadline sweep runs while the DLAO or lawyer workspace is open (on every record change and once a minute) and writes only on new alerts. The citizen sees "Panel lawyer assigned" (each lawyer), each hearing date, and — before travelling — "No lawyer report for the … hearing" when a report is overdue (A5).

@@ -66,13 +66,18 @@ export type MessageKey =
   | "dlaoNavReview"
   | "dlaoNavDecided"
   | "dlaoNavTasks"
+  | "dlaoNavLawyers"
   | "navAssignedCases"
+  | "navCaseIntake"
+  | "navAttendance"
   | "navHearingReports"
   | "navCalendar"
   | "navOverview"
   | "navUsers"
   | "navRules"
   | "navMetrics"
+  | "navApplications"
+  | "navBackup"
   | "navAudit"
   | "navFileComplaint"
   | "complaintTitle"
@@ -1244,13 +1249,18 @@ export const messages: Messages = {
     dlaoNavReview: "যাচাই চলছে",
     dlaoNavDecided: "সিদ্ধান্ত হয়েছে",
     dlaoNavTasks: "ফলো-আপ কাজ",
+    dlaoNavLawyers: "প্যানেল আইনজীবী",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
+    navCaseIntake: "মামলা গ্রহণ",
+    navAttendance: "উপস্থিতি",
     navHearingReports: "শুনানির প্রতিবেদন",
     navCalendar: "ক্যালেন্ডার",
     navOverview: "সংক্ষেপ",
     navUsers: "ব্যবহারকারী",
     navRules: "নিয়ম ও থ্রেশহোল্ড",
     navMetrics: "মেট্রিক্স",
+    navApplications: "আবেদন",
+    navBackup: "ব্যাকআপ",
     navAudit: "নিবন্ধন",
     navFileComplaint: "অভিযোগ জানান",
     complaintTitle: "একটি অভিযোগ নথিভুক্ত করুন",
@@ -2512,13 +2522,18 @@ export const messages: Messages = {
     dlaoNavReview: "In verification",
     dlaoNavDecided: "Decided",
     dlaoNavTasks: "Follow-up tasks",
+    dlaoNavLawyers: "Panel lawyers",
     navAssignedCases: "Assigned Cases",
+    navCaseIntake: "Case intake",
+    navAttendance: "Attendance",
     navHearingReports: "Hearing Reports",
     navCalendar: "Calendar",
     navOverview: "Overview",
     navUsers: "Users",
     navRules: "Rules & Thresholds",
     navMetrics: "Metrics",
+    navApplications: "Applications",
+    navBackup: "Backup",
     navAudit: "Audit Log",
     navFileComplaint: "File a complaint",
     complaintTitle: "File a complaint",

@@ -6,39 +6,31 @@
 .card {
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
-  border-radius: 10px;
-  padding: 20px 24px;
-  font-family: var(--font-sans, inherit);
+  border-radius: var(--r-4);
+  padding: var(--s-6);
+  font-family: var(--font-sans);
 }
 
 .cardNeeded {
-  border-color: color-mix(in srgb, var(--status-pending) 45%, white);
-  background: color-mix(in srgb, var(--status-pending) 6%, white);
+  border-color: color-mix(in srgb, var(--status-pending) 45%, var(--white));
+  background: color-mix(in srgb, var(--status-pending) 6%, var(--white));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-pending) 12%, transparent);
-}
-
-.cardQuiet {
-  /* nothing-pending state stays in the same shape but visually quieter
-     so it doesn't shout at users who don't have anything to upload. */
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--surface-card-border) 70%, transparent);
-  background: transparent;
 }
 
 .heading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-3);
   font-family: var(--font-serif);
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 6px;
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 var(--s-2);
   color: var(--ink);
 }
 
 .pulse {
-  width: 10px;
-  height: 10px;
+  width: var(--s-3);
+  height: var(--s-3);
   border-radius: 999px;
   background: var(--status-pending);
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-pending) 60%, transparent);
@@ -58,23 +50,10 @@
 }
 
 .lead {
-  font-size: 14px;
-  color: #374151;
-  margin: 0 0 12px;
+  font-size: var(--t-small);
+  color: var(--gray);
+  margin: 0 0 var(--s-3);
   max-width: 720px;
-}
-
-.emptyText {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 4px 0 0;
-  color: var(--ink);
-}
-
-.emptySub {
-  font-size: 13px;
-  color: #4b5563;
-  margin: 4px 0 0;
 }
 
 .list {

@@ -27,19 +27,7 @@ export function CitizenUploadsCard() {
     (b.doc.requested?.at ?? b.app.submittedAt).localeCompare(a.doc.requested?.at ?? a.app.submittedAt),
   );
 
-  if (pending.length === 0) {
-    return (
-      <section className={`${styles.card} ${styles.cardQuiet}`} aria-labelledby="uploads-empty-title">
-        <h2 id="uploads-empty-title" className={styles.heading}>
-          {tx("নথি আপলোড", "Document uploads")}
-        </h2>
-        <p className={styles.emptyText}>{tx("আপনার জন্য কোনো নথি অপেক্ষা করছে না।", "No documents are waiting for you.")}</p>
-        <p className={styles.emptySub}>
-          {tx("দরকার হলে অফিসার আপনাকে নোটিফিকেশনের মাধ্যমে জানাবেন।", "If anything is needed, the officer will let you know through a notification.")}
-        </p>
-      </section>
-    );
-  }
+  if (pending.length === 0) return null;
 
   return (
     <section className={`${styles.card} ${styles.cardNeeded}`} aria-labelledby="uploads-needed-title">

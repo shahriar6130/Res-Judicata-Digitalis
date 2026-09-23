@@ -21,6 +21,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { mutate, readDb, useDlasDb } from "./store";
 import { DISTRICTS, normalizePhone, officeFor } from "./reference";
+import { validateApplication } from "./validate";
 import type {
   ApplicationRecord,
   AuditEntry,
@@ -421,6 +422,70 @@ function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutral
 }
 
 export const DlaoReviewService = {
+  /** Correct intake details during verification; every changed field keeps its previous value in audit. */
+  correctDetails(applicationId: string, changes: Record<string, string | boolean>, reason: string) {
+    if (!reason.trim()) throw new Error("Enter a reason for the correction.");
+    return withApp(applicationId, (db, a, o) => {
+      if (!a.review) throw new Error("Receive the application first.");
+      if (a.review.decision || a.status === "CLOSED" || a.status === "WITHDRAWN") throw new Error("This application has already been decided or closed.");
+      if (!applicationsForOffice(db, o).some((x) => x.applicationId === applicationId)) throw new Error("This application is outside your office.");
+      const allowed: Record<string, string[]> = {
+        applicant: ["fullName", "phone", "nidNumber", "district", "addressLine"],
+        filedBy: ["name", "phone"],
+        matter: ["category", "summary", "summaryOriginal", "incidentDate", "opposingParty"],
+        safeContact: ["method", "phone", "safeTime", "notes", "smsAllowed", "voicemailAllowed", "neutralWordingRequired"],
+        urgency: ["selfReportedUrgent"],
+      };
+      const edited: { path: string; from: unknown; to: unknown }[] = [];
+      for (const [path, raw] of Object.entries(changes)) {
+        const [section, field] = path.split(".");
+        if (!section || !field || !allowed[section]?.includes(field)) throw new Error(`Cannot edit ${path} here.`);
+        let value: string | boolean | null = typeof raw === "string" ? raw.trim() || null : raw;
+        if (field === "phone" && value) {
+          const phone = normalizePhone(String(value));
+          if (!phone) throw new Error(`Invalid phone number for ${path}.`);
+          value = phone;
+        }
+        if (path === "applicant.nidNumber" && value && !nidFormatValid(String(value))) throw new Error("NID must contain 10, 13 or 17 digits.");
+        if (path === "applicant.district" && value && !DISTRICTS.some((d) => d.code === value)) throw new Error("Select a valid district.");
+        if (path === "matter.category" && value && !MATTERS.some((m) => m.code === value)) throw new Error("Select a valid matter.");
+        if (path === "matter.incidentDate" && value && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) throw new Error("Enter a valid incident date.");
+        if (path === "safeContact.method" && value && !["CALL", "SMS", "VIA_REPRESENTATIVE", "VISIT_OFFICE"].includes(String(value))) throw new Error("Select a valid contact method.");
+        if (path === "safeContact.safeTime" && value && !["MORNING", "AFTERNOON", "EVENING", "ANYTIME"].includes(String(value))) throw new Error("Select a valid safe time.");
+        const target = a.data[section as keyof typeof a.data] as unknown as Record<string, unknown>;
+        const from = target[field] ?? null;
+        if (from === value) continue;
+        target[field] = value;
+        a.provenance[path] = { source: "OFFICER_CORRECTED", method: "AGENT_FORM", confidence: "STATED", by: o.officerId, at: now(), note: reason.trim() };
+        a.review.identity.corrections.push({ path, from: from == null ? null : String(from), to: value == null ? "" : String(value) });
+        edited.push({ path, from, to: value });
+      }
+      if (!edited.length) return a;
+      if (edited.some((x) => x.path.startsWith("applicant."))) {
+        a.review.identity.state = "IN_PROGRESS";
+        a.review.identity.outcome = null;
+        a.review.verifiedAt = null;
+      }
+      if (edited.some((x) => x.path.startsWith("matter.") || x.path.startsWith("filedBy.") || x.path.startsWith("urgency."))) {
+        a.review.facts.state = "IN_PROGRESS";
+        a.review.facts.outcome = null;
+        a.review.verifiedAt = null;
+      }
+      if (edited.some((x) => x.path === "matter.category" || x.path === "applicant.district")) {
+        a.review.eligibility.state = "NOT_STARTED";
+        a.review.eligibility.recommendation = null;
+        a.review.eligibility.reasons = [];
+      }
+      if (edited.some((x) => x.path === "applicant.district")) {
+        a.routing.office = officeFor(a.data.applicant.district);
+        a.review.office = a.routing.office;
+        for (const task of db.tasks) if (task.applicationId === applicationId && task.status !== "DONE") task.office = a.routing.office;
+      }
+      a.validation = validateApplication(a.data, a.identity, a.channel.code);
+      logA(db, a, o, "review.details_corrected", { reason: reason.trim(), changes: edited });
+      return a;
+    });
+  },
   /** "Application received by relevant office" — the officer opens it for review. */
   receive(applicationId: string) {
     return withApp(applicationId, (db, a, o) => {

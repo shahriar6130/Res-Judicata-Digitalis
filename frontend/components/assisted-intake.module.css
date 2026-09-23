@@ -154,6 +154,19 @@
   transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .stepDot:not(.stepDotActive):hover {
+    border-color: var(--ink);
+    background: var(--off-white);
+    color: var(--ink);
+  }
+}
+
+.stepDot:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
+}
+
 .stepDotActive {
   background: var(--black);
   border-color: var(--black);
@@ -346,8 +359,15 @@
   transition: transform var(--motion-fast), background var(--motion-fast);
 }
 
-.micButton:hover {
-  transform: scale(1.02);
+@media (hover: hover) and (pointer: fine) {
+  .micButton:hover {
+    transform: scale(1.04);
+  }
+}
+
+.micButton:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
 }
 
 .micListening {
@@ -465,17 +485,28 @@
   font: inherit;
   font-size: var(--t-body);
   cursor: pointer;
-  transition: border-color var(--motion-fast), background var(--motion-fast);
+  transition: border-color var(--motion-fast), background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
-.actingPill:hover {
-  border-color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .actingPill:not(.actingPillActive):hover {
+    border-color: var(--ink);
+    background: var(--off-white);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
 }
 
 .actingPillActive {
   background: var(--black);
   color: var(--white);
   border-color: var(--black);
+}
+
+.actingPill:focus-visible,
+.matterCard:focus-visible,
+.slotCard:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
 }
 
 .actingIcon {
@@ -521,12 +552,16 @@
   cursor: pointer;
   font: inherit;
   color: var(--ink);
-  transition: border-color var(--motion-fast), background var(--motion-fast);
+  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
   min-height: 132px;
 }
 
-.matterCard:hover {
-  border-color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .matterCard:not(.matterCardActive):hover {
+    border-color: var(--ink);
+    background: var(--off-white);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
 }
 
 .matterCardActive {
@@ -648,11 +683,20 @@
   font-weight: var(--weight-semibold);
   cursor: pointer;
   margin-top: var(--s-2);
+  transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
 }
 
-.browseBtn:hover {
-  background: var(--ink);
-  color: var(--white);
+@media (hover: hover) and (pointer: fine) {
+  .browseBtn:hover {
+    background: var(--ink);
+    color: var(--white);
+  }
+}
+
+.browseBtn:focus-visible,
+.docRemove:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
 }
 
 .fileInput {
@@ -730,9 +774,11 @@
   cursor: pointer;
 }
 
-.docRemove:hover {
-  border-color: var(--red);
-  color: var(--red);
+@media (hover: hover) and (pointer: fine) {
+  .docRemove:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
 }
 
 .docsEmpty {
@@ -773,17 +819,32 @@
   cursor: pointer;
   font: inherit;
   color: var(--ink);
-  transition: border-color var(--motion-fast);
+  transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast);
 }
 
-.slotCard:hover {
-  border-color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .slotCard:not(.slotCardActive):hover {
+    border-color: var(--ink);
+    background: var(--off-white);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
 }
 
 .slotCardActive {
   background: var(--off-white);
   border-color: var(--black);
   box-shadow: inset 0 0 0 2px var(--black);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepDot,
+  .micButton,
+  .actingPill,
+  .matterCard,
+  .browseBtn,
+  .slotCard {
+    transition: none;
+  }
 }
 
 .slotIcon {

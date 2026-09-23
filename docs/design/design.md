@@ -24,6 +24,7 @@ the text toggle changes the entire visible interface to English and persists the
 - A geometric hairline grid (`--grid-line`, `--grid-size`) overlays the art pane, maintaining the technical editorial aesthetic.
 - Each role portal alternates image and side layout (left vs right) along with its distinctive role accent chip.
 - `/dlo` keeps the art on the right and uses the office review image, a red seam, and officer-specific copy. `/lawyer` keeps the art on the left but uses the alternate justice image, a green seam, and case-representation copy. Both use the same split layout, serif hierarchy, restrained hairlines, and responsive stacked treatment. Their role captions and accent dots retain text labels so colour is never the only distinction.
+- On desktop, the Lawyer art and form columns each occupy the viewport height. The longer sign-up form scrolls within its column, leaving no gap below the image and keeping the image crop and form starting position steady. Tablet and mobile use a stacked image with fixed responsive heights and normal page scrolling.
 - On `/dlo`, the rotated **DLO** image label uses the larger `--t-portal-dlo-role` type token and sits close to the image's left edge. Its anchor accounts for the rotated text width so it stays visible; tablet and mobile sizes step down with the existing type scale.
 - `/udc` is the dedicated operator entry page; `/portal/udc` remains available. It places the alternate justice image on the right and pairs a token-based amber seam with UDC-specific service copy. The existing mobile-only login and operator registration fields are unchanged.
 - For testing convenience, the Citizen sign-in portal (`/`) provides a quick-test credential prompt (`mobile: "a"`, `password: "a"`) with **Auto-fill** and **Quick enter** buttons that immediately navigate to `/dashboard/citizen`.
@@ -51,6 +52,11 @@ hairline headings. Each entry shows a full title and supporting text, a localise
 labelled new state, and a clear route into the related detail. The unread treatment uses a dark
 rule and text label, never colour alone. The mark-all control stays visible and has a 44px target;
 the list reflows without horizontal scrolling.
+Notifications, the home document reminder, and case links are derived only from applications owned
+by the signed-in citizen through their citizen session or matching applicant/representative phone.
+An open document or missing-info task is never itself a reason to show another citizen's case.
+The home document-upload section is conditional: show its upload actions when an owned, open
+application has an outstanding document, and omit the section entirely when none is pending.
 
 ### DLAO
 
@@ -92,7 +98,30 @@ Show sourceable service counts, versioned policy values, authorised-user totals,
 For this prototype S33 is a read-only seeded configuration reference, not a full policy-pack editor.
 Administrators cannot make legal or case-consequential decisions from this view.
 
+The admin workspace replaces sample figures with counts and recent activity from
+`dlas.db.v1`. Its dark heading, compact metric row, focused hash sections, and searchable
+role directory use the existing tokens and Bangla/English toggle. Administrators can add
+and edit citizen, panel-lawyer, DLO officer, and UDC operator accounts; each change writes
+an audit entry. The application section monitors all offices and channels. It does not
+offer legal decisions. During an open DLO verification, a disclosure form lets the
+officer correct applicant, filer, matter, urgency, and safe-contact details with a
+required reason. Changed values retain provenance and old values in the audit; changes
+to verified details reopen the affected checks. District corrections reroute open work.
+
+The administrator Backup section has separate Export JSON and Import JSON panels. Export
+downloads one dated file with app-owned browser data, including the shared record and
+stored document previews. Import accepts the current bundle or an older shared-record
+JSON export, validates it, shows application/account/document counts, and requires a
+visible Replace action before restoring and reloading the dashboard.
+
 ## State and simulation treatment
+
+The citizen intake wizard uses the same token-based interaction pattern for choice
+cards, acting-for pills, safe-contact slots, progress buttons, and upload controls.
+Hover on pointer devices gives unselected choices a light surface and a clear ink
+outline without changing their size; selected choices retain their stronger selected
+state. Keyboard focus has a separate visible outline. Touch devices do not keep a
+sticky hover treatment, and reduced-motion preferences remove transitions.
 
 States are text inside thin rectangular outlines. `DISPUTED` and `MISSING` use the red token;
 `STALE` uses a dashed gray outline; other states use black or gray. Priority uses an 8px dot plus
@@ -114,3 +143,4 @@ stack, and wide content never causes horizontal page scrolling.
 - /device pages show a step trail, the handset, and a right-hand **Live record** panel with the JSON being written. The citizen wizard and UDC screens keep their own design; UDC workspace gains a "Shared record" section.
 - Simulated external services (SMS gateway, telephone network, speech-to-text, USSD gateway) always carry a dashed "Simulated" tag.
 - IVR and USSD are rendered as a dark handset; prompts, keypad and transcript are bilingual (Bangla default).
+- The `/device/ivr` and `/device/ussd` pages now share an editorial introduction with a three-step getting-started guide, a labelled two-mode switch, and a clear active-workspace heading. The dark handset is the primary surface, with a flatter bezel, readable screen, larger keypad targets, and distinct call/end actions. Conversation and live-record panels sit alongside the handset on wide screens and stack below it on narrower screens; empty conversation copy explains what appears after starting. Mode switching uses a labelled current-page state, and the simulated network or gateway tag remains visible.

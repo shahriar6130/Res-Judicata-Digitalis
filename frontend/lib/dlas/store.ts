@@ -37,6 +37,7 @@ export function emptyDb(): DlasDb {
     tasks: [],
     outbox: [],
     otp: [],
+    adminAudit: [],
     updatedAt: null,
   };
 }
@@ -62,7 +63,7 @@ function parse(raw: string | null): DlasDb {
       citizens: Array.isArray(p.citizens) ? p.citizens : [],
       udcOperators: Array.isArray(p.udcOperators) ? p.udcOperators : [],
       officers: Array.isArray(p.officers) ? p.officers : [],
-      lawyers: Array.isArray(p.lawyers) ? p.lawyers : [],
+      lawyers: Array.isArray(p.lawyers) ? p.lawyers.map((l) => ({ ...l, attendance: l.attendance ?? [], notificationsReadAt: l.notificationsReadAt ?? null, contacts: l.contacts ?? [] })) : [],
       lawyerRules: p.lawyerRules ?? null,
       // The demo UDC directory is written into the JSON on first read; it is saved with the next write.
       udcCentres: Array.isArray(p.udcCentres) && p.udcCentres.length ? p.udcCentres : demoUdcDirectory(new Date().toISOString()),
@@ -85,6 +86,7 @@ function parse(raw: string | null): DlasDb {
               ? {
                   ...a.lawyer,
                   access: a.lawyer.access ?? [],
+                  shortlists: a.lawyer.shortlists ?? [],
                   completion: a.lawyer.completion ?? null,
                   hearings: a.lawyer.hearings.map((h) => ({ ...h, assignmentId: h.assignmentId ?? null, result: h.result ?? null })),
                   assignments: a.lawyer.assignments.map((s) => ({
@@ -101,6 +103,7 @@ function parse(raw: string | null): DlasDb {
       tasks: Array.isArray(p.tasks) ? p.tasks : [],
       outbox: Array.isArray(p.outbox) ? p.outbox : [],
       otp: Array.isArray(p.otp) ? p.otp : [],
+      adminAudit: Array.isArray(p.adminAudit) ? p.adminAudit : [],
     } as DlasDb;
   } catch {
     return emptyDb();

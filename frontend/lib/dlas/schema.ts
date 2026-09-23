@@ -49,6 +49,7 @@ export type ProvenanceSource =
   | "OPERATOR_ENTERED" // UDC/helpline typed it on the applicant's behalf
   | "AI_INFERRED" // speech-to-text / classifier output, unconfirmed
   | "OFFICER_VERIFIED" // checked/corrected by an authorised DLAO officer
+  | "OFFICER_CORRECTED" // edited during verification; still requires review confirmation
   | "LAWYER_REPORTED" // self-reported by the assigned panel lawyer (hearing updates)
   | "SYSTEM_DERIVED"; // computed by the platform (office, timestamps…)
 
@@ -215,7 +216,7 @@ export interface AuditEntry {
   seq: number;
   at: string;
   actor: string;
-  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "panel_lawyer" | "debug";
+  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "panel_lawyer" | "admin" | "debug";
   action: string; // e.g. "session.started", "field.captured", "application.submitted"
   detail?: Record<string, unknown>;
 }
@@ -485,10 +486,71 @@ export interface PanelLawyerAccount {
   practiceAreas: MatterCategory[];
   createdAt: string;
   lastLoginAt: string | null;
+  attendance: LawyerDayAttendance[]; // daily present/absent the lawyer registers (one entry per date)
+  notificationsReadAt: string | null;
+  contacts: LawyerContact[]; // DLAO calls, summons and reminders to this lawyer
   audit: AuditEntry[];
 }
 
-export type AssignmentStatus = "OFFERED" | "ACCEPTED" | "DECLINED" | "WITHDRAWN" | "COMPLETED";
+/** DLAO → lawyer contact log. Calls are made by phone outside the system and logged here; summons/reminders are sent (SMS simulated). */
+export interface LawyerContact {
+  contactId: string; // CON-XXXXXX
+  kind: "CALL" | "SUMMONS" | "REMINDER";
+  at: string;
+  by: string; // officerId
+  byName: string;
+  applicationId: string | null; // the case it is about, if any
+  note: string; // reason / message / call notes
+  callOutcome: "REACHED" | "NO_ANSWER" | "WRONG_NUMBER" | null;
+  appearAt: string | null; // summons: when to appear
+  place: string | null; // summons: where
+  status: "LOGGED" | "SENT" | "ACKNOWLEDGED" | "ATTENDED" | "MISSED";
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+}
+
+export interface LawyerDayAttendance {
+  date: string; // YYYY-MM-DD (lawyer's local date)
+  status: "PRESENT" | "ABSENT";
+  at: string; // when it was registered (last change)
+}
+
+export interface ShortlistCandidate {
+  lawyerId: string;
+  name: string;
+  rank: number; // 1 = best score
+  score: number; // 0–100
+  breakdown: { workload: number; winRate: number; attendance: number; specialisation: number }; // points per factor
+  stats: {
+    activeCases: number;
+    capacity: number;
+    won: number;
+    lost: number;
+    winPct: number | null; // null = no decided cases yet
+    presentDays: number;
+    absentDays: number;
+    attendancePct: number | null; // null = no days registered in the window
+    absentToday: boolean;
+    matchesMatter: boolean;
+  };
+  outcome: "PENDING" | "OFFERED" | "ACCEPTED" | "DECLINED" | "NO_RESPONSE";
+  reason: string | null; // decline reason
+  offeredAt: string | null;
+}
+
+/** Engine's top-N panel lawyers for a case. The DLAO picks one; on decline/no answer the engine offers the next. */
+export interface LawyerShortlist {
+  shortlistId: string; // SHL-XXXXXX
+  createdAt: string;
+  by: string; // officerId who asked the engine
+  byName: string;
+  rulesVersion: string;
+  status: "ACTIVE" | "ACCEPTED" | "EXHAUSTED" | "CANCELLED";
+  candidates: ShortlistCandidate[];
+}
+
+export type AssignmentStatus = "OFFERED" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "WITHDRAWN" | "COMPLETED";
 
 /** Per-assignment attendance record — stored, so payment can be worked out after the case ends. */
 export interface AssignmentLedger {
@@ -533,6 +595,9 @@ export interface LawyerRuleset {
   patternWindowDays: number;
   maxActiveCases: number; // availability: lawyers at this load are flagged "at capacity"
   feeBasis: string;
+  shortlistSize: number; // engine picks this many lawyers
+  attendanceWindowDays: number; // daily attendance considered for the score
+  weights: { workload: number; winRate: number; attendance: number; specialisation: number }; // points, sum 100
 }
 
 export interface LawyerAssignment {
@@ -549,6 +614,8 @@ export interface LawyerAssignment {
   declineReason: string | null;
   responseOverdueFlaggedAt: string | null;
   handoverFrom: string | null; // previous assignmentId when this is a reassignment
+  shortlistId?: string | null; // the engine shortlist this offer came from
+  offeredVia?: "DLAO_CHOICE" | "AUTO_NEXT"; // AUTO_NEXT = engine offered the next shortlisted lawyer after a decline / no answer
   reassignFlaggedAt: string | null; // DLAO alerted: missed-hearing threshold reached
   ledger: AssignmentLedger;
   payment: PaymentReconciliation | null;
@@ -587,7 +654,8 @@ export interface LawyerMatter {
   hearings: Hearing[];
   updates: HearingUpdate[];
   access: LawyerAccessGrant[]; // who may open the full record; revoked on reassignment
-  completion: { outcome: "JUDGMENT" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER"; reason: string; by: string; byName: string; at: string } | null;
+  shortlists: LawyerShortlist[];
+  completion: { outcome: "WON" | "LOST" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER" | "JUDGMENT"; reason: string; by: string; byName: string; at: string } | null;
 }
 
 /* ---------- Tasks (human work items created by the workflow) ---------- */
@@ -689,6 +757,7 @@ export interface DlasDb {
   tasks: Task[];
   outbox: SimMessage[];
   otp: OtpChallenge[];
+  adminAudit: AuditEntry[];
   updatedAt: string | null;
 }
 

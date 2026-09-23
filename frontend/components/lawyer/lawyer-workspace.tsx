@@ -5,7 +5,9 @@
  *  Everything is read from and written to the shared record in
  *  localStorage["dlas.db.v1"] via LawyerService — nothing hardcoded.
  *
- *  Hash routes:  #overview · #assigned · #reports · #calendar · #case/<APP-ID>
+ *  Hash routes:  #overview · #intake · #cases[/<APP-ID>] · #notifications ·
+ *                #attendance · #reports · #calendar
+ *  (#case/<APP-ID> and #assigned are kept as aliases.)
  * ------------------------------------------------------------------ */
 
 import Link from "next/link";
@@ -17,7 +19,11 @@ import { useI18n } from "@/lib/i18n";
 import {
   DISTRICTS,
   DOC_TYPES,
+  LawyerAuth,
+  LawyerContactService,
   LawyerService,
+  dayKey,
+  useLawyerNotifications,
   MATTERS,
   URGENCY_FLAGS,
   activeAssignment,
@@ -40,12 +46,14 @@ import {
 import styles from "@/components/dlas/dlas.module.css";
 import ui from "@/components/dlao/dlao.module.css";
 
-type View = { kind: "overview" | "assigned" | "reports" | "calendar" } | { kind: "case"; id: string };
+type View = { kind: "overview" | "intake" | "notifications" | "attendance" | "reports" | "calendar" } | { kind: "cases"; open: string | null };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
-  if (raw.startsWith("case/")) return { kind: "case", id: decodeURIComponent(raw.slice(5)) };
-  if (raw === "assigned" || raw === "reports" || raw === "calendar") return { kind: raw };
+  if (raw.startsWith("case/")) return { kind: "cases", open: decodeURIComponent(raw.slice(5)) };
+  if (raw.startsWith("cases/")) return { kind: "cases", open: decodeURIComponent(raw.slice(6)) };
+  if (raw === "cases" || raw === "assigned") return { kind: "cases", open: null };
+  if (raw === "intake" || raw === "notifications" || raw === "attendance" || raw === "reports" || raw === "calendar") return { kind: raw };
   return { kind: "overview" };
 }
 
@@ -150,10 +158,14 @@ export function LawyerWorkspace() {
       <p className={styles.eyebrow}>
         {tx("প্যানেল আইনজীবী", "Panel lawyer")} · {d ? tx(`${d.label.bn} জেলা প্যানেল`, `${d.label.en} district panel`) : "—"} · {work.me.barEnrolmentNo}
       </p>
-      {view.kind === "case" ? (
-        <CaseView key={view.id} id={view.id} />
-      ) : view.kind === "assigned" ? (
-        <Assigned />
+      {view.kind === "cases" ? (
+        <MyCases open={view.open} />
+      ) : view.kind === "intake" ? (
+        <Intake />
+      ) : view.kind === "notifications" ? (
+        <Notifications />
+      ) : view.kind === "attendance" ? (
+        <AttendancePage />
       ) : view.kind === "reports" ? (
         <Reports />
       ) : view.kind === "calendar" ? (
@@ -171,22 +183,36 @@ function Overview() {
   const { lang, tx } = useTx();
   const w = useLawyerWork();
   const stats: [string, number, string, Tone][] = [
-    ["assigned", w.offers.length, tx("উত্তরের অপেক্ষায়", "Offers to answer"), w.offers.length ? "warn" : "neutral"],
+    ["intake", w.offers.length, tx("নতুন মামলা প্রস্তাব", "Case offers"), w.offers.length ? "warn" : "neutral"],
     ["reports", w.overdue.length, tx("প্রতিবেদন দেরি", "Updates overdue"), w.overdue.length ? "err" : "neutral"],
     ["reports", w.due.length, tx("প্রতিবেদন বাকি", "Updates due"), w.due.length ? "warn" : "neutral"],
     ["calendar", w.upcoming.length, tx("আসন্ন শুনানি", "Upcoming hearings"), "neutral"],
-    ["assigned", w.accepted.length, tx("চলমান মামলা", "Active cases"), "neutral"],
+    ["cases", w.accepted.length, tx("চলমান মামলা", "Active cases"), "neutral"],
   ];
   type Action = { key: string; tone: Tone; title: string; sub: string; href: string; at: string };
   const actions: Action[] = [
-    ...w.overdue.map(({ c, h }) => ({ key: h.hearingId, tone: "err" as Tone, title: tx(`প্রতিবেদন দেরি: ${formatDateTime(h.at, lang)}-এর শুনানি`, `Overdue update: hearing of ${formatDateTime(h.at, lang)}`), sub: `${caseTitle(c.a, lang)} · ${h.court}`, href: `#case/${c.a.applicationId}`, at: h.updateDueAt })),
-    ...w.offers.map((c) => ({ key: c.assignment.assignmentId, tone: "warn" as Tone, title: tx("নতুন নিয়োগ — গ্রহণ বা প্রত্যাখ্যান করুন", "New assignment — accept or decline"), sub: `${caseTitle(c.a, lang)} · ${tx("উত্তর দিন", "respond by")} ${formatDateTime(c.assignment.respondBy, lang)}`, href: `#case/${c.a.applicationId}`, at: c.assignment.respondBy })),
-    ...w.due.map(({ c, h }) => ({ key: h.hearingId, tone: "warn" as Tone, title: tx(`প্রতিবেদন দিন: ${formatDateTime(h.at, lang)}-এর শুনানি`, `Report on the ${formatDateTime(h.at, lang)} hearing`), sub: `${caseTitle(c.a, lang)} · ${tx("শেষ সময়", "due")} ${formatDateTime(h.updateDueAt, lang)}`, href: `#case/${c.a.applicationId}`, at: h.updateDueAt })),
-    ...w.upcoming.slice(0, 3).map(({ c, h }) => ({ key: h.hearingId, tone: "neutral" as Tone, title: tx(`শুনানি: ${formatDateTime(h.at, lang)}`, `Hearing: ${formatDateTime(h.at, lang)}`), sub: `${caseTitle(c.a, lang)} · ${h.court}`, href: `#case/${c.a.applicationId}`, at: h.at })),
+    ...w.overdue.map(({ c, h }) => ({ key: h.hearingId, tone: "err" as Tone, title: tx(`প্রতিবেদন দেরি: ${formatDateTime(h.at, lang)}-এর শুনানি`, `Overdue update: hearing of ${formatDateTime(h.at, lang)}`), sub: `${caseTitle(c.a, lang)} · ${h.court}`, href: `#cases/${c.a.applicationId}`, at: h.updateDueAt })),
+    ...w.offers.map((c) => ({ key: c.assignment.assignmentId, tone: "warn" as Tone, title: tx("নতুন মামলা প্রস্তাব — গ্রহণ বা প্রত্যাখ্যান করুন", "New case offer — accept or decline"), sub: `${caseTitle(c.a, lang)} · ${tx("উত্তর দিন", "respond by")} ${formatDateTime(c.assignment.respondBy, lang)}`, href: `#intake`, at: c.assignment.respondBy })),
+    ...w.due.map(({ c, h }) => ({ key: h.hearingId, tone: "warn" as Tone, title: tx(`প্রতিবেদন দিন: ${formatDateTime(h.at, lang)}-এর শুনানি`, `Report on the ${formatDateTime(h.at, lang)} hearing`), sub: `${caseTitle(c.a, lang)} · ${tx("শেষ সময়", "due")} ${formatDateTime(h.updateDueAt, lang)}`, href: `#cases/${c.a.applicationId}`, at: h.updateDueAt })),
+    ...w.upcoming.slice(0, 3).map(({ c, h }) => ({ key: h.hearingId, tone: "neutral" as Tone, title: tx(`শুনানি: ${formatDateTime(h.at, lang)}`, `Hearing: ${formatDateTime(h.at, lang)}`), sub: `${caseTitle(c.a, lang)} · ${h.court}`, href: `#cases/${c.a.applicationId}`, at: h.at })),
   ];
   return (
     <>
       <h1 className={styles.title}>{tx("আজকের কাজ", "Today's work")}</h1>
+      {(w.me?.contacts ?? [])
+        .filter((c) => c.kind === "SUMMONS" && (c.status === "SENT" || c.status === "ACKNOWLEDGED"))
+        .map((c) => (
+          <Banner key={c.contactId} tone={c.status === "SENT" ? "err" : "warn"} icon="!">
+            <strong>{tx(`${c.byName} আপনাকে অফিসে তলব করেছেন`, `${c.byName} has summoned you to the office`)}</strong> — {c.place} · {c.appearAt ? formatDateTime(c.appearAt, lang) : ""} · “{c.note}”{" "}
+            {c.status === "SENT" ? (
+              <Button variant="secondary" onClick={() => LawyerContactService.acknowledge(c.contactId)}>
+                {tx("দেখেছি — নিশ্চিত করুন", "Acknowledge")}
+              </Button>
+            ) : (
+              <Tag tone="ok">{tx("নিশ্চিত করেছেন", "Acknowledged")}</Tag>
+            )}
+          </Banner>
+        ))}
       <div className={styles.stats}>
         {stats.map(([k, n, l, tone], i) => (
           <a key={i} href={`#${k}`} className={styles.stat} style={tone === "err" ? { borderColor: "var(--red)" } : tone === "warn" ? { borderColor: "var(--status-pending)" } : undefined}>
@@ -232,88 +258,303 @@ function Overview() {
 
 /* ------------------------------ assignments ------------------------------ */
 
-function Assigned() {
+/* ------------------------------ attendance ------------------------------ */
+
+function lastDays(n: number, t: number): string[] {
+  return Array.from({ length: n }, (_, i) => dayKey(t - (n - 1 - i) * 86_400_000));
+}
+
+function AttendanceCard() {
   const { lang, tx } = useTx();
   const w = useLawyerWork();
+  const [error, setError] = useState<string | null>(null);
+  const today = w.today;
+  const days = lastDays(14, w.now);
+  const byDate = new Map((w.me?.attendance ?? []).map((d) => [d.date, d.status]));
+  const mark = (st: "PRESENT" | "ABSENT") => {
+    try {
+      LawyerAuth.markAttendance(st);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <section className={ui.main} style={{ marginBottom: "var(--s-6)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--s-4)", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div className={ui.sectionHead} style={{ marginBottom: 4 }}>
+            {tx("আজকের উপস্থিতি", "Today's attendance")}
+          </div>
+          <div style={{ fontSize: "var(--t-sub)", fontWeight: 600 }}>{new Intl.DateTimeFormat(lang === "bn" ? "bn-BD" : "en-GB", { weekday: "long", day: "numeric", month: "long" }).format(new Date(w.now || 0))}</div>
+          <div className={styles.hint}>
+            {today
+              ? tx(`রেকর্ড: ${today.status === "PRESENT" ? "উপস্থিত" : "অনুপস্থিত"} · ${formatDateTime(today.at, "bn")}`, `Registered: ${today.status === "PRESENT" ? "present" : "absent"} · ${formatDateTime(today.at, "en")}`)
+              : tx("এখনো দেওয়া হয়নি — মামলা বণ্টনে উপস্থিতি গণনা হয়।", "Not registered yet — attendance counts when cases are assigned.")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "var(--s-3)" }}>
+          <button type="button" className={ui.option} aria-pressed={today?.status === "PRESENT"} onClick={() => mark("PRESENT")} style={{ minWidth: 130, alignItems: "center", ...(today?.status === "PRESENT" ? { background: "var(--green)", color: "white", borderColor: "var(--green)" } : {}) }}>
+            <span className={ui.optionTitle}>✓ {tx("উপস্থিত", "Present")}</span>
+          </button>
+          <button type="button" className={ui.option} aria-pressed={today?.status === "ABSENT"} onClick={() => mark("ABSENT")} style={{ minWidth: 130, alignItems: "center", ...(today?.status === "ABSENT" ? { background: "var(--red)", color: "white", borderColor: "var(--red)" } : {}) }}>
+            <span className={ui.optionTitle}>✗ {tx("অনুপস্থিত", "Absent")}</span>
+          </button>
+        </div>
+      </div>
+      {error ? (
+        <div style={{ marginTop: "var(--s-3)" }}>
+          <Banner tone="err" icon="!">
+            {error}
+          </Banner>
+        </div>
+      ) : null}
+      <div style={{ display: "flex", gap: 6, marginTop: "var(--s-4)", flexWrap: "wrap" }} aria-label={tx("গত ১৪ দিন", "Last 14 days")}>
+        {days.map((d) => {
+          const st = byDate.get(d);
+          return (
+            <span
+              key={d}
+              title={`${d}: ${st ?? tx("দেওয়া হয়নি", "not registered")}`}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                display: "grid",
+                placeItems: "center",
+                fontSize: 11,
+                fontWeight: 600,
+                border: "1px solid var(--line)",
+                background: st === "PRESENT" ? "var(--green)" : st === "ABSENT" ? "var(--red)" : "var(--off-white)",
+                color: st ? "white" : "var(--gray)",
+                outline: d === dayKey(w.now || 0) ? "2px solid var(--ink)" : undefined,
+              }}
+            >
+              {Number(d.slice(8))}
+            </span>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AttendancePage() {
+  const { tx } = useTx();
+  const w = useLawyerWork();
+  const rules = useLawyerRules();
+  const since = dayKey((w.now || 0) - rules.attendanceWindowDays * 86_400_000);
+  const days = (w.me?.attendance ?? []).filter((d) => d.date >= since);
+  const present = days.filter((d) => d.status === "PRESENT").length;
+  const absent = days.length - present;
+  const all = [...(w.me?.attendance ?? [])].sort((x, y) => y.date.localeCompare(x.date));
   return (
     <>
-      <h1 className={styles.title}>{tx("নিয়োগ ও মামলা", "Assignments & cases")}</h1>
-      <section className={ui.main} style={{ marginBottom: "var(--s-6)" }}>
-        <div className={ui.sectionHead}>
-          {tx("নতুন নিয়োগ", "New offers")} ({w.offers.length})
+      <h1 className={styles.title}>{tx("উপস্থিতি", "Attendance")}</h1>
+      <AttendanceCard />
+      <div className={styles.stats}>
+        <div className={styles.stat}>
+          <div className={styles.statNum}>{days.length ? `${Math.round((present / days.length) * 100)}%` : "—"}</div>
+          <div className={styles.statLabel}>{tx(`গত ${rules.attendanceWindowDays} দিনে উপস্থিতি`, `Present, last ${rules.attendanceWindowDays} days`)}</div>
         </div>
-        {w.offers.length === 0 ? (
-          <p className={styles.hint}>{tx("কোনো নতুন নিয়োগ নেই।", "No new offers.")}</p>
-        ) : (
-          w.offers.map((c) => <OfferCard key={c.assignment.assignmentId} a={c.a} s={c.assignment} />)
+        <div className={styles.stat}>
+          <div className={styles.statNum}>{present}</div>
+          <div className={styles.statLabel}>{tx("উপস্থিত দিন", "Present days")}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statNum}>{absent}</div>
+          <div className={styles.statLabel}>{tx("অনুপস্থিত দিন", "Absent days")}</div>
+        </div>
+      </div>
+      <p className={styles.hint} style={{ marginBottom: "var(--s-4)" }}>
+        {tx(
+          `জেলা অফিস যখন আইনজীবী বাছে, ইঞ্জিন এই হার ব্যবহার করে (ওজন ${rules.weights.attendance}/১০০)। আজ অনুপস্থিত থাকলে আজকের নতুন মামলার তালিকায় উপস্থিতির নম্বর শূন্য হয়।`,
+          `The engine uses this rate when the district office picks lawyers (weight ${rules.weights.attendance}/100). Marking absent today gives zero attendance points on today's shortlists.`,
         )}
-      </section>
+      </p>
       <section className={ui.main}>
-        <div className={ui.sectionHead}>
-          {tx("চলমান মামলা", "Active cases")} ({w.accepted.length})
+        <div className={ui.sectionHead}>{tx("ইতিহাস", "History")}</div>
+        {all.length === 0 ? <p className={styles.hint}>{tx("এখনো কোনো দিন রেকর্ড নেই।", "No days registered yet.")}</p> : null}
+        <div className={ui.rows}>
+          {all.map((d) => (
+            <Row key={d.date} label={d.date}>
+              <Tag tone={d.status === "PRESENT" ? "ok" : "err"}>{d.status === "PRESENT" ? tx("উপস্থিত", "Present") : tx("অনুপস্থিত", "Absent")}</Tag>
+              <span className={ui.sub}>
+                {tx("রেকর্ড", "Registered")} {formatDateTime(d.at, "en")}
+              </span>
+            </Row>
+          ))}
         </div>
-        {w.accepted.length === 0 ? (
-          <p className={styles.hint}>{tx("কোনো চলমান মামলা নেই।", "No active cases.")}</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{tx("মামলা", "Case")}</th>
-                  <th>{tx("মক্কেল", "Client")}</th>
-                  <th>{tx("সমস্যা", "Matter")}</th>
-                  <th>{tx("পরবর্তী শুনানি", "Next hearing")}</th>
-                  <th>{tx("প্রতিবেদন", "Updates")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {w.accepted.map(({ a }) => {
-                  const hs = a.lawyer?.hearings ?? [];
-                  const next = hs.filter((h) => hearingState(h, w.now) === "UPCOMING").sort((x, y) => x.at.localeCompare(y.at))[0];
-                  const late = hs.filter((h) => hearingState(h, w.now) === "OVERDUE").length;
-                  const due = hs.filter((h) => hearingState(h, w.now) === "UPDATE_DUE").length;
-                  return (
-                    <tr key={a.applicationId}>
-                      <td>
-                        <a className={styles.mono} href={`#case/${a.applicationId}`}>
-                          {a.caseId}
-                        </a>
-                      </td>
-                      <td>{a.data.applicant.fullName ?? "—"}</td>
-                      <td>{label(MATTERS, a.data.matter.category, lang)}</td>
-                      <td>{next ? `${formatDateTime(next.at, lang)} · ${next.court}` : <span className={styles.hint}>{tx("তারিখ নেই", "No date yet")}</span>}</td>
-                      <td>
-                        {late ? <Tag tone="err">{tx(`${late} দেরি`, `${late} overdue`)}</Tag> : null} {due ? <Tag tone="warn">{tx(`${due} বাকি`, `${due} due`)}</Tag> : null}
-                        {!late && !due ? <Tag tone="ok">{tx("হালনাগাদ", "Up to date")}</Tag> : null}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {w.past.length ? (
-          <div className={ui.section}>
-            <div className={ui.sectionHead}>{tx("পূর্বের নিয়োগ", "Past assignments")}</div>
-            <div className={ui.rows}>
-              {w.past.map(({ a, assignment: s }) => (
-                <Row key={s.assignmentId} label={a.caseId ?? a.applicationId}>
-                  <Tag tone={s.status === "DECLINED" ? "warn" : s.status === "COMPLETED" ? "ok" : "neutral"}>{pretty(s.status)}</Tag>
-                  {s.status === "WITHDRAWN" ? <Tag tone="err">{tx("প্রবেশাধিকার বাতিল", "Access removed")}</Tag> : null}
-                  {s.status !== "DECLINED" ? (
-                    <span className={ui.sub}>
-                      {tx(`উপস্থিত ${s.ledger.hearingsAttended} · মিস ${s.ledger.hearingsMissed}`, `Attended ${s.ledger.hearingsAttended} · missed ${s.ledger.hearingsMissed}`)}
-                      {s.payment ? ` · ${tx("পেমেন্ট", "payment")}: ${pretty(s.payment.status)}` : ""}
-                    </span>
-                  ) : null}
-                  {s.declineReason ? <span className={ui.sub}>“{s.declineReason}”</span> : null}
-                </Row>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </section>
+    </>
+  );
+}
+
+/* ------------------------------ notifications ------------------------------ */
+
+function Notifications() {
+  const { lang, tx } = useTx();
+  const list = useLawyerNotifications();
+  const unread = list.filter((n) => n.unread).length;
+  return (
+    <>
+      <h1 className={styles.title}>{tx("বিজ্ঞপ্তি", "Notifications")}</h1>
+      <div className={ui.bar} style={{ marginTop: 0, paddingTop: 0, borderTop: "none", marginBottom: "var(--s-4)" }}>
+        <Tag tone={unread ? "warn" : "ok"}>{unread ? tx(`${unread}টি নতুন`, `${unread} new`) : tx("সব পড়া হয়েছে", "All read")}</Tag>
+        {unread ? (
+          <Button variant="secondary" onClick={() => LawyerAuth.markNotificationsRead()}>
+            {tx("সব পড়া হয়েছে", "Mark all as read")}
+          </Button>
+        ) : null}
+      </div>
+      <section className={ui.main}>
+        {list.length === 0 ? <p className={styles.hint}>{tx("কোনো বিজ্ঞপ্তি নেই।", "No notifications.")}</p> : null}
+        <div className={ui.rows}>
+          {list.map((n) => (
+            <a
+              key={n.id}
+              href={n.href}
+              className={ui.row}
+              onClick={() => LawyerAuth.markNotificationsRead()}
+              style={{ textDecoration: "none", color: "inherit", ...(n.unread ? { background: "color-mix(in srgb, var(--yellow) 10%, white)", borderRadius: 8, paddingLeft: 8 } : {}) }}
+            >
+              <div className={ui.rowLabel}>
+                <Tag tone={n.tone === "neutral" ? "neutral" : n.tone}>{n.unread ? tx("নতুন", "New") : formatDateTime(n.at, lang)}</Tag>
+              </div>
+              <div className={ui.rowValue}>
+                <strong>{n.title[lang]}</strong>
+                <span className={ui.sub}>{n.body[lang]}</span>
+                {n.needsAck && n.contactId ? (
+                  <Button
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      LawyerContactService.acknowledge(n.contactId!);
+                    }}
+                  >
+                    {tx("দেখেছি — নিশ্চিত করুন", "Acknowledge")}
+                  </Button>
+                ) : null}
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+/* ------------------------------ case intake ------------------------------ */
+
+function Intake() {
+  const { lang, tx } = useTx();
+  const w = useLawyerWork();
+  const db = useDlasDb();
+  const history = w.me
+    ? db.applications.flatMap((a) => (a.lawyer?.assignments ?? []).filter((s) => s.lawyerId === w.me!.lawyerId && (s.status === "DECLINED" || s.status === "EXPIRED")).map((s) => ({ a, s })))
+    : [];
+  return (
+    <>
+      <h1 className={styles.title}>{tx("মামলা গ্রহণ", "Case intake")}</h1>
+      <p className={styles.lead}>
+        {tx(
+          "জেলা অফিস আপনাকে যে মামলা দিতে চায় তা এখানে আসে। বিস্তারিত দেখে গ্রহণ করুন, অথবা কারণসহ প্রত্যাখ্যান করুন — তখন ইঞ্জিন তালিকার পরের আইনজীবীকে পাঠাবে।",
+          "Cases the district office wants to give you arrive here. Read the details, then accept — or decline with a reason, and the engine offers the case to the next lawyer on the shortlist.",
+        )}
+      </p>
+      {w.offers.length === 0 ? (
+        <Banner tone="ok" icon="✓">
+          {tx("এখন কোনো নতুন প্রস্তাব নেই।", "No new case offers right now.")}
+        </Banner>
+      ) : (
+        w.offers.map((c) => <OfferCard key={c.assignment.assignmentId} a={c.a} s={c.assignment} />)
+      )}
+      {history.length ? (
+        <section className={ui.main} style={{ marginTop: "var(--s-6)" }}>
+          <div className={ui.sectionHead}>{tx("আগের প্রস্তাব", "Earlier offers")}</div>
+          <div className={ui.rows}>
+            {history.map(({ a, s }) => (
+              <Row key={s.assignmentId} label={a.caseId ?? a.applicationId}>
+                <Tag tone="warn">{s.status === "DECLINED" ? tx("প্রত্যাখ্যাত", "Declined") : tx("মেয়াদ শেষ", "Expired")}</Tag>
+                <span>{label(MATTERS, a.data.matter.category, lang)}</span>
+                {s.declineReason ? <span className={ui.sub}>“{s.declineReason}”</span> : null}
+              </Row>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/* ------------------------------ my cases (expandable list) ------------------------------ */
+
+function MyCases({ open }: { open: string | null }) {
+  const { lang, tx } = useTx();
+  const w = useLawyerWork();
+  const all = [...w.accepted.map((c) => ({ ...c, live: true })), ...w.past.filter((c) => c.assignment.status === "COMPLETED" || c.assignment.status === "WITHDRAWN").map((c) => ({ ...c, live: false }))];
+  return (
+    <>
+      <h1 className={styles.title}>{tx("আমার মামলা", "My cases")}</h1>
+      {all.length === 0 ? (
+        <Banner tone="warn" icon="i">
+          {tx("এখনো কোনো মামলা নেই। “মামলা গ্রহণ”-এ প্রস্তাব এলে গ্রহণ করুন।", "No cases yet. Accept an offer under “Case intake”.")}
+        </Banner>
+      ) : null}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-3)" }}>
+        {all.map(({ a, assignment: s, live }) => {
+          const hs = (a.lawyer?.hearings ?? []).filter((h) => h.assignmentId === s.assignmentId);
+          const next = hs.filter((h) => hearingState(h, w.now) === "UPCOMING").sort((x, y) => x.at.localeCompare(y.at))[0];
+          const late = hs.filter((h) => hearingState(h, w.now) === "OVERDUE").length;
+          const due = hs.filter((h) => hearingState(h, w.now) === "UPDATE_DUE").length;
+          const isOpen = open === a.applicationId;
+          return (
+            <details
+              key={s.assignmentId}
+              open={isOpen}
+              className={ui.panel}
+              onToggle={(e) => {
+                const el = e.currentTarget;
+                if (el.open && open !== a.applicationId) window.location.hash = `cases/${a.applicationId}`;
+                if (!el.open && open === a.applicationId) window.location.hash = "cases";
+              }}
+            >
+              <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", flexWrap: "wrap", gap: "var(--s-2)", alignItems: "center" }}>
+                <span aria-hidden style={{ fontSize: 12 }}>
+                  {isOpen ? "▾" : "▸"}
+                </span>
+                <strong className={styles.mono}>{a.caseId}</strong>
+                <span>{live ? (a.data.applicant.fullName ?? "—") : "—"}</span>
+                <Tag>{label(MATTERS, a.data.matter.category, lang)}</Tag>
+                {live ? null : <Tag tone={s.status === "COMPLETED" ? "ok" : "err"}>{s.status === "COMPLETED" ? tx("সম্পন্ন", "Completed") : tx("প্রবেশাধিকার বাতিল", "Access removed")}</Tag>}
+                {late ? <Tag tone="err">{tx(`${late} প্রতিবেদন দেরি`, `${late} report(s) overdue`)}</Tag> : null}
+                {due ? <Tag tone="warn">{tx(`${due} প্রতিবেদন বাকি`, `${due} report(s) due`)}</Tag> : null}
+                {live && !late && !due ? <Tag tone="ok">{tx("হালনাগাদ", "Up to date")}</Tag> : null}
+                <span className={styles.hint} style={{ marginLeft: "auto" }}>
+                  {next ? `${tx("পরবর্তী শুনানি", "Next hearing")}: ${formatDateTime(next.at, lang)}` : live ? tx("শুনানির তারিখ নেই", "No hearing date") : ""}
+                </span>
+              </summary>
+              {isOpen ? (
+                <div style={{ marginTop: "var(--s-4)" }}>
+                  {live ? (
+                    <CaseView id={a.applicationId} embedded />
+                  ) : (
+                    <div className={ui.rows}>
+                      <Row label={tx("অবস্থা", "Status")}>{pretty(s.status)}</Row>
+                      <Row label={tx("উপস্থিতি", "Attendance")}>
+                        {tx(`উপস্থিত ${s.ledger.hearingsAttended} · মিস ${s.ledger.hearingsMissed}`, `Attended ${s.ledger.hearingsAttended} · missed ${s.ledger.hearingsMissed}`)}
+                      </Row>
+                      <Row label={tx("পেমেন্ট", "Payment")}>{s.payment ? `${pretty(s.payment.status)} · ${s.payment.payableHearings} ${tx("শুনানি", "hearing(s)")}` : "—"}</Row>
+                      {s.status === "WITHDRAWN" ? <Row label={tx("কারণ", "Reason")}>{s.declineReason ?? "—"}</Row> : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </details>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -325,6 +566,7 @@ function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
   const [error, setError] = useState<string | null>(null);
   const { now } = useLawyerWork();
   const overdue = new Date(s.respondBy).getTime() < now;
+  const rank = a.lawyer?.shortlists.find((x) => x.shortlistId === s.shortlistId)?.candidates.find((c) => c.lawyerId === s.lawyerId) ?? null;
   const run = (fn: () => void) => {
     try {
       fn();
@@ -349,10 +591,34 @@ function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
         </Tag>
       </div>
       <div>
-        {tx("প্রস্তাব করেছেন", "Offered by")} <strong>{s.offeredByName}</strong> · {formatDateTime(s.offeredAt, lang)}
+        {s.offeredVia === "AUTO_NEXT"
+          ? tx("তালিকার আগের আইনজীবী প্রত্যাখ্যান করায় ইঞ্জিন আপনাকে পাঠিয়েছে", "Sent to you by the engine — the previous lawyer on the shortlist declined")
+          : <>{tx("প্রস্তাব করেছেন", "Offered by")} <strong>{s.offeredByName}</strong></>}{" "}
+        · {formatDateTime(s.offeredAt, lang)}
+        {rank ? <> · <Tag>{tx(`তালিকায় #${rank.rank} · ${rank.score}/১০০`, `#${rank.rank} on the shortlist · ${rank.score}/100`)}</Tag></> : null}
       </div>
-      {s.note ? <div className={ui.advice}>“{s.note}”</div> : null}
-      <p className={styles.hint}>{tx("গ্রহণের পর মক্কেলের তথ্য ও নথি খুলবে।", "Client details and documents open after you accept.")}</p>
+      {s.note ? <div className={ui.advice}>{tx("অফিসের নির্দেশনা", "Office instructions")}: “{s.note}”</div> : null}
+      <div className={ui.rows}>
+        <Row label={tx("ঘটনা", "What happened")}>{a.data.matter.summary ?? "—"}</Row>
+        <Row label={tx("অপর পক্ষ", "Other party")}>{a.data.matter.opposingParty ?? "—"}</Row>
+        <Row label={tx("কেন আইনজীবী", "Why a lawyer")}>{a.review?.pathway?.reason ?? "—"}</Row>
+        <Row label={tx("যোগ্যতা", "Eligibility")}>{a.review?.decision?.reason ?? "—"}</Row>
+        <Row label={tx("নথি", "Documents")}>
+          {a.data.documents.length
+            ? a.data.documents.map((d) => (
+                <Tag key={d.docId} tone={d.status === "ATTACHED" ? "ok" : "warn"}>
+                  {label(DOC_TYPES, d.type, lang)}
+                </Tag>
+              ))
+            : "—"}
+        </Row>
+        {(a.lawyer?.hearings ?? []).length ? (
+          <Row label={tx("আগের শুনানি", "Earlier hearings")}>
+            {tx(`${a.lawyer!.hearings.length}টি — গ্রহণের পর বিস্তারিত`, `${a.lawyer!.hearings.length} — details after you accept`)}
+          </Row>
+        ) : null}
+      </div>
+      <p className={styles.hint}>{tx("মক্কেলের পরিচয়, যোগাযোগ ও নথির ফাইল গ্রহণের পর খুলবে।", "The client's identity, contact details and document files open after you accept.")}</p>
       {error ? (
         <Banner tone="err" icon="!">
           {error}
@@ -361,7 +627,7 @@ function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
       {declining ? (
         <>
           <label className={styles.field}>
-            <span className={styles.label}>{tx("প্রত্যাখ্যানের কারণ (কমপক্ষে ১০ অক্ষর)", "Reason for declining (at least 10 characters)")}</span>
+            <span className={styles.label}>{tx("প্রত্যাখ্যানের কারণ (কমপক্ষে ১০ অক্ষর) — মামলাটি তালিকার পরের আইনজীবীর কাছে যাবে", "Reason for declining (at least 10 characters) — the case goes to the next lawyer on the shortlist")}</span>
             <textarea className={styles.textarea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tx("যেমন: স্বার্থের সংঘাত / একই দিনে অন্য শুনানি", "e.g. conflict of interest / clashing hearing")} />
           </label>
           <div className={styles.actions} style={{ marginTop: "var(--s-2)" }}>
@@ -375,7 +641,7 @@ function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
         </>
       ) : (
         <div className={styles.actions} style={{ marginTop: "var(--s-2)" }}>
-          <Button onClick={() => run(() => LawyerService.accept(a.applicationId))}>{tx("গ্রহণ করুন", "Accept assignment")}</Button>
+          <Button onClick={() => run(() => LawyerService.accept(a.applicationId))}>{tx("মামলা গ্রহণ করুন", "Accept case")}</Button>
           <Button variant="secondary" onClick={() => setDeclining(true)}>
             {tx("কারণসহ প্রত্যাখ্যান", "Decline with reason")}
           </Button>
@@ -404,7 +670,7 @@ function Reports() {
         list.map(({ c, h, state }) => (
           <section key={h.hearingId} className={ui.main} style={{ marginBottom: "var(--s-4)" }}>
             <div className={ui.docHead} style={{ marginBottom: "var(--s-3)" }}>
-              <a className={styles.mono} href={`#case/${c.a.applicationId}`}>
+              <a className={styles.mono} href={`#cases/${c.a.applicationId}`}>
                 {c.a.caseId}
               </a>
               <HearingTag state={state} />
@@ -428,7 +694,7 @@ function Reports() {
               .sort((x, y) => (y.u?.at ?? "").localeCompare(x.u?.at ?? ""))
               .map(({ c, h, u }) => (
                 <Row key={h.hearingId} label={formatDateTime(h.at, lang)}>
-                  <a className={styles.mono} href={`#case/${c.a.applicationId}`}>
+                  <a className={styles.mono} href={`#cases/${c.a.applicationId}`}>
                     {c.a.caseId}
                   </a>
                   {u ? <UpdateSummary u={u} /> : null}
@@ -550,7 +816,7 @@ function Calendar() {
   const list = (items: typeof all) => (
     <div className={ui.rows}>
       {items.map(({ c, h, state }) => (
-        <a key={h.hearingId} href={`#case/${c.a.applicationId}`} className={ui.row} style={{ textDecoration: "none", color: "inherit" }}>
+        <a key={h.hearingId} href={`#cases/${c.a.applicationId}`} className={ui.row} style={{ textDecoration: "none", color: "inherit" }}>
           <div className={ui.rowLabel}>
             <strong style={{ color: "var(--ink)" }}>{formatDateTime(h.at, lang)}</strong>
           </div>
@@ -588,7 +854,7 @@ function Calendar() {
 
 /* ------------------------------ one case ------------------------------ */
 
-function CaseView({ id }: { id: string }) {
+function CaseView({ id, embedded = false }: { id: string; embedded?: boolean }) {
   const { lang, tx } = useTx();
   const db = useDlasDb();
   const w = useLawyerWork();
@@ -600,9 +866,6 @@ function CaseView({ id }: { id: string }) {
   if (!a || !mine) {
     return (
       <>
-        <a className={styles.crumb} href="#assigned">
-          ← {tx("মামলা", "Cases")}
-        </a>
         <Banner tone="err" icon="!">
           {tx("এই মামলাটি আপনাকে নিয়োগ দেওয়া নেই।", "This case is not assigned to you.")}
         </Banner>
@@ -619,9 +882,7 @@ function CaseView({ id }: { id: string }) {
 
   return (
     <>
-      <a className={styles.crumb} href="#assigned">
-        ← {tx("মামলা", "Cases")}
-      </a>
+      {embedded ? null : (
       <header>
         <div className={ui.head}>
           <span className={ui.headId}>{a.caseId}</span>
@@ -644,6 +905,7 @@ function CaseView({ id }: { id: string }) {
           </span>
         </div>
       </header>
+      )}
 
       {offered ? (
         <OfferCard a={a} s={s!} />

@@ -58,7 +58,7 @@ export function StepTrail({ step }: { step: IntakeSession["step"] | undefined })
   const { lang } = useTx();
   const idx = step ? INTAKE_STEPS.indexOf(step) : -1;
   return (
-    <ol className={styles.stepper} aria-label="Intake progress">
+    <ol className={styles.stepper} aria-label={lang === "bn" ? "আবেদনের অগ্রগতি" : "Intake progress"}>
       {INTAKE_STEPS.map((s, i) => (
         <li
           key={s}

@@ -15,6 +15,7 @@ import { IntakeGateway, useDlasDb, type IntakeSession } from "@/lib/dlas";
 import { NODES, START_NODE, jumpTarget, type FlowCtx, type FlowMode } from "@/lib/dlas/scripted-flow";
 import { useSpeechInput } from "@/lib/useSpeechInput";
 import { LiveRecordPanel, SimSmsInbox, SimTag, StepTrail, styles, useDoorSession, useTx } from "./shared";
+import ui from "./scripted-phone.module.css";
 
 
 function nodeKey(sessionId: string) {
@@ -161,17 +162,18 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
   const app = session?.applicationId ? db.applications.find((a) => a.applicationId === session.applicationId) : undefined;
 
   return (
-    <div className={styles.work}>
-      <div>
+    <div className={`${styles.work} ${ui.work}`}>
+      <div className={ui.mainColumn}>
         <StepTrail step={session?.step} />
-        <div className={styles.phoneWrap}>
+        <div className={`${styles.phoneWrap} ${ui.phoneWrap}`}>
           {/* ------------ the handset ------------ */}
-          <div className={styles.phone} aria-label={mode === "IVR" ? "IVR phone simulator" : "USSD feature-phone simulator"}>
-            <div className={styles.phoneStatus}>
-              <span>SIM {sim}</span>
+          <div className={`${styles.phone} ${ui.phone}`} aria-label={mode === "IVR" ? tx("আইভিআর ফোন সিমুলেটর", "IVR phone simulator") : tx("ইউএসএসডি ফোন সিমুলেটর", "USSD feature-phone simulator")}>
+            <div className={ui.phoneSpeaker} aria-hidden="true" />
+            <div className={`${styles.phoneStatus} ${ui.phoneStatus}`}>
+              <span>SIM {sim || "—"}</span>
               <span>{live ? (mode === "IVR" ? tx("কল চলছে", "In call") : "USSD") : tx("প্রস্তুত", "Idle")}</span>
             </div>
-            <div className={styles.phoneScreen} aria-live="polite">
+            <div className={`${styles.phoneScreen} ${ui.phoneScreen}`} aria-live="polite">
               {!live ? (
                 <>
                   <strong>{mode === "IVR" ? tx("১৬৬৯৯-এ কল করুন", "Call 16699") : tx("*16699# ডায়াল করুন", "Dial *16699#")}</strong>
@@ -186,7 +188,7 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
                   ) : null}
                 </>
               ) : mode === "USSD" ? (
-                <div className={styles.ussdBox}>
+                <div className={`${styles.ussdBox} ${ui.ussdBox}`}>
                   <div style={{ whiteSpace: "pre-wrap" }}>{node && session && ctx ? node.prompt(ctx, session) : ""}</div>
                   {opts.length ? (
                     <ul className={styles.ussdOptions}>
@@ -198,12 +200,11 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
                     </ul>
                   ) : null}
                   {!node?.terminal ? (
-                    <form
+                    <form className={ui.ussdReply}
                       onSubmit={(e) => {
                         e.preventDefault();
                         if (buffer.trim()) answer(buffer.trim());
                       }}
-                      style={{ display: "flex", gap: "var(--s-2)" }}
                     >
                       <input
                         className={styles.input}
@@ -230,34 +231,34 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
             {mode === "IVR" && live ? <div className={styles.digitsEcho}>{node?.input === "digits" ? buffer || "…" : ""}</div> : null}
 
             {mode === "IVR" ? (
-              <div className={styles.keypad}>
+              <div className={`${styles.keypad} ${ui.keypad}`}>
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
-                  <button key={k} type="button" className={styles.key} disabled={!live || !node || node.input === "text" || node.terminal} onClick={() => press(k)}>
+                  <button key={k} type="button" className={`${styles.key} ${ui.key}`} disabled={!live || !node || node.input === "text" || node.terminal} onClick={() => press(k)}>
                     {k}
                   </button>
                 ))}
               </div>
             ) : null}
 
-            <div className={styles.callRow}>
-              <button type="button" className={styles.callBtn} onClick={startCall} disabled={live}>
+            <div className={`${styles.callRow} ${ui.callRow}`}>
+              <button type="button" className={`${styles.callBtn} ${ui.callBtn}`} onClick={startCall} disabled={live}>
                 {mode === "IVR" ? tx("কল", "Call") : tx("ডায়াল", "Dial")}
               </button>
-              <button type="button" className={styles.endBtn} onClick={hangUp} disabled={!live && !sessionId}>
+              <button type="button" className={`${styles.endBtn} ${ui.endBtn}`} onClick={hangUp} disabled={!live && !sessionId}>
                 {mode === "IVR" ? tx("কল কাটুন", "Hang up") : tx("বাতিল", "Cancel")}
               </button>
             </div>
           </div>
 
           {/* ------------ controls & transcript ------------ */}
-          <div style={{ flex: 1, minWidth: 260, display: "flex", flexDirection: "column", gap: "var(--s-4)" }}>
+          <div className={ui.conversationColumn}>
             {mode === "IVR" && live && node?.input === "text" ? (
               <div className={`${styles.card} ${styles.cardTight}`}>
                 <p className={styles.eyebrow}>
                   {tx("ভয়েস উত্তর", "Voice answer")} · <SimTag>{tx("ব্রাউজারের স্পিচ রিকগনিশন", "Browser speech recognition")}</SimTag>
                 </p>
                 <p className={styles.hint}>{tx("মাইক্রোফোনে বলুন বা লিখুন। যন্ত্রের শোনা কথা 'AI_INFERRED' হিসেবে জমা হয়, পড়ে শোনানোর পর নিশ্চিত হয়।", "Speak into the microphone or type. What the machine heard is stored as AI_INFERRED until it is read back and confirmed.")}</p>
-                <textarea className={styles.textarea} value={speech} onChange={(e) => setSpeech(e.target.value)} />
+                <textarea className={styles.textarea} aria-label={tx("ভয়েস উত্তর", "Voice answer")} value={speech} onChange={(e) => setSpeech(e.target.value)} />
                 <div className={styles.chips} style={{ marginTop: "var(--s-2)" }}>
                   <button type="button" className={styles.chip} onClick={mic.start} aria-pressed={mic.status === "listening"}>
                     🎤 {mic.status === "listening" ? tx("শুনছি…", "Listening…") : tx("মাইক্রোফোনে বলুন", "Speak into the microphone")}
@@ -281,11 +282,12 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
               </label>
             ) : null}
 
-            <div className={`${styles.card} ${styles.cardTight}`}>
+            <div className={`${styles.card} ${styles.cardTight} ${ui.transcriptCard}`}>
               <p className={styles.eyebrow}>
                 {title} · {tx("কথোপকথন (রেকর্ডে সংরক্ষিত)", "Conversation (saved on the record)")}
               </p>
-              <ul className={styles.transcript} ref={logRef}>
+              {(session?.transcript.length ?? 0) === 0 ? <p className={ui.emptyTranscript}>{tx("কল বা মেনু শুরু করলে কথোপকথন এখানে দেখা যাবে।", "Start the call or menu to see the conversation here.")}</p> : null}
+              <ul className={`${styles.transcript} ${ui.transcript}`} ref={logRef}>
                 {(session?.transcript ?? []).map((l, i) => (
                   <li key={i} className={l.from === "SYSTEM" ? styles.lineSys : styles.lineUser} style={{ whiteSpace: "pre-wrap" }}>
                     {l.text}
@@ -297,9 +299,10 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
         </div>
       </div>
 
-      <div className={styles.side}>
-        <SimSmsInbox phone={session?.identity.phone ?? null} />
+      <div className={`${styles.side} ${ui.side}`}>
+        <div className={ui.recordHeading}><span>{tx("রেকর্ড ও বার্তা", "RECORD & MESSAGES")}</span><p>{tx("এই সিমুলেশনের তথ্য নিচে দেখা যাবে।", "Review the details written by this simulation.")}</p></div>
         <LiveRecordPanel sessionId={sessionId} />
+        <SimSmsInbox phone={session?.identity.phone ?? null} />
       </div>
     </div>
   );

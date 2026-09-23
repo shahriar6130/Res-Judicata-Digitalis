@@ -22,6 +22,13 @@
  *      frozen as PENDING_CASE_COMPLETION.
  *   6. When the DLAO completes the representation, every assignment's
  *      payment moves to DLAO_REVIEW with the attended-hearing count.
+ *  Shortlist (engine): when the DLAO clicks "Assign lawyer" the engine
+ *  ranks the district panel on workload, win percentage, daily attendance
+ *  and specialisation and keeps the top `shortlistSize`. The DLAO offers
+ *  the case to one of them; if that lawyer declines (reason required) or
+ *  does not answer in time, the engine automatically offers it to the next
+ *  lawyer on the shortlist. When the shortlist runs out the DLAO is told.
+ *  Lawyers register daily attendance (present / absent) in their dashboard.
  *  Separately (T1), missed hearings across `patternCases` cases raise a
  *  pattern review — review only, never a finding of misconduct.
  *
@@ -44,8 +51,10 @@ import type {
   LawyerAssignment,
   LawyerMatter,
   LawyerRuleset,
+  LawyerShortlist,
   MatterCategory,
   PanelLawyerAccount,
+  ShortlistCandidate,
   Task,
 } from "./schema";
 
@@ -59,6 +68,9 @@ export const DEFAULT_LAWYER_RULES: LawyerRuleset = {
   patternWindowDays: 90,
   maxActiveCases: 10,
   feeBasis: "Paid per attended hearing at the district fee-schedule rate (DEMO_RATE in the prototype — no real fee values).",
+  shortlistSize: 5,
+  attendanceWindowDays: 30,
+  weights: { workload: 35, winRate: 30, attendance: 25, specialisation: 10 },
 };
 
 const now = () => new Date().toISOString();
@@ -71,12 +83,20 @@ function audit(db: DlasDb, list: AuditEntry[], e: Omit<AuditEntry, "seq" | "at">
   list.push({ seq: db.counters.auditSeq, at: now(), ...e });
 }
 
+/** Rules from the JSON, with defaults filled in for fields added later. */
 export function rulesOf(db: DlasDb): LawyerRuleset {
-  return db.lawyerRules ?? DEFAULT_LAWYER_RULES;
+  const r = db.lawyerRules;
+  return r ? { ...DEFAULT_LAWYER_RULES, ...r, weights: { ...DEFAULT_LAWYER_RULES.weights, ...(r.weights ?? {}) } } : DEFAULT_LAWYER_RULES;
 }
 function ensureRules(db: DlasDb): LawyerRuleset {
-  if (!db.lawyerRules) db.lawyerRules = { ...DEFAULT_LAWYER_RULES };
+  db.lawyerRules = rulesOf(db) === DEFAULT_LAWYER_RULES ? { ...DEFAULT_LAWYER_RULES, weights: { ...DEFAULT_LAWYER_RULES.weights } } : rulesOf(db);
   return db.lawyerRules;
+}
+
+/** Local calendar date (YYYY-MM-DD) — attendance is per day. */
+export function dayKey(at: number | string = Date.now()): string {
+  const d = new Date(at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 export function useLawyerRules(): LawyerRuleset {
   return rulesOf(useDlasDb());
@@ -120,6 +140,9 @@ export const LawyerAuth = {
         practiceAreas: input.practiceAreas.filter((m) => MATTERS.some((x) => x.code === m)),
         createdAt: now(),
         lastLoginAt: now(),
+        attendance: [],
+        notificationsReadAt: null,
+        contacts: [],
         audit: [],
       };
       audit(db, a.audit, { actor: a.lawyerId, role: "panel_lawyer", action: "lawyer.signed_up", detail: { district: a.district, barEnrolmentNo: a.barEnrolmentNo, practiceAreas: a.practiceAreas } });
@@ -156,6 +179,34 @@ export const LawyerAuth = {
 
   logout() {
     setCurrent(null);
+  },
+
+  /** Register today's attendance (present / absent). Changing it the same day keeps one entry and is audited. */
+  markAttendance(status: "PRESENT" | "ABSENT") {
+    const me = LawyerAuth.current();
+    if (!me) throw new Error("Lawyer login required");
+    return mutate((db) => {
+      const l = db.lawyers.find((x) => x.lawyerId === me.lawyerId)!;
+      l.attendance = l.attendance ?? [];
+      const date = dayKey();
+      const prev = l.attendance.find((x) => x.date === date);
+      if (prev?.status === status) return prev;
+      if (prev) {
+        prev.status = status;
+        prev.at = now();
+      } else l.attendance.push({ date, status, at: now() });
+      audit(db, l.audit, { actor: l.lawyerId, role: "panel_lawyer", action: prev ? "attendance.changed" : "attendance.marked", detail: { date, status, from: prev ? (status === "PRESENT" ? "ABSENT" : "PRESENT") : null } });
+      return l.attendance.find((x) => x.date === date)!;
+    });
+  },
+
+  markNotificationsRead() {
+    const me = LawyerAuth.current();
+    if (!me) return;
+    mutate((db) => {
+      const l = db.lawyers.find((x) => x.lawyerId === me.lawyerId);
+      if (l) l.notificationsReadAt = now();
+    });
   },
 };
 
@@ -234,7 +285,7 @@ export function computeLedger(a: ApplicationRecord, assignmentId: string, at = D
 /** Keep every assignment's stored ledger (and accruing payment) in step with the hearings. */
 function refreshLedgers(a: ApplicationRecord, at = Date.now()) {
   for (const s of a.lawyer?.assignments ?? []) {
-    if (s.status === "OFFERED" || s.status === "DECLINED") continue;
+    if (s.status === "OFFERED" || s.status === "DECLINED" || s.status === "EXPIRED") continue;
     s.ledger = computeLedger(a, s.assignmentId, at);
     if (s.status === "ACCEPTED") s.payment = paymentFor(a, s, "ACCRUING");
   }
@@ -258,44 +309,72 @@ function paymentFor(a: ApplicationRecord, s: LawyerAssignment, status: NonNullab
   };
 }
 
-export type LawyerSuggestion = {
-  lawyer: PanelLawyerAccount;
-  score: number;
-  load: number;
-  capacity: number;
-  available: boolean;
-  matchesMatter: boolean;
-  missedRecent: number; // missed hearings in the rules window, across all cases
-  previouslyOnCase: boolean;
-  reasons: { bn: string; en: string }[];
-};
+/* ---------------- engine: lawyer statistics & top-N shortlist ---------------- */
 
-/** Engine suggestion — ADVISORY. Availability (load vs capacity), specialisation, recent missed hearings. */
-export function suggestLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): LawyerSuggestion[] {
+export type LawyerStats = ShortlistCandidate["stats"];
+
+/** Workload, won/lost (from completed cases), daily attendance in the window — all from the JSON. */
+export function lawyerStats(db: DlasDb, l: PanelLawyerAccount, a: ApplicationRecord | null, at = Date.now()): LawyerStats {
   const r = rulesOf(db);
+  let active = 0;
+  let won = 0;
+  let lost = 0;
+  for (const x of db.applications) {
+    const mine = x.lawyer?.assignments.filter((s) => s.lawyerId === l.lawyerId) ?? [];
+    if (mine.some((s) => s.status === "OFFERED" || s.status === "ACCEPTED")) active += 1;
+    if (mine.some((s) => s.status === "COMPLETED")) {
+      if (x.lawyer?.completion?.outcome === "WON") won += 1;
+      if (x.lawyer?.completion?.outcome === "LOST") lost += 1;
+    }
+  }
+  const since = dayKey(at - r.attendanceWindowDays * 86_400_000);
+  const days = (l.attendance ?? []).filter((d) => d.date >= since);
+  const presentDays = days.filter((d) => d.status === "PRESENT").length;
+  const absentDays = days.filter((d) => d.status === "ABSENT").length;
+  return {
+    activeCases: active,
+    capacity: r.maxActiveCases,
+    won,
+    lost,
+    winPct: won + lost ? Math.round((won / (won + lost)) * 100) : null,
+    presentDays,
+    absentDays,
+    attendancePct: presentDays + absentDays ? Math.round((presentDays / (presentDays + absentDays)) * 100) : null,
+    absentToday: (l.attendance ?? []).some((d) => d.date === dayKey(at) && d.status === "ABSENT"),
+    matchesMatter: !!a?.data.matter.category && l.practiceAreas.includes(a.data.matter.category),
+  };
+}
+
+/** Score 0–100 from the rule weights. No record yet (win % / attendance) counts as neutral 50 %. */
+export function scoreLawyer(db: DlasDb, st: LawyerStats): { score: number; breakdown: ShortlistCandidate["breakdown"] } {
+  const w = rulesOf(db).weights;
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const breakdown = {
+    workload: r1(w.workload * Math.max(0, 1 - st.activeCases / Math.max(1, st.capacity))),
+    winRate: r1((w.winRate * (st.winPct ?? 50)) / 100),
+    attendance: st.absentToday ? 0 : r1((w.attendance * (st.attendancePct ?? 50)) / 100),
+    specialisation: st.matchesMatter ? w.specialisation : 0,
+  };
+  return { score: r1(breakdown.workload + breakdown.winRate + breakdown.attendance + breakdown.specialisation), breakdown };
+}
+
+/** The engine's ranked picks for this case (district panel, minus lawyers who already declined / were removed). */
+export function rankLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): Omit<ShortlistCandidate, "outcome" | "reason" | "offeredAt">[] {
   const district = a.data.applicant.district;
-  const since = at - r.patternWindowDays * 86_400_000;
+  const tried = new Set((a.lawyer?.assignments ?? []).filter((s) => s.status !== "ACCEPTED" && s.status !== "OFFERED").map((s) => s.lawyerId));
   return db.lawyers
-    .filter((l) => !district || l.district === district)
+    .filter((l) => (!district || l.district === district) && !tried.has(l.lawyerId))
     .map((l) => {
-      const load = db.applications.filter((x) => x.lawyer?.assignments.some((s) => s.lawyerId === l.lawyerId && (s.status === "OFFERED" || s.status === "ACCEPTED"))).length;
-      const missedRecent = db.applications.reduce((n, x) => {
-        const mine = new Set((x.lawyer?.assignments ?? []).filter((s) => s.lawyerId === l.lawyerId).map((s) => s.assignmentId));
-        return n + (x.lawyer?.hearings ?? []).filter((h) => h.assignmentId && mine.has(h.assignmentId) && new Date(h.at).getTime() >= since && hearingMissed(h, at)).length;
-      }, 0);
-      const matchesMatter = !!a.data.matter.category && l.practiceAreas.includes(a.data.matter.category);
-      const previouslyOnCase = !!a.lawyer?.assignments.some((s) => s.lawyerId === l.lawyerId);
-      const available = load < r.maxActiveCases;
-      const reasons: { bn: string; en: string }[] = [];
-      if (matchesMatter) reasons.push({ bn: "এই ধরনের মামলা করেন", en: "Practises this type of case" });
-      reasons.push(available ? { bn: `চলমান ${load}/${r.maxActiveCases}`, en: `${load} of ${r.maxActiveCases} active cases` } : { bn: "সর্বোচ্চ মামলার সীমায়", en: "At capacity" });
-      if (missedRecent) reasons.push({ bn: `সম্প্রতি ${missedRecent}টি শুনানি মিস`, en: `${missedRecent} missed hearing(s) recently` });
-      else reasons.push({ bn: "সম্প্রতি কোনো শুনানি মিস নেই", en: "No recent missed hearings" });
-      if (previouslyOnCase) reasons.push({ bn: "আগে এই মামলায় ছিলেন", en: "Was on this case before" });
-      const score = (matchesMatter ? 3 : 0) + (available ? 2 * (1 - load / r.maxActiveCases) : -10) - 1.5 * missedRecent - (previouslyOnCase ? 5 : 0);
-      return { lawyer: l, score: Math.round(score * 10) / 10, load, capacity: r.maxActiveCases, available, matchesMatter, missedRecent, previouslyOnCase, reasons };
+      const stats = lawyerStats(db, l, a, at);
+      const { score, breakdown } = scoreLawyer(db, stats);
+      return { lawyerId: l.lawyerId, name: l.name, rank: 0, score, breakdown, stats };
     })
-    .sort((x, y) => y.score - x.score);
+    .sort((x, y) => y.score - x.score || x.stats.activeCases - y.stats.activeCases)
+    .map((c, i) => ({ ...c, rank: i + 1 }));
+}
+
+export function activeShortlist(a: ApplicationRecord): LawyerShortlist | null {
+  return [...(a.lawyer?.shortlists ?? [])].reverse().find((x) => x.status === "ACTIVE") ?? null;
 }
 
 export type LawyerCase = { a: ApplicationRecord; assignment: LawyerAssignment };
@@ -329,6 +408,7 @@ export function useLawyerWork() {
       overdue: hearings.filter((x) => x.state === "OVERDUE").sort((x, y) => x.h.updateDueAt.localeCompare(y.h.updateDueAt)),
       reported: hearings.filter((x) => x.state === "REPORTED"),
       tasks: me ? db.tasks.filter((x) => x.assigneeId === me.lawyerId && x.status !== "DONE") : [],
+      today: me ? ((me.attendance ?? []).find((d) => d.date === dayKey(t)) ?? null) : null,
       now: t,
     };
   }, [db, me, t]);
@@ -339,7 +419,7 @@ export function useLawyerWork() {
  * ================================================================== */
 
 function matterOf(a: ApplicationRecord): LawyerMatter {
-  if (!a.lawyer) a.lawyer = { assignments: [], hearings: [], updates: [], access: [], completion: null };
+  if (!a.lawyer) a.lawyer = { assignments: [], hearings: [], updates: [], access: [], shortlists: [], completion: null };
   return a.lawyer;
 }
 
@@ -427,51 +507,102 @@ function withCase<T>(applicationId: string, fn: (db: DlasDb, a: ApplicationRecor
   });
 }
 
+/** Create an OFFERED assignment for one shortlisted lawyer and notify them. */
+function offerTo(db: DlasDb, a: ApplicationRecord, sl: LawyerShortlist, c: ShortlistCandidate, by: { id: string; name: string; role: AuditEntry["role"] }, via: "DLAO_CHOICE" | "AUTO_NEXT", note: string | null): LawyerAssignment {
+  const r = ensureRules(db);
+  const m = matterOf(a);
+  const previous = [...m.assignments].reverse().find((x) => x.status === "WITHDRAWN");
+  const s: LawyerAssignment = {
+    assignmentId: rid("ASN"),
+    lawyerId: c.lawyerId,
+    lawyerName: c.name,
+    status: "OFFERED",
+    offeredAt: now(),
+    offeredBy: by.id,
+    offeredByName: by.name,
+    note,
+    respondBy: addHours(now(), r.offerResponseHours),
+    respondedAt: null,
+    declineReason: null,
+    responseOverdueFlaggedAt: null,
+    handoverFrom: previous?.assignmentId ?? null,
+    shortlistId: sl.shortlistId,
+    offeredVia: via,
+    reassignFlaggedAt: null,
+    ledger: { hearingsAttended: 0, hearingsMissed: 0, hearingsNotHeld: 0, hearingsUnreported: 0, updatesOnTime: 0, updatesLate: 0, updatedAt: now() },
+    payment: null,
+  };
+  m.assignments.push(s);
+  c.outcome = "OFFERED";
+  c.offeredAt = now();
+  const t = openTask(db, a, { type: "LAWYER_RESPONSE", assignedRole: "PANEL_LAWYER", assigneeId: c.lawyerId, priority: a.routing.recommendedPriority, reason: `New case ${a.caseId}: accept or decline`, dueAt: s.respondBy, context: { assignmentId: s.assignmentId } });
+  audit(db, a.audit, {
+    actor: by.id,
+    role: by.role,
+    action: via === "AUTO_NEXT" ? "lawyer.auto_offered_next" : "lawyer.offered",
+    detail: { assignmentId: s.assignmentId, lawyerId: c.lawyerId, lawyer: c.name, shortlistId: sl.shortlistId, rank: c.rank, score: c.score, respondBy: s.respondBy, taskId: t.taskId, handoverFrom: s.handoverFrom },
+  });
+  const l = db.lawyers.find((x) => x.lawyerId === c.lawyerId);
+  if (l) audit(db, l.audit, { actor: by.id, role: by.role, action: "lawyer.offer_received", detail: { applicationId: a.applicationId, caseId: a.caseId, via } });
+  smsLawyer(db, a, c.lawyerId, `DLAS: new legal aid case ${a.caseId} offered to you. See "Case intake" in the lawyer portal and accept or decline by ${fmt(s.respondBy)}.`);
+  return s;
+}
+
+/** After a decline / no answer: the engine offers the case to the next pending lawyer on the shortlist, or tells the DLAO it ran out. */
+function autoOfferNext(db: DlasDb, a: ApplicationRecord, sl: LawyerShortlist, note: string | null) {
+  const next = sl.candidates.filter((c) => c.outcome === "PENDING").sort((x, y) => x.rank - y.rank)[0];
+  if (next) {
+    offerTo(db, a, sl, next, { id: "system", name: "Engine — next on the DLAO shortlist", role: "system" }, "AUTO_NEXT", note);
+    return;
+  }
+  sl.status = "EXHAUSTED";
+  audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.shortlist_exhausted", detail: { shortlistId: sl.shortlistId } });
+  openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `All ${sl.candidates.length} shortlisted lawyers declined or did not answer for ${a.caseId} — ask the engine for a new shortlist`, dueAt: addHours(now(), 24), context: { shortlistId: sl.shortlistId } });
+}
+
 export const DlaoLawyerService = {
-  /** Offer the case to a panel lawyer (DLAO's choice; the engine only suggests). */
-  assign(applicationId: string, input: { lawyerId: string; note: string }) {
+  /** "Assign lawyer": the engine ranks the district panel and keeps the top N (rules.shortlistSize). */
+  createShortlist(applicationId: string) {
     const o = officer();
     return withCase(applicationId, (db, a) => {
       const r = ensureRules(db);
       if (a.review?.pathway?.type !== "LAWYER" || !a.caseId) throw new Error("Choose the Panel lawyer pathway first");
       if (a.lawyer?.completion) throw new Error("Representation already completed");
-      if (activeAssignment(a)) throw new Error("A lawyer is already assigned — reassign instead");
-      const l = db.lawyers.find((x) => x.lawyerId === input.lawyerId);
-      if (!l) throw new Error("Choose a lawyer from the panel");
-      if (a.data.applicant.district && l.district !== a.data.applicant.district) throw new Error("This lawyer is not on this district's panel");
+      if (activeAssignment(a)) throw new Error("A lawyer is already assigned or has an open offer");
+      const ranked = rankLawyers(db, a).slice(0, r.shortlistSize);
+      if (!ranked.length) throw new Error("No eligible lawyers on this district's panel (everyone registered has already declined or been removed)");
       const m = matterOf(a);
-      const previous = [...m.assignments].reverse().find((x) => x.status === "WITHDRAWN");
-      const suggestion = suggestLawyers(db, a);
-      const s: LawyerAssignment = {
-        assignmentId: rid("ASN"),
-        lawyerId: l.lawyerId,
-        lawyerName: l.name,
-        status: "OFFERED",
-        offeredAt: now(),
-        offeredBy: o.officerId,
-        offeredByName: o.name,
-        note: input.note.trim() || null,
-        respondBy: addHours(now(), r.offerResponseHours),
-        respondedAt: null,
-        declineReason: null,
-        responseOverdueFlaggedAt: null,
-        handoverFrom: previous?.assignmentId ?? null,
-        reassignFlaggedAt: null,
-        ledger: { hearingsAttended: 0, hearingsMissed: 0, hearingsNotHeld: 0, hearingsUnreported: 0, updatesOnTime: 0, updatesLate: 0, updatedAt: now() },
-        payment: null,
+      for (const old of m.shortlists) if (old.status === "ACTIVE") old.status = "CANCELLED";
+      const sl: LawyerShortlist = {
+        shortlistId: rid("SHL"),
+        createdAt: now(),
+        by: o.officerId,
+        byName: o.name,
+        rulesVersion: r.version,
+        status: "ACTIVE",
+        candidates: ranked.map((c) => ({ ...c, outcome: "PENDING", reason: null, offeredAt: null })),
       };
-      m.assignments.push(s);
+      m.shortlists.push(sl);
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.shortlist_generated", detail: { officer: o.name, shortlistId: sl.shortlistId, candidates: sl.candidates.map((c) => ({ lawyerId: c.lawyerId, rank: c.rank, score: c.score })), weights: r.weights } });
+      return sl;
+    });
+  },
+
+
+  /** The DLAO offers the case to one lawyer from the active shortlist. */
+  assign(applicationId: string, input: { lawyerId: string; note: string }) {
+    const o = officer();
+    return withCase(applicationId, (db, a) => {
+      if (a.review?.pathway?.type !== "LAWYER" || !a.caseId) throw new Error("Choose the Panel lawyer pathway first");
+      if (a.lawyer?.completion) throw new Error("Representation already completed");
+      if (activeAssignment(a)) throw new Error("A lawyer is already assigned or has an open offer");
+      const sl = activeShortlist(a);
+      if (!sl) throw new Error("Click “Assign lawyer” to get the engine's shortlist first");
+      const c = sl.candidates.find((x) => x.lawyerId === input.lawyerId);
+      if (!c || c.outcome !== "PENDING") throw new Error("Choose a lawyer from the shortlist who has not been asked yet");
       closeTasks(db, a, o.officerId, "dlao", (t) => t.type === "LAWYER_ASSIGNMENT");
-      const t = openTask(db, a, { type: "LAWYER_RESPONSE", assignedRole: "PANEL_LAWYER", assigneeId: l.lawyerId, priority: a.routing.recommendedPriority, reason: `Accept or decline case ${a.caseId}`, dueAt: s.respondBy, context: { assignmentId: s.assignmentId } });
-      const rank = suggestion.findIndex((x) => x.lawyer.lawyerId === l.lawyerId);
-      audit(db, a.audit, {
-        actor: o.officerId,
-        role: "dlao",
-        action: "lawyer.offered",
-        detail: { officer: o.name, assignmentId: s.assignmentId, lawyerId: l.lawyerId, lawyer: l.name, respondBy: s.respondBy, taskId: t.taskId, engineRank: rank + 1, followedTopSuggestion: rank === 0, handoverFrom: s.handoverFrom },
-      });
-      audit(db, l.audit, { actor: o.officerId, role: "dlao", action: "lawyer.offer_received", detail: { applicationId: a.applicationId, caseId: a.caseId } });
-      smsLawyer(db, a, l.lawyerId, `DLAS: legal aid case ${a.caseId} is offered to you. Accept or decline in the lawyer portal by ${fmt(s.respondBy)}.`);
+      const s = offerTo(db, a, sl, c, { id: o.officerId, name: o.name, role: "dlao" }, "DLAO_CHOICE", input.note.trim() || null);
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.dlao_choice", detail: { officer: o.name, lawyerId: c.lawyerId, rank: c.rank, followedTopPick: c.rank === Math.min(...sl.candidates.map((x) => x.rank)) } });
       return s;
     });
   },
@@ -596,6 +727,13 @@ export const LawyerService = {
       const m = a.lawyer!;
       s.status = "ACCEPTED";
       s.respondedAt = now();
+      const sl = m.shortlists.find((x) => x.shortlistId === s.shortlistId);
+      if (sl) {
+        sl.status = "ACCEPTED";
+        const c = sl.candidates.find((x) => x.lawyerId === me.lawyerId);
+        if (c) c.outcome = "ACCEPTED";
+      }
+      closeTasks(db, a, me.lawyerId, "panel_lawyer", (t) => t.type === "LAWYER_ASSIGNMENT");
       m.access.push({ lawyerId: me.lawyerId, lawyerName: me.name, assignmentId: s.assignmentId, scope: "FULL_CASE_RECORD", grantedAt: now(), revokedAt: null, revokeReason: null });
       audit(db, a.audit, {
         actor: me.lawyerId,
@@ -628,7 +766,7 @@ export const LawyerService = {
     });
   },
 
-  /** Decline (reason required) → the DLAO is told to assign another lawyer. */
+  /** Decline (reason required) → the engine offers the case to the next lawyer on the DLAO's shortlist. */
   decline(applicationId: string, reason: string) {
     if (reason.trim().length < 10) throw new Error("A reason of at least 10 characters is required");
     return withMyCase(applicationId, (db, a, me, s) => {
@@ -636,9 +774,16 @@ export const LawyerService = {
       s.status = "DECLINED";
       s.respondedAt = now();
       s.declineReason = reason.trim();
-      closeTasks(db, a, me.lawyerId, "panel_lawyer", (t) => t.assigneeId === me.lawyerId || (t.type === "LAWYER_UPDATE_OVERDUE" && (t.context as { assignmentId?: string } | undefined)?.assignmentId === s.assignmentId));
-      const t = openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `${me.name} declined: ${reason.trim()} — assign another panel lawyer`, dueAt: addHours(now(), 24) });
-      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "lawyer.declined", detail: { lawyer: me.name, assignmentId: s.assignmentId, reason: reason.trim(), taskId: t.taskId } });
+      closeTasks(db, a, me.lawyerId, "panel_lawyer", (t) => t.assigneeId === me.lawyerId);
+      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "lawyer.declined", detail: { lawyer: me.name, assignmentId: s.assignmentId, reason: reason.trim() } });
+      const sl = a.lawyer!.shortlists.find((x) => x.shortlistId === s.shortlistId);
+      const c = sl?.candidates.find((x) => x.lawyerId === me.lawyerId);
+      if (c) {
+        c.outcome = "DECLINED";
+        c.reason = reason.trim();
+      }
+      if (sl && sl.status === "ACTIVE") autoOfferNext(db, a, sl, s.note);
+      else openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `${me.name} declined: ${reason.trim()} — assign another panel lawyer`, dueAt: addHours(now(), 24) });
       return s;
     });
   },
@@ -746,11 +891,20 @@ export function sweepLawyerDeadlines(): number {
     let n = 0;
     const touched = new Set<ApplicationRecord>();
     for (const [appId, asnId] of p.offers) {
+      // No answer in time → the offer expires and the engine moves to the next shortlisted lawyer.
       const a = db.applications.find((x) => x.applicationId === appId)!;
       const s = a.lawyer!.assignments.find((x) => x.assignmentId === asnId)!;
       s.responseOverdueFlaggedAt = now();
-      openTask(db, a, { type: "LAWYER_UPDATE_OVERDUE", assignedRole: "DLAO", priority: "HIGH", reason: `${s.lawyerName} has not answered the offer for ${a.caseId} (due ${fmt(s.respondBy)}) — reassign or wait`, dueAt: addHours(now(), 24), context: { assignmentId: s.assignmentId, lawyerId: s.lawyerId, kind: "OFFER_RESPONSE" } });
-      audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.response_overdue", detail: { assignmentId: s.assignmentId, lawyerId: s.lawyerId, respondBy: s.respondBy } });
+      s.status = "EXPIRED";
+      s.respondedAt = now();
+      closeTasks(db, a, "system", "system", (t) => t.type === "LAWYER_RESPONSE" && t.assigneeId === s.lawyerId);
+      audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.offer_expired", detail: { assignmentId: s.assignmentId, lawyerId: s.lawyerId, respondBy: s.respondBy } });
+      smsLawyer(db, a, s.lawyerId, `DLAS: the offer for case ${a.caseId} has expired (no answer by ${fmt(s.respondBy)}).`);
+      const sl = a.lawyer!.shortlists.find((x) => x.shortlistId === s.shortlistId);
+      const c = sl?.candidates.find((x) => x.lawyerId === s.lawyerId);
+      if (c) c.outcome = "NO_RESPONSE";
+      if (sl && sl.status === "ACTIVE") autoOfferNext(db, a, sl, s.note);
+      else openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `${s.lawyerName} did not answer the offer for ${a.caseId} — assign another panel lawyer`, dueAt: addHours(now(), 24) });
       touched.add(a);
       n += 1;
     }
@@ -817,4 +971,97 @@ export function useLawyerDeadlineSweep() {
 
 export function lawyerDistrictLabel(l: PanelLawyerAccount, lang: "bn" | "en") {
   return label(DISTRICTS, l.district, lang);
+}
+
+/* ================================================================== *
+ *  Lawyer notifications — derived from the record (nothing stored but the read time)
+ * ================================================================== */
+
+export type LawyerNotification = {
+  id: string;
+  at: string;
+  tone: "ok" | "warn" | "err" | "neutral";
+  title: { bn: string; en: string };
+  body: { bn: string; en: string };
+  href: string;
+  unread: boolean;
+  contactId?: string; // summons / reminder that the lawyer can acknowledge
+  needsAck?: boolean;
+};
+
+export function lawyerNotificationsFor(db: DlasDb, me: PanelLawyerAccount | undefined, t = Date.now()): LawyerNotification[] {
+  if (!me) return [];
+  const out: Omit<LawyerNotification, "unread">[] = [];
+  const matterName = (a: ApplicationRecord, lang: "bn" | "en") => label(MATTERS, a.data.matter.category, lang);
+  for (const a of db.applications) {
+    const m = a.lawyer;
+    if (!m) continue;
+    const cid = a.caseId ?? a.applicationId;
+    for (const s of m.assignments.filter((x) => x.lawyerId === me.lawyerId)) {
+      if (s.status === "OFFERED")
+        out.push({
+          id: `off-${s.assignmentId}`,
+          at: s.offeredAt,
+          tone: "warn",
+          title: { bn: `নতুন মামলা প্রস্তাব: ${cid}`, en: `New case offered: ${cid}` },
+          body: {
+            bn: `${matterName(a, "bn")} · ${s.offeredVia === "AUTO_NEXT" ? "আগের আইনজীবী প্রত্যাখ্যান করায় তালিকার পরের জন হিসেবে" : `${s.offeredByName} পাঠিয়েছেন`} · ${fmt(s.respondBy)}-এর মধ্যে উত্তর দিন`,
+            en: `${matterName(a, "en")} · ${s.offeredVia === "AUTO_NEXT" ? "offered to you as next on the shortlist after another lawyer declined" : `sent by ${s.offeredByName}`} · answer by ${fmt(s.respondBy)}`,
+          },
+          href: "#intake",
+        });
+      if (s.status === "EXPIRED") out.push({ id: `exp-${s.assignmentId}`, at: s.respondedAt ?? s.respondBy, tone: "err", title: { bn: `প্রস্তাবের মেয়াদ শেষ: ${cid}`, en: `Offer expired: ${cid}` }, body: { bn: "সময়মতো উত্তর না দেওয়ায় মামলাটি তালিকার পরের আইনজীবীর কাছে গেছে।", en: "No answer in time — the case went to the next lawyer on the shortlist." }, href: "#intake" });
+      if (s.status === "ACCEPTED" || s.status === "COMPLETED" || (s.status === "WITHDRAWN" && s.respondedAt && m.access.some((g) => g.assignmentId === s.assignmentId)))
+        out.push({ id: `acc-${s.assignmentId}`, at: m.access.find((g) => g.assignmentId === s.assignmentId)?.grantedAt ?? s.respondedAt ?? s.offeredAt, tone: "ok", title: { bn: `আপনি মামলা নিয়েছেন: ${cid}`, en: `You took case ${cid}` }, body: { bn: s.handoverFrom ? "হস্তান্তরিত মামলা — আগের সব তথ্য দেখা যাবে।" : matterName(a, "bn"), en: s.handoverFrom ? "Handed-over case — the full earlier history is available." : matterName(a, "en") }, href: `#cases/${a.applicationId}` });
+      if (s.status === "WITHDRAWN" && m.access.some((g) => g.assignmentId === s.assignmentId))
+        out.push({ id: `wd-${s.assignmentId}`, at: m.access.find((g) => g.assignmentId === s.assignmentId)?.revokedAt ?? s.respondedAt ?? s.offeredAt, tone: "err", title: { bn: `মামলা অন্য আইনজীবীকে দেওয়া হয়েছে: ${cid}`, en: `Case reassigned: ${cid}` }, body: { bn: `আপনার প্রবেশাধিকার শেষ। কারণ: ${s.declineReason ?? "—"}`, en: `Your access has ended. Reason: ${s.declineReason ?? "—"}` }, href: "#cases" });
+      if (s.status === "COMPLETED" && m.completion)
+        out.push({ id: `done-${s.assignmentId}`, at: m.completion.at, tone: "ok", title: { bn: `মামলা সম্পন্ন: ${cid}`, en: `Case completed: ${cid}` }, body: { bn: `উপস্থিত শুনানি ${s.ledger.hearingsAttended} — পেমেন্ট পর্যালোচনায়।`, en: `${s.ledger.hearingsAttended} attended hearing(s) — sent for payment review.` }, href: "#cases" });
+      if (s.reassignFlaggedAt && s.status === "ACCEPTED")
+        out.push({ id: `rf-${s.assignmentId}`, at: s.reassignFlaggedAt, tone: "err", title: { bn: `${cid}: শুনানি মিসের সীমা পার হয়েছে`, en: `${cid}: missed-hearing limit reached` }, body: { bn: "অফিস অন্য আইনজীবী দিতে পারে।", en: "The office may assign another lawyer." }, href: `#cases/${a.applicationId}` });
+      if (s.status !== "ACCEPTED") continue;
+      for (const h of m.hearings.filter((x) => x.assignmentId === s.assignmentId)) {
+        const st = hearingState(h, t);
+        if (st === "OVERDUE") out.push({ id: `od-${h.hearingId}`, at: h.updateDueAt, tone: "err", title: { bn: `প্রতিবেদন দেরি: ${cid}`, en: `Report overdue: ${cid}` }, body: { bn: `${fmt(h.at)}-এর শুনানি · ডিএলএও জেনেছেন`, en: `Hearing of ${fmt(h.at)} · the DLAO has been alerted` }, href: `#cases/${a.applicationId}` });
+        if (st === "UPDATE_DUE") out.push({ id: `due-${h.hearingId}`, at: h.at, tone: "warn", title: { bn: `প্রতিবেদন দিন: ${cid}`, en: `Report due: ${cid}` }, body: { bn: `${fmt(h.at)}-এর শুনানি · শেষ সময় ${fmt(h.updateDueAt)}`, en: `Hearing of ${fmt(h.at)} · due ${fmt(h.updateDueAt)}` }, href: `#cases/${a.applicationId}` });
+      }
+    }
+  }
+  // Calls, summons and reminders from the DLAO.
+  for (const c of me.contacts ?? []) {
+    const about = c.applicationId ? db.applications.find((x) => x.applicationId === c.applicationId) : null;
+    const ref = about ? ` · ${about.caseId ?? about.applicationId}` : "";
+    if (c.kind === "SUMMONS")
+      out.push({
+        id: `sum-${c.contactId}`,
+        at: c.at,
+        tone: c.status === "SENT" ? "err" : c.status === "MISSED" ? "err" : "ok",
+        title: { bn: `অফিসে তলব: ${c.byName}`, en: `Summoned by ${c.byName}` },
+        body: {
+          bn: `${c.place ?? ""} · ${c.appearAt ? fmt(c.appearAt) : ""}${ref} · কারণ: ${c.note}${c.status === "ACKNOWLEDGED" ? " · আপনি নিশ্চিত করেছেন" : c.status === "ATTENDED" ? " · উপস্থিত ছিলেন" : c.status === "MISSED" ? " · উপস্থিত হননি" : ""}`,
+          en: `${c.place ?? ""} · ${c.appearAt ? fmt(c.appearAt) : ""}${ref} · Reason: ${c.note}${c.status === "ACKNOWLEDGED" ? " · you acknowledged" : c.status === "ATTENDED" ? " · attended" : c.status === "MISSED" ? " · not attended" : ""}`,
+        },
+        href: "#notifications",
+        contactId: c.contactId,
+        needsAck: c.status === "SENT",
+      });
+    if (c.kind === "REMINDER")
+      out.push({ id: `rem-${c.contactId}`, at: c.at, tone: c.status === "SENT" ? "warn" : "neutral", title: { bn: `বার্তা: ${c.byName}`, en: `Message from ${c.byName}` }, body: { bn: `${c.note}${ref}`, en: `${c.note}${ref}` }, href: c.applicationId ? `#cases/${c.applicationId}` : "#notifications", contactId: c.contactId, needsAck: c.status === "SENT" });
+    if (c.kind === "CALL" && c.callOutcome !== "REACHED")
+      out.push({ id: `call-${c.contactId}`, at: c.at, tone: "warn", title: { bn: "অফিস আপনাকে ফোন করেছিল", en: "The legal aid office tried to call you" }, body: { bn: `${c.byName}${ref}${c.note ? ` · ${c.note}` : ""}`, en: `${c.byName}${ref}${c.note ? ` · ${c.note}` : ""}` }, href: "#notifications" });
+  }
+  const today = dayKey(t);
+  if (!(me.attendance ?? []).some((d) => d.date === today)) {
+    const start = new Date(`${today}T00:00:00`).toISOString();
+    out.push({ id: `att-${today}`, at: start, tone: "warn", title: { bn: "আজকের উপস্থিতি দিন", en: "Mark today's attendance" }, body: { bn: "উপস্থিতি পাতায় উপস্থিত বা অনুপস্থিত দিন।", en: "Mark present or absent on the Attendance page." }, href: "#attendance" });
+  }
+  const readAt = me.notificationsReadAt ?? "";
+  return out.sort((x, y) => y.at.localeCompare(x.at)).map((n) => ({ ...n, unread: n.at > readAt }));
+}
+
+export function useLawyerNotifications(): LawyerNotification[] {
+  const db = useDlasDb();
+  const me = useCurrentLawyer();
+  const t = useClock();
+  return useMemo(() => lawyerNotificationsFor(db, me, t), [db, me, t]);
 }

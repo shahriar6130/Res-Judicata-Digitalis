@@ -3,6 +3,24 @@
 Next.js (App Router, TypeScript) frontend for সাক্ষ্য, an evidence-grounded operational layer for
 Bangladesh legal aid services. Visual system: `docs/design/design.md`.
 
+Citizen intake controls use consistent token-based hover, selection, and keyboard
+focus states. Pointer hover is limited to hover-capable devices, and motion follows
+the user's reduced-motion preference.
+
+The administrator dashboard at `/dashboard/admin` uses the shared local record
+for live counts, cross-office application monitoring, audit history, and searchable
+create/edit forms for citizen, lawyer, DLO officer, and UDC operator accounts. Account
+changes are audited. The DLO review screen offers a reasoned correction form during
+verification for applicant, filer, matter, urgency, and safe-contact information.
+Changing verified fields reopens the related check; a district change reroutes open work.
+Legal decisions remain officer actions. Prototype data lives in browser `dlas.db.v1`.
+
+The admin Backup tab downloads a dated JSON bundle of app-owned browser storage,
+including the shared record and stored document previews. To restore, choose a JSON
+file, review the counts, and use **Replace current data and import**. Older `/debug`
+record exports are accepted. Import replaces the current browser's app data and reloads
+the dashboard.
+
 The current four dashboards are migration-era surfaces, not the final route contract. Build toward
 the 35 canonical S01–S35 route templates in `docs/spec/spec.md`: complete Tier 1 acceptance paths
 first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/dashboard/{role}` and
@@ -39,6 +57,11 @@ Each role signs in from its own URL; after sign-in the app lands directly on tha
 Citizen notifications at `/dashboard/citizen#notifications` group new and earlier updates, show
 readable details and timestamps, and open the related case or dashboard view. The unread count and
 mark-all-read control use the citizen account's existing read state.
+Document requests such as NID or marriage certificates appear only for applications linked to the
+signed-in citizen's session or applicant/representative phone. An open follow-up task does not grant
+access to another citizen's application or upload controls.
+The home document-upload section appears only when an owned, open application has an outstanding
+document; there is no placeholder card when nothing needs uploading.
 
 The DLO workspace opens on `#overview` (also the default route). Its header shows the active
 workload, the four status tiles navigate to `#new`, `#review`, `#decided`, and `#tasks`, and charts
@@ -60,6 +83,11 @@ and document links open their dedicated intake panels. Connection diagnostics ar
 expandable strip, and the global header provides the language toggle. The `/udc` sign-in page
 uses the existing mobile login and operator registration flow with UDC-specific art and copy.
 
+The `/device/ivr` and `/device/ussd` simulators share a guided phone workspace. A mode switch,
+three-step introduction, handset, conversation, and live-record panel make the active task clearer.
+The panels stack on narrow screens. Both modes still write to the shared intake record, and
+simulated telephone and gateway behavior stays labelled.
+
 *Quick test login:* For fast evaluation on `/` (Citizen), quick-test credentials (Mobile: `a`, Password: `a`) are provided with **Auto-fill** and direct **Quick enter** buttons.
 
 Each portal links to the other three. Role names, descriptions and routes live in `lib/roles.ts`.
@@ -75,6 +103,9 @@ The DLO and Lawyer login pages share the same form shell but have distinct entry
 uses right-side office-review imagery and a red seam; Lawyer uses left-side case-representation
 imagery and a green seam. Each has bilingual role-specific copy and a labelled art caption. Their
 existing sign-in fields and destinations are unchanged.
+The Lawyer desktop portal keeps both columns at viewport height, with sign-up scrolling inside the
+form column so the image crop stays steady and no gap appears below it. Tablet and mobile use fixed
+stacked image heights and normal page scrolling.
 The rotated DLO image label is larger and aligned near the image's left edge, with responsive sizing.
 
 **Dashboard** (`/dashboard/{role}`): WordPress-style layout with a black

@@ -11,6 +11,7 @@
  *      session.meta.citizenId === account.citizenId       (filed after login)
  *      OR applicant.phone === account.phone              (any door: IVR/USSD/UDC)
  *      OR filedBy.phone   === account.phone              (filed as representative)
+ *    An application having an open follow-up task never grants access.
  *
  *  Output uses the existing CaseRecord / CitizenCaseSummary shapes so the
  *  existing UI renders unchanged. Nothing here is invented: timeline steps
@@ -51,22 +52,16 @@ export function useCurrentCitizen(): CitizenAccount | undefined {
 
 export function applicationsFor(db: DlasDb, account: CitizenAccount | undefined): ApplicationRecord[] {
   if (!account) return [];
-  // Precompute indices so the filter below is O(A + N + T) instead of
-  // O(A · N + A · T) when a single citizen has many cases.
+  // Session ownership and phone matches are the only access paths.
+  // Tasks describe work on an application; they do not identify its citizen.
   const sessionById = new Map(db.sessions.map((s) => [s.sessionId, s]));
-  const openFollowUpByApp = new Set<string>();
-  for (const t of db.tasks) {
-    if (t.status === "DONE") continue;
-    if (t.type !== "DOCUMENT_FOLLOW_UP" && t.type !== "COMPLETE_MISSING_INFO") continue;
-    if (t.applicationId) openFollowUpByApp.add(t.applicationId);
-  }
   return db.applications
     .filter((a) => {
       const s = sessionById.get(a.channel.sessionId);
       if (s?.meta.citizenId === account.citizenId) return true;
       if (a.data.applicant.phone === account.phone) return true;
       if (a.data.filedBy.phone === account.phone) return true;
-      return openFollowUpByApp.has(a.applicationId);
+      return false;
     })
     .sort((x, y) => y.submittedAt.localeCompare(x.submittedAt));
 }
@@ -168,7 +163,9 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
 /** " · Panel lawyer: X" once a lawyer has accepted the case. */
 function lawyerLine(a: ApplicationRecord, lang: "bn" | "en"): string {
   const s = a.lawyer?.assignments.find((x) => x.status === "ACCEPTED" || x.status === "COMPLETED");
-  return s ? (lang === "bn" ? ` · প্যানেল আইনজীবী: ${s.lawyerName}` : ` · Panel lawyer: ${s.lawyerName}`) : "";
+  if (s) return lang === "bn" ? ` · প্যানেল আইনজীবী: ${s.lawyerName}` : ` · Panel lawyer: ${s.lawyerName}`;
+  if (a.review?.pathway?.type === "LAWYER" && !a.lawyer?.completion) return lang === "bn" ? " · আপনার জন্য আইনজীবী খোঁজা হচ্ছে" : " · Finding a panel lawyer for you";
+  return "";
 }
 
 /** Next hearing, from the lawyer's record (no dates are invented). */
@@ -338,6 +335,11 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
     const pw = a.review?.pathway;
     if (pw && a.caseId) {
       out.push({ id: `pw-${a.applicationId}`, at: pw.at, icon: "check", title: { bn: PATHWAY_TEXT[pw.type].bn, en: PATHWAY_TEXT[pw.type].en }, body: { bn: a.caseId, en: a.caseId }, href: `cases/${a.applicationId}` });
+    }
+    // While the engine's shortlist is being worked through, tell the citizen a lawyer is being found.
+    const liveShortlist = [...(a.lawyer?.shortlists ?? [])].reverse().find((x) => x.status === "ACTIVE");
+    if (liveShortlist && !(a.lawyer?.assignments ?? []).some((x) => x.status === "ACCEPTED")) {
+      out.push({ id: `find-${liveShortlist.shortlistId}`, at: liveShortlist.createdAt, icon: "user", title: { bn: "আপনার জন্য প্যানেল আইনজীবী খোঁজা হচ্ছে", en: "Finding a panel lawyer for you" }, body: { bn: `${a.caseId ?? a.applicationId} · আইনজীবী গ্রহণ করলে জানানো হবে`, en: `${a.caseId ?? a.applicationId} · you'll be told when a lawyer accepts` }, href: `cases/${a.applicationId}` });
     }
     // One entry per lawyer who accepted (access granted) — a reassignment shows the new lawyer too.
     for (const g of a.lawyer?.access ?? []) {

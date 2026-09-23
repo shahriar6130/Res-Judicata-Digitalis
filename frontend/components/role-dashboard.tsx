@@ -6,7 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/button";
 import { CaseDetail } from "@/components/case-detail";
 import { AssistedIntake } from "@/components/assisted-intake";
-import { CoverageNavigator } from "@/components/coverage-navigator";
+import { AdminWorkspace } from "@/components/admin/admin-workspace";
 import { HomeDashboard } from "@/components/home-dashboard";
 import { NotificationList } from "@/components/notification-list";
 import { OperationalRoleDashboard } from "@/components/operational-role-dashboard";
@@ -19,32 +19,14 @@ import { LawyerWorkspace } from "@/components/lawyer/lawyer-workspace";
 import type { RoleId } from "@/lib/roles";
 import styles from "./role-dashboard.module.css";
 
-type Copy = { bn: string; en: string };
-const copy = (value: Copy, lang: Lang) => value[lang];
-
-const labels = {
-  view: { bn: "প্রমাণ দেখুন", en: "View evidence" },
-  close: { bn: "বন্ধ করুন", en: "Close" },
-  saved: { bn: "এই প্রোটোটাইপ সেশনে সংরক্ষিত হয়েছে।", en: "Saved for this prototype session." },
-};
-
 type DashboardProps = { role: RoleId };
 
 export function RoleDashboard({ role }: DashboardProps) {
-  const { lang } = useI18n();
   return role === "citizen" ? <CitizenGate /> :
     role === "lawyer" ? <LawyerWorkspace /> :
     role === "dlo" ? <DlaoWorkspace /> :
-    role === "admin" ? <AdminDashboard lang={lang} /> :
+    role === "admin" ? <AdminWorkspace /> :
     <OperationalRoleDashboard role={role} />;
-}
-
-function PrototypeNote({ lang: _lang }: { lang: Lang }) {
-  // Prototype note text removed per design update. Argument kept so
-  // existing call sites don't have to change; `_lang` is intentionally
-  // unused.
-  void _lang;
-  return null;
 }
 
 function PageHeader({ eyebrow, title, intro, action }: { eyebrow: string; title: string; intro: string; action?: React.ReactNode }) {
@@ -243,24 +225,5 @@ function CasesList({
         ))
       )}
     </section>
-  );
-}
-
-function AdminDashboard({ lang }: { lang: Lang }) {
-  const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
-  return (
-    <div className={styles.page}>
-      <PrototypeNote lang={lang} />
-      <PageHeader eyebrow={lang === "bn" ? "সিস্টেম প্রশাসক" : "System administrator"} title={lang === "bn" ? "কার্যক্রমের সংক্ষেপ" : "Operations overview"} intro={lang === "bn" ? "সংস্করণযুক্ত নিয়ম, অনুমোদিত ব্যবহারকারী এবং উৎসযোগ্য সেবা পরিমাপ দেখুন।" : "Review versioned rules, authorised users, and sourceable service measures."} action={<Button onClick={() => setEditing(true)}>{lang === "bn" ? "নিয়ম সম্পাদনা" : "Edit rules"}</Button>} />
-      <section id="overview" className={styles.metrics}><div><strong>30</strong><span>{lang === "bn" ? "সক্রিয় মামলা" : "Active cases"}</span></div><div><strong>03</strong><span>{lang === "bn" ? "পর্যালোচনা প্রয়োজন" : "Need review"}</span></div><div><strong>92%</strong><span>{lang === "bn" ? "সময়মতো তথ্য" : "Updates on time"}</span></div><div><strong>01</strong><span>{lang === "bn" ? "ডেলিভারি ব্যর্থ" : "Delivery failed"}</span></div></section>
-      <div className={styles.twoColumn}>
-        <section id="rules" className={styles.section}><div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{lang === "bn" ? "সক্রিয় নীতি · সংস্করণ ৪" : "Active policy · version 4"}</p><h2>{lang === "bn" ? "হস্তক্ষেপের নিয়ম" : "Intervention rules"}</h2></div></div><dl className={styles.ruleList}><div><dt>{lang === "bn" ? "প্রতিবেদন গ্রেস পিরিয়ড" : "Report grace period"}</dt><dd>48h</dd></div><div><dt>{lang === "bn" ? "জরুরি করতে বকেয়া প্রতিবেদন" : "Overdue reports before escalation"}</dt><dd>2</dd></div><div><dt>{lang === "bn" ? "যোগাযোগের সতেজতা" : "Contact freshness"}</dt><dd>24h</dd></div></dl></section>
-        <section id="users" className={styles.section}><div className={styles.sectionHeading}><div><p className={styles.sectionLabel}>{lang === "bn" ? "অনুমোদিত প্রবেশাধিকার" : "Authorised access"}</p><h2>{lang === "bn" ? "ব্যবহারকারী" : "Users"}</h2></div></div><div className={styles.userRow}><span>{lang === "bn" ? "কর্মকর্তা" : "Officers"}</span><strong>4</strong></div><div className={styles.userRow}><span>{lang === "bn" ? "প্যানেল আইনজীবী" : "Panel lawyers"}</span><strong>18</strong></div><div className={styles.userRow}><span>{lang === "bn" ? "অফিস কর্মী" : "Office staff"}</span><strong>6</strong></div></section>
-      </div>
-      <section id="audit" className={styles.hairlineList}><h2>{lang === "bn" ? "সাম্প্রতিক অডিট ঘটনা" : "Recent audit events"}</h2><div><time>09:42</time><span>{lang === "bn" ? "SHK-DEMO-007 পুনর্মূল্যায়ন" : "SHK-DEMO-007 re-evaluated"}</span><span>rule hearing-date/v1</span></div><div><time>09:18</time><span>{lang === "bn" ? "নীতি সংস্করণ ৪ সক্রিয়" : "Policy version 4 activated"}</span><span>Admin · Dhaka</span></div></section>
-      <CoverageNavigator />
-      {editing ? <div className={styles.dialogBackdrop} role="presentation"><section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="rule-title"><div className={styles.sectionHeading}><h2 id="rule-title">{lang === "bn" ? "নিয়মের খসড়া" : "Draft rule version"}</h2><button className={styles.textButton} onClick={() => setEditing(false)}>{copy(labels.close, lang)}</button></div><form className={styles.form} onSubmit={(event) => { event.preventDefault(); setSaved(true); }}><label>{lang === "bn" ? "প্রতিবেদন গ্রেস পিরিয়ড (ঘণ্টা)" : "Report grace period (hours)"}<input type="number" defaultValue="48" min="1" /></label><label>{lang === "bn" ? "সংস্করণ নোট" : "Version note"}<textarea required placeholder={lang === "bn" ? "কেন পরিবর্তন করা হচ্ছে" : "Why this change is needed"} /></label>{saved ? <p role="status" className={styles.success}>{copy(labels.saved, lang)}</p> : <Button type="submit">{lang === "bn" ? "খসড়া সংরক্ষণ" : "Save draft"}</Button>}</form></section></div> : null}
-    </div>
   );
 }

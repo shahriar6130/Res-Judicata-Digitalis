@@ -8,7 +8,7 @@ import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
 import { useLawyerProfile } from "@/lib/lawyer-profile";
 import { useUdcProfile } from "@/lib/udc-profile";
-import { CitizenAuth, DlaoAuth, LawyerAuth, readDb, UdcAuth, useLawyerWork, useOfficeQueue } from "@/lib/dlas";
+import { CitizenAuth, DlaoAuth, LawyerAuth, readDb, UdcAuth, useDistrictLawyers, useLawyerNotifications, useLawyerWork, useOfficeQueue } from "@/lib/dlas";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -373,19 +373,24 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/dlo#review", label: "dlaoNavReview", key: "review", Icon: Clock },
     { href: "/dashboard/dlo#decided", label: "dlaoNavDecided", key: "decided", Icon: Check },
     { href: "/dashboard/dlo#tasks", label: "dlaoNavTasks", key: "tasks", Icon: AlertCircle },
+    { href: "/dashboard/dlo#lawyers", label: "dlaoNavLawyers", key: "lawyers", Icon: Scale },
   ],
   lawyer: [
     { href: "/dashboard/lawyer#overview", label: "navOverview", key: "overview", Icon: Home },
-    { href: "/dashboard/lawyer#assigned", label: "navAssignedCases", key: "assigned", Icon: Briefcase },
+    { href: "/dashboard/lawyer#intake", label: "navCaseIntake", key: "intake", Icon: HelpingHand },
+    { href: "/dashboard/lawyer#cases", label: "navMyCases", key: "cases", Icon: Briefcase },
+    { href: "/dashboard/lawyer#notifications", label: "navNotifications", key: "notifications", Icon: Bell },
+    { href: "/dashboard/lawyer#attendance", label: "navAttendance", key: "attendance", Icon: Check },
     { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
     { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
   ],
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
     { href: "/dashboard/admin#users", label: "navUsers", key: "users", Icon: Users },
+    { href: "/dashboard/admin#cases", label: "navApplications", key: "cases", Icon: Briefcase },
     { href: "/dashboard/admin#rules", label: "navRules", key: "rules", Icon: Shield },
-    { href: "/dashboard/admin#overview", label: "navMetrics", key: "metrics", Icon: Building },
     { href: "/dashboard/admin#audit", label: "navAudit", key: "audit", Icon: Clock },
+    { href: "/dashboard/admin#backup", label: "navBackup", key: "backup", Icon: FileText },
   ],
 };
 
@@ -407,11 +412,13 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   // counts when the role actually maps onto the DLO queue buckets.
   const queue = useOfficeQueue();
   const work = useLawyerWork();
+  const districtLawyers = useDistrictLawyers();
+  const lawyerUnread = useLawyerNotifications().filter((n) => n.unread).length;
   const badges: Record<string, number> | undefined =
     role === "dlo"
-      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length }
+      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length, lawyers: districtLawyers.list.filter((m) => m.overdueReports || m.openSummons || m.todayStatus === "ABSENT").length }
       : role === "lawyer"
-        ? { assigned: work.offers.length, reports: work.due.length + work.overdue.length, calendar: work.upcoming.length }
+        ? { intake: work.offers.length, cases: work.accepted.length, notifications: lawyerUnread, reports: work.due.length + work.overdue.length, calendar: work.upcoming.length, attendance: work.today ? 0 : 1 }
         : undefined;
 
   // The legacy sidebar mirrors the citizen pattern: the active tab is
@@ -481,7 +488,7 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
           <strong>{role === "dlo" ? (lang === "bn" ? "অফিসের তালিকা" : "Office queue") : (lang === "bn" ? "আইনজীবীর কাজ" : "Lawyer work")}</strong>
         </div> : null}
         <ul className={styles.legacyList}>
-          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : currentHash, onNavigate, t, badges?.[item.key]))}
+          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : currentHash, onNavigate, t, badges?.[item.key], role === "lawyer" && (item.key === "notifications" || item.key === "intake" || item.key === "attendance") && !!badges?.[item.key]))}
         </ul>
       </nav>
       {showProfile ? (
@@ -593,6 +600,7 @@ function renderLegacyItem(
   onNavigate: SidebarProps["onNavigate"],
   t: (key: MessageKey) => string,
   badge?: number,
+  glow?: boolean,
 ) {
   const [itemPath, itemHash = ""] = item.href.split("#");
   const currentPath = pathname ?? "";
@@ -605,7 +613,7 @@ function renderLegacyItem(
     <li key={item.key} className={styles.listItem}>
       <button
         type="button"
-        className={`${styles.legacyLink} ${isActive ? styles.legacyLinkActive : ""}`}
+        className={`${styles.legacyLink} ${isActive ? styles.legacyLinkActive : ""} ${glow ? styles.navItemGlow : ""}`}
         onClick={() => {
           onNavigate?.();
           // All legacy items use hash navigation now. Same-path items
@@ -630,7 +638,7 @@ function renderLegacyItem(
         </span>
         <span className={styles.legacyLabel}>{t(item.label)}</span>
         {badge ? (
-          <span className={styles.navBadge} aria-label={`${badge} ${t(item.label)}`}>
+          <span className={`${styles.navBadge} ${glow ? styles.navBadgeGlow : ""}`} aria-label={`${badge} ${t(item.label)}`}>
             {badge}
           </span>
         ) : null}

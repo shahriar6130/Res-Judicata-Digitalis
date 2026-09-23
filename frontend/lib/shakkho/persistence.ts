@@ -178,6 +178,25 @@ export function read(): StoreEnvelope {
 let currentSnapshot: StoreEnvelope = EMPTY;
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Compact content signature for the mediation arrays, which are frequently
+ * mutated IN PLACE (a clause disposition, a matter's state, a session/signature
+ * status, a consent tick) without their length changing. `shallowEqual` below
+ * otherwise compares only array LENGTHS, so such an edit reads as "no change":
+ * the snapshot is never swapped and the UI keeps showing the pre-click value
+ * (e.g. a disposition button that never appears selected). These arrays are
+ * small, so stringifying them is cheap and catches every field change. See
+ * prompt10 §0's note about adding in-place-mutated state to the change check.
+ */
+function mediationSignature(e: StoreEnvelope): string {
+  return JSON.stringify([
+    e.mediationMatters,
+    e.mediationSessions,
+    e.settlementDrafts,
+    e.signingWorkflows,
+  ]);
+}
+
 function shallowEqual(a: StoreEnvelope, b: StoreEnvelope): boolean {
   if (a === b) return true;
   if (a.seededAt !== b.seededAt) return false;
@@ -211,6 +230,8 @@ function shallowEqual(a: StoreEnvelope, b: StoreEnvelope): boolean {
   if (a.settlementDrafts.length !== b.settlementDrafts.length) return false;
   if (a.signingWorkflows.length !== b.signingWorkflows.length) return false;
   if (a.demoTimeOffsetMs !== b.demoTimeOffsetMs) return false;
+  // In-place field changes in the mediation arrays (no length change).
+  if (mediationSignature(a) !== mediationSignature(b)) return false;
   return true;
 }
 

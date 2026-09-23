@@ -384,20 +384,39 @@ export const MediationService = {
     if (!matter) return { ok: false, error: `No mediation matter ${input.matterId}.` };
     const now = DemoTimeService.iso();
 
-    let followUpTaskId: string | undefined;
+    const previousReview = matter.documentReviews.find((review) => review.documentId === input.documentId);
+    if (previousReview?.status === input.status) {
+      return { ok: true, value: matter };
+    }
+
+    let followUpTaskId = previousReview?.followUpTaskId;
     if (input.status === "unclear" || input.status === "missing_requested") {
-      const task = DlaoTaskService.createTask({
-        subject: input.matterId,
-        subjectKind: "mediation_matter",
-        reason: input.status === "unclear" ? "Document unclear — mediator follow-up required." : "Document missing — request from party.",
-        priority: "medium",
-        summary: `Mediation ${matter.mediationReference}: ${input.status === "unclear" ? "clarify" : "obtain"} document ${input.documentId}`,
-        details: { matterId: input.matterId, documentId: input.documentId, note: input.note },
-        caseId: matter.caseId,
-        applicationId: matter.applicationId,
-        actor: input.actor,
-      });
-      followUpTaskId = task.taskId;
+      const previousTask = followUpTaskId ? DlaoTaskService.find(envelope, followUpTaskId) : undefined;
+      const previousTaskIsOpen = previousTask?.state === "queued" || previousTask?.state === "in_progress";
+      if (!previousTaskIsOpen) {
+        const task = DlaoTaskService.createTask({
+          subject: input.matterId,
+          subjectKind: "mediation_matter",
+          reason: input.status === "unclear" ? "Document unclear — mediator follow-up required." : "Document missing — request from party.",
+          priority: "medium",
+          summary: `Mediation ${matter.mediationReference}: ${input.status === "unclear" ? "clarify" : "obtain"} document ${input.documentId}`,
+          details: { matterId: input.matterId, documentId: input.documentId, note: input.note },
+          caseId: matter.caseId,
+          applicationId: matter.applicationId,
+          actor: input.actor,
+        });
+        followUpTaskId = task.taskId;
+      }
+    } else if (input.status === "reviewed" && followUpTaskId) {
+      const previousTask = DlaoTaskService.find(envelope, followUpTaskId);
+      if (previousTask?.state === "queued" || previousTask?.state === "in_progress") {
+        DlaoTaskService.transition({
+          taskId: followUpTaskId,
+          to: "completed",
+          actor: input.actor,
+          note: input.note ?? `Document ${input.documentId} was reviewed and the follow-up was resolved.`,
+        });
+      }
     }
 
     const review: MediationDocumentReview = {
@@ -411,7 +430,19 @@ export const MediationService = {
     const existing = matter.documentReviews.filter((r) => r.documentId !== input.documentId);
 
     const audit = AuditTrailService.log(
-      { subject: input.matterId, subjectKind: "mediation_matter", action: "mediation.document_reviewed", actor: input.actor, payload: { documentId: input.documentId, status: input.status, followUpTaskId } },
+      {
+        subject: input.matterId,
+        subjectKind: "mediation_matter",
+        action: "mediation.document_reviewed",
+        actor: input.actor,
+        payload: {
+          documentId: input.documentId,
+          previousStatus: previousReview?.status,
+          status: input.status,
+          note: input.note,
+          followUpTaskId,
+        },
+      },
       { kind: "officer_lookup", simulatedAt: now },
     );
 
@@ -429,8 +460,22 @@ export const MediationService = {
     return { ok: true, value: updated };
   },
 
-  markReadyForSession(input: { matterId: string; actor: string }): MediationMatter | undefined {
-    return this.transition({ matterId: input.matterId, to: "ready_for_session", actor: input.actor, reason: "Documents reviewed; ready to convene." });
+  markReadyForSession(input: { matterId: string; actor: string }): ServiceResult<MediationMatter> {
+    const envelope = read();
+    const matter = (envelope.mediationMatters ?? []).find((item) => item.matterId === input.matterId);
+    if (!matter) return { ok: false, error: `No mediation matter ${input.matterId}.` };
+    if (matter.state !== "documents_under_review") {
+      return { ok: false, error: "The matter must be in document review before it can be marked ready for session." };
+    }
+    if (matter.documentReviews.length === 0) {
+      return { ok: false, error: "At least one document review must be recorded before the session can be prepared." };
+    }
+    const unresolved = matter.documentReviews.filter((review) => review.status !== "reviewed");
+    if (unresolved.length > 0) {
+      return { ok: false, error: `${unresolved.length} document issue(s) must be resolved before the session can be prepared.` };
+    }
+    const updated = this.transition({ matterId: input.matterId, to: "ready_for_session", actor: input.actor, reason: "All recorded documents were human-reviewed; ready to convene." });
+    return updated ? { ok: true, value: updated } : { ok: false, error: "The document-review stage could not be completed." };
   },
 
   /**

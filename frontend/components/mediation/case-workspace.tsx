@@ -114,7 +114,7 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div>
             <h1 className={styles.title} style={{ margin: 0 }}>{matter.mediationReference} — {L.category(matter.matterCategory, lang)}</h1>
             <div className={styles.intro}>
-              {say("কেস আইডি", "Case ID")}: <strong>{matter.caseId}</strong> · {matter.pathway === "pre_case" ? say("প্রাক-মামলা", "Pre-case") : say("মামলা-পরবর্তী", "Post-case")} · {say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}: {L.role(matter.assignedMediator, lang)}
+              {say("কেস আইডি", "Case ID")}: <strong>{matter.caseId}</strong> · {matter.pathway === "pre_case" ? say("প্রাক-মামলা", "Pre-case") : say("মামলা-পরবর্তী", "Post-case")} · {say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}: {matter.assignedMediator}
             </div>
           </div>
           <div className={styles.primaryActions}>{renderPrimaryActions(matter, draft, signing, lang, run, tick, setTab)}</div>
@@ -122,7 +122,7 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
         <dl className={styles.headerFacts}>
           <div><dt>{say("বর্তমান অবস্থা", "Current state")}</dt><dd><span className={styles.pill}>{L.state(matter.state, lang)}</span></dd></div>
           <div><dt>{say("পরবর্তী অধিবেশন", "Next session")}</dt><dd>{latestSession ? fmtDateTime(latestSession.scheduledFor, lang) : "—"}</dd></div>
-          <div><dt>{say("দায়িত্বপ্রাপ্ত", "Responsible actor")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
+          <div><dt>{say("দায়িত্বপ্রাপ্ত", "Responsible actor")}</dt><dd>{matter.assignedMediator}</dd></div>
           <div><dt>{say("পরবর্তী প্রয়োজনীয় কাজ", "Next required action")}</dt><dd>{nextAction}</dd></div>
           <div><dt>{say("অংশগ্রহণ পদ্ধতি", "Mode")}</dt><dd>{L.mode(matter.participationMode, lang)}</dd></div>
           <div><dt>{say("সর্বশেষ আপডেট", "Last updated")}</dt><dd>{fmtDateTime(matter.updatedAt, lang)}</dd></div>
@@ -172,7 +172,7 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
         <aside className={styles.rightCol}>
           <div className={styles.rightPanel}>
             <span className={styles.sectionHeading}>{say("দায়িত্ব ও ইতিহাস", "Responsibility and history")}</span>
-            <div className={styles.kv}><dt>{say("বর্তমান মালিক", "Current owner")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
+            <div className={styles.kv}><dt>{say("বর্তমান মালিক", "Current owner")}</dt><dd>{matter.assignedMediator}</dd></div>
             <div className={styles.kv}><dt>{say("পরবর্তী কাজ", "Next task")}</dt><dd>{nextAction}</dd></div>
             <div className={styles.kv}><dt>{say("অমীমাংসিত ধারা", "Unresolved clauses")}</dt><dd>{draft ? draft.clauses.filter((c) => c.disposition === "undisposed").length : "—"}</dd></div>
             <div className={styles.kv}><dt>{say("ব্লকিং অসঙ্গতি", "Blocking inconsistencies")}</dt><dd>{draft ? draft.inconsistencies.filter((i) => i.severity === "blocking").length : 0}</dd></div>
@@ -187,7 +187,7 @@ export default function MediatorCaseWorkspace({ caseId }: { caseId: string }) {
               {[...matter.history].slice(-4).reverse().map((h, i) => (
                 <div key={i} className={styles.timelineItem}>
                   <div>{L.state(h.toState, lang)}</div>
-                  <div style={{ color: "var(--gray)" }}>{L.role(h.actor, lang)} · {fmtDateTime(h.at, lang)}</div>
+                  <div style={{ color: "var(--gray)" }}>{h.actor} · {fmtDateTime(h.at, lang)}</div>
                 </div>
               ))}
             </div>
@@ -264,7 +264,7 @@ function OverviewSection({ matter, record, sessions, draft, lang }: { matter: Me
           <div className={styles.kv}><dt>{say("পথ", "Pathway")}</dt><dd>{L.pathway(matter.pathway, lang)}</dd></div>
           {matter.referralSource && <div className={styles.kv}><dt>{say("রেফারেল উৎস", "Referral source")}</dt><dd>{matter.referralSource}</dd></div>}
           <div className={styles.kv}><dt>{say("নিবন্ধনের উৎস", "Registration source")}</dt><dd>{matter.registrationSource}</dd></div>
-          <div className={styles.kv}><dt>{say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}</dt><dd>{L.role(matter.assignedMediator, lang)}</dd></div>
+          <div className={styles.kv}><dt>{say("দায়িত্বপ্রাপ্ত মধ্যস্থতাকারী", "Assigned mediator")}</dt><dd>{matter.assignedMediator}</dd></div>
         </div>
         <div>
           <div className={styles.kv}><dt>{say("প্রতিনিধিত্ব", "Representation status")}</dt><dd>{matter.parties.some((p) => p.representedBy) ? say("এক বা একাধিক পক্ষ প্রতিনিধিত্বপ্রাপ্ত", "One or more parties represented") : say("সরাসরি", "Direct")}</dd></div>
@@ -653,10 +653,16 @@ function DraftSection({ matter, session, draft, lang, run }: { matter: Mediation
           <div>{lang === "bn" ? clause.bodyBn : clause.bodyEn}</div>
           {clause.sourceNote && <div style={{ color: "var(--gray)", fontSize: "var(--t-label)" }}>{clause.sourceNote}</div>}
           {draft.status === "draft" || draft.status === "human_reviewed" ? (
-            <div className={styles.actionsRow}>
+            <div className={styles.dispoRow}>
               {(["accept", "edit", "reject", "request_clarification", "mark_unresolved"] as ClauseDisposition[]).map((d) => (
-                <button key={d} className={styles.btnSecondary} onClick={() => run(() => SettlementDraftingService.dispositionClause({ draftId: draft.draftId, clauseId: clause.clauseId, disposition: d, actor: ACTOR }))}>
-                  {L.disposition(d, lang)}
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={clause.disposition === d}
+                  className={clause.disposition === d ? styles.dispoBtnActive : styles.dispoBtn}
+                  onClick={() => run(() => SettlementDraftingService.dispositionClause({ draftId: draft.draftId, clauseId: clause.clauseId, disposition: d, actor: ACTOR }))}
+                >
+                  {clause.disposition === d ? "✓ " : ""}{L.disposition(d, lang)}
                 </button>
               ))}
             </div>
@@ -851,7 +857,7 @@ function HistorySection({ matter, auditEvents, lang }: { matter: MediationMatter
         <thead><tr><th>{say("সময়", "Time")}</th><th>{say("কর্ম", "Action")}</th><th>{say("অভিনেতা", "Actor")}</th></tr></thead>
         <tbody>
           {[...auditEvents].reverse().map((e) => (
-            <tr key={e.id}><td>{fmtDateTime(e.occurredAt, lang)}</td><td>{e.action}</td><td>{L.role(e.actor, lang)}</td></tr>
+            <tr key={e.id}><td>{fmtDateTime(e.occurredAt, lang)}</td><td>{e.action}</td><td>{e.actor}</td></tr>
           ))}
         </tbody>
       </table>

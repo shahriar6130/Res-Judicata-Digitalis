@@ -62,6 +62,15 @@ Show sourceable service counts, versioned policy values, authorised-user totals,
 For this prototype S33 is a read-only seeded configuration reference, not a full policy-pack editor.
 Administrators cannot make legal or case-consequential decisions from this view.
 
+### Mediator document review
+
+The document step explains the consequence before each action. A mediator records a reason, then
+either marks the document reviewed or flags it unclear. An unclear or missing item displays the
+created DLAO follow-up task and its state; resolving the issue completes that same task rather than
+creating or hiding duplicates. The matter can advance to session preparation only when every
+recorded document is reviewed. Once the stage has advanced it is read-only, except that an existing
+issue may be resolved with a recorded human reason and audit event.
+
 ## State and simulation treatment
 
 States are text inside thin rectangular outlines. `DISPUTED` and `MISSING` use the red token;

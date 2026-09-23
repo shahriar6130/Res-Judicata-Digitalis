@@ -62,6 +62,10 @@ claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/lay
 Nothing hardcodes a color or font family outside `app/tokens.css` and
 `app/layout.tsx`; change the whole look in those two files.
 
+The mediator case workspace includes a human-led document-review gate. Unclear and missing items
+create one visible DLAO follow-up task, resolving an item completes the linked task, and the workflow
+cannot advance to session preparation while any recorded document remains unresolved.
+
 ## Language
 
 Every screen renders fully in Bangla (default) or fully in English. The text-only toggle

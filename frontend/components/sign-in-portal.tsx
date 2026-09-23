@@ -11,7 +11,7 @@ import { Wordmark } from "@/components/wordmark";
 import { useI18n } from "@/lib/i18n";
 import { PORTAL_ART } from "@/lib/portal-art";
 import type { Role } from "@/lib/roles";
-import { CitizenAuth, DISTRICTS, UdcAuth } from "@/lib/dlas";
+import { CitizenAuth, DISTRICTS, DlaoAuth, UdcAuth } from "@/lib/dlas";
 
 /* ------------------------------------------------------------------ *
  *  Rotated vertical role label that sits near the bottom-right of the
@@ -131,6 +131,8 @@ export function SignInPortal({ role }: SignInPortalProps) {
             <CitizenAuthForm home={role.home} />
           ) : role.id === "udc" ? (
             <UdcAuthForm home={role.home} />
+          ) : role.id === "dlo" ? (
+            <DlaoAuthForm home={role.home} />
           ) : (
           <form
             className={styles.form}
@@ -372,6 +374,112 @@ function UdcAuthForm({ home }: { home: string }) {
               ))}
             </select>
           </div>
+        </>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className={styles.formError}>
+          {error}
+        </p>
+      ) : null}
+
+      <Button type="submit" disabled={pending}>
+        {pending ? t("signingIn") : mode === "login" ? t("signInAction") : tx("অ্যাকাউন্ট খুলুন", "Create account")}
+      </Button>
+    </form>
+  );
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  DLAO / SCLAC / LLAC officer: sign-up (name + mobile + office),
+ *  login (mobile only). Accounts: dlas.db.v1.officers.
+ * ------------------------------------------------------------------ */
+function DlaoAuthForm({ home }: { home: string }) {
+  const { lang, t } = useI18n();
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [officeType, setOfficeType] = useState<"DLAO" | "SCLAC" | "LLAC">("DLAO");
+  const [district, setDistrict] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const selectStyle = { padding: "var(--control-pad-y) var(--control-pad-x)", border: "var(--control-border)", borderRadius: "var(--control-radius)", font: "inherit", background: "var(--white)" } as const;
+
+  const messages: Record<string, string> = {
+    INVALID_NAME: tx("আপনার নাম লিখুন।", "Enter your name."),
+    INVALID_PHONE: tx("সঠিক ১১ সংখ্যার মোবাইল নম্বর লিখুন (01XXXXXXXXX)।", "Enter a valid 11-digit mobile number (01XXXXXXXXX)."),
+    INVALID_DISTRICT: tx("অফিসের জেলা বাছাই করুন।", "Choose your office district."),
+    PHONE_TAKEN: tx("এই নম্বরে আগেই অ্যাকাউন্ট আছে — লগইন করুন।", "This number already has an account — log in instead."),
+    NOT_FOUND: tx("এই নম্বরে কোনো অ্যাকাউন্ট নেই — সাইন আপ করুন।", "No account for this number — sign up first."),
+  };
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const r = mode === "login" ? DlaoAuth.login(phone) : DlaoAuth.signUp({ name, phone, officeType, district });
+    if (!r.ok) {
+      setError(messages[r.error]);
+      if (r.error === "PHONE_TAKEN") setMode("login");
+      if (r.error === "NOT_FOUND") setMode("signup");
+      return;
+    }
+    setError(null);
+    setPending(true);
+    router.push(home);
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate>
+      <div role="tablist" style={{ display: "flex", gap: "var(--s-2)" }}>
+        <Button type="button" variant={mode === "login" ? "primary" : "secondary"} role="tab" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>
+          {tx("লগইন", "Log in")}
+        </Button>
+        <Button type="button" variant={mode === "signup" ? "primary" : "secondary"} role="tab" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setError(null); }}>
+          {tx("সাইন আপ", "Sign up")}
+        </Button>
+      </div>
+
+      {mode === "signup" ? (
+        <Field id="dlao-name" label={tx("আপনার নাম", "Your name")} name="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+      ) : null}
+
+      <Field
+        id="dlao-phone"
+        label={t("mobileNumber")}
+        name="phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder={t("mobilePlaceholder")}
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+
+      {mode === "signup" ? (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-1)" }}>
+            <label htmlFor="dlao-office">{tx("অফিস", "Office")}</label>
+            <select id="dlao-office" value={officeType} onChange={(e) => setOfficeType(e.target.value as "DLAO" | "SCLAC" | "LLAC")} style={selectStyle}>
+              <option value="DLAO">{tx("জেলা লিগ্যাল এইড অফিস (DLAO)", "District Legal Aid Office (DLAO)")}</option>
+              <option value="SCLAC">{tx("সুপ্রিম কোর্ট লিগ্যাল এইড কমিটি (SCLAC)", "Supreme Court Legal Aid Committee (SCLAC)")}</option>
+              <option value="LLAC">{tx("শ্রমিক আইনগত সহায়তা সেল (LLAC)", "Labour Legal Aid Cell (LLAC)")}</option>
+            </select>
+          </div>
+          {officeType !== "SCLAC" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-1)" }}>
+              <label htmlFor="dlao-district">{tx("জেলা", "District")}</label>
+              <select id="dlao-district" value={district} onChange={(e) => setDistrict(e.target.value)} style={selectStyle}>
+                <option value="">{tx("বাছাই করুন", "Select")}</option>
+                {DISTRICTS.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.label[lang]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </>
       ) : null}
 

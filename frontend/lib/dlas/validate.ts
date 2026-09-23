@@ -28,6 +28,14 @@ export function validateApplication(
   } else {
     need("applicant.phone", !!normalizePhone(a.phone), "A valid 11-digit mobile number (01XXXXXXXXX) is required");
   }
+  if (a.nidNumber) {
+    const digits = a.nidNumber.replace(/[০-৯]/g, (c) => String("০১২৩৪৫৬৭৮৯".indexOf(c))).replace(/\D/g, "");
+    if (![10, 13, 17].includes(digits.length)) {
+      errors.push({ path: "applicant.nidNumber", code: "FORMAT", message: "NID number must have 10, 13 or 17 digits" });
+    }
+  } else {
+    warnings.push({ path: "applicant.nidNumber", code: "NID_NOT_PROVIDED", message: "No NID number — the DLAO will verify identity another way" });
+  }
   need(
     "applicant.district",
     !!a.district && DISTRICTS.some((d) => d.code === a.district),

@@ -330,12 +330,14 @@ export function AssistedIntake() {
   const extraErrors = useMemo(() => {
     const e: string[] = [];
     if (step === 1 && !draft.district) e.push(lang === "bn" ? "জেলা বাছাই করুন" : "Choose your district");
+    if (step === 1 && draft.nidNumber && ![10, 13, 17].includes(draft.nidNumber.replace(/\D/g, "").length))
+      e.push(lang === "bn" ? "এনআইডি নম্বর ১০, ১৩ বা ১৭ সংখ্যার হতে হবে" : "NID number must have 10, 13 or 17 digits");
     if (step === 1 && !phoneVerified) e.push(lang === "bn" ? "মোবাইল নম্বরটি কোড দিয়ে যাচাই করুন" : "Verify your mobile number with the code");
     if (step === 5 && !draft.contactSlot) e.push(lang === "bn" ? "নিরাপদ যোগাযোগের সময় বাছাই করুন" : "Choose a safe contact time");
     if (step === 5 && draft.contactSlot === "custom" && (!draft.contactDay || !draft.contactTime))
       e.push(lang === "bn" ? "যোগাযোগের দিন ও সময় লিখুন" : "Enter the contact day and time");
     return e;
-  }, [step, draft.district, draft.contactSlot, draft.contactDay, draft.contactTime, phoneVerified, lang]);
+  }, [step, draft.district, draft.nidNumber, draft.contactSlot, draft.contactDay, draft.contactTime, phoneVerified, lang]);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const allValid = Object.keys(errors).length === 0 && extraErrors.length === 0;
 
@@ -453,6 +455,7 @@ export function AssistedIntake() {
               <CitizenIdentityCheck
                 draft={draft}
                 onDistrict={(v) => setField("district", v)}
+                onNid={(v) => setField("nidNumber", v)}
                 verified={phoneVerified}
               />
             </>
@@ -1468,10 +1471,12 @@ function validateStep(
 function CitizenIdentityCheck({
   draft,
   onDistrict,
+  onNid,
   verified,
 }: {
   draft: IntakeDraft;
   onDistrict: (v: string) => void;
+  onNid: (v: string) => void;
   verified: boolean;
 }) {
   const { lang } = useI18n();
@@ -1511,6 +1516,23 @@ function CitizenIdentityCheck({
             </option>
           ))}
         </select>
+      </label>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>
+          {draft.actingFor === "family" || draft.actingFor === "neighbor"
+            ? tx("আবেদনকারীর জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "Applicant's NID number (optional)")
+            : tx("জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "NID number (optional)")}
+        </span>
+        <input
+          className={styles.textInput}
+          inputMode="numeric"
+          value={draft.nidNumber ?? ""}
+          onChange={(e) => onNid(e.target.value)}
+          placeholder={tx("১০, ১৩ বা ১৭ সংখ্যা", "10, 13 or 17 digits")}
+        />
+        <span className={styles.micLabelMuted}>
+          {tx("জেলা লিগ্যাল এইড অফিসার এটি আপনার এনআইডি কার্ডের সাথে মিলিয়ে দেখবেন। না থাকলে ফাঁকা রাখুন।", "The legal aid officer will check it against your NID card. Leave empty if you don't have it.")}
+        </span>
       </label>
       <div className={styles.field}>
         <span className={styles.fieldLabel}>

@@ -38,6 +38,7 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
   const [summaryOriginal, setSummaryOriginal] = useState("");
   const [summaryBangla, setSummaryBangla] = useState("");
   const [safeTime, setSafeTime] = useState<SafeTime | "">("");
+  const [nidNumber, setNidNumber] = useState("");
 
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "syncing" | "synced" | "error">("idle");
   const [autoSaveAt, setAutoSaveAt] = useState<string>("");
@@ -176,6 +177,7 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
         summaryBangla,
         freeNoticeAck,
         lang,
+        nidNumber,
       });
     } catch {
       /* storage failure — the workspace will retry on submit */
@@ -251,6 +253,10 @@ export function UdcNewIntakePanel({ role = "udc" }: { role?: string }) {
               className={autoSaveState === "saved" || autoSaveState === "synced" ? styles.fieldSaved : ""}
             />
             <small style={{ color: "var(--gray)" }}>{lang === "bn" ? "প্রতিটি অক্ষর অটো-সেভ হয়" : "Every keystroke auto-saves"}</small>
+
+            <label htmlFor="ni-nid">{lang === "bn" ? "আবেদনকারীর এনআইডি নম্বর (ঐচ্ছিক)" : "Applicant's NID number (optional)"}</label>
+            <input id="ni-nid" type="text" inputMode="numeric" value={nidNumber} onChange={(e) => setNidNumber(e.target.value)} placeholder={lang === "bn" ? "১০, ১৩ বা ১৭ সংখ্যা" : "10, 13 or 17 digits"} />
+            <span></span>
 
             <label htmlFor="ni-district">{lang === "bn" ? "জেলা" : "District"}</label>
             <select id="ni-district" value={district} onChange={(e) => { setDistrict(e.target.value); void autoSaveField({ district: e.target.value }); }}>

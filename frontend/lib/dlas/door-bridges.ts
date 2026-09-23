@@ -14,6 +14,7 @@
 
 import { IntakeGateway, type CaptureTag, type SubmitResult } from "./gateway";
 import { CitizenAuth } from "./citizen-auth";
+import { FileStore } from "./files";
 import { mapLegacyDistrict, mapLegacyMatter } from "./legacy-bridge";
 import { bucketForTime, normalizePhone, SENSITIVE_DOC_TYPES } from "./reference";
 import type {
@@ -40,6 +41,7 @@ export interface CitizenDraftLike {
   proxyRel: string;
   proxyName: string;
   proxyPhone: string;
+  nidNumber?: string;
   matter: string | null;
   partyName: string;
   partyAddress: string;
@@ -88,8 +90,8 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
   const method: ContactMethod = rep && !applicantPhone ? "VIA_REPRESENTATIVE" : "CALL";
   return {
     applicant: rep
-      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district) }
-      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district) },
+      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null }
+      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null },
     filedBy: rep
       ? { kind: "REPRESENTATIVE", name: d.name.trim() || null, phone: normalizePhone(d.phone), relation: mapRelation(d.proxyRel, d.actingFor), operatorId: null, centre: null }
       : { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
@@ -184,6 +186,7 @@ export const CitizenDoor = {
           sha256: await hashDataUrl(doc.dataUrl),
           sensitive: false,
           qualityNote: null,
+          preview: await FileStore.put(`DOC-${doc.id}`, doc.dataUrl, doc.mimeType || "application/octet-stream"),
         },
         tag,
       );
@@ -271,6 +274,7 @@ export interface UdcStartInput {
   summaryBangla: string;
   freeNoticeAck: boolean;
   lang: "bn" | "en";
+  nidNumber?: string;
 }
 
 export interface UdcConsentLike {
@@ -319,6 +323,7 @@ export const UdcDoor = {
           preferredLanguage: lang,
           phone,
           phoneOwnedByApplicant: i.contactKind === "applicant_controlled_phone" ? true : phone ? false : null,
+          nidNumber: i.nidNumber?.trim() || null,
         },
         filedBy: { kind: "UDC_OPERATOR", name: null, phone: null, relation: null, operatorId: i.operatorId, centre: i.centre },
         matter: {
@@ -393,7 +398,7 @@ export const UdcDoor = {
   },
 
   /** Document captured by the UDC camera flow. */
-  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }) {
+  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }, preview?: "STORED" | "TOO_LARGE" | "NONE") {
     const s = IntakeGateway.findSessionByClientRef(temporaryId);
     if (!s || s.step === "SUBMITTED") return;
     const type = CHECKLIST_TO_DOC[c.checklistItemId] ?? "OTHER";
@@ -410,6 +415,7 @@ export const UdcDoor = {
         sha256: null,
         sensitive: c.sensitivity === "restricted" || SENSITIVE_DOC_TYPES.includes(type),
         qualityNote: quality || null,
+        preview: preview ?? "NONE",
       },
       udcTag(s.meta.operatorId ?? "udc"),
     );

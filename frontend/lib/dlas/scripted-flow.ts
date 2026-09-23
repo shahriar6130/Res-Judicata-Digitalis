@@ -105,6 +105,7 @@ export const PATH_TO_NODE: Record<string, string> = {
   "applicant.fullName": "NAME",
   "applicant.phone": "APPLICANT_PHONE",
   "applicant.district": "DISTRICT",
+  "applicant.nidNumber": "NID",
   "matter.category": "MATTER",
   "matter.summary": "SUMMARY",
   "safeContact.method": "SAFE_CALL",
@@ -266,6 +267,19 @@ export const NODES: Record<string, FlowNode> = {
       const code = byIndex(DISTRICTS, v);
       if (!code) return { error: t(ctx, "১–৮ চাপুন", "Press 1–8") };
       IntakeGateway.capture(s.sessionId, { applicant: { district: code } }, tagFor(ctx, s, "choice"));
+      return { next: "NID" };
+    },
+  },
+  NID: {
+    id: "NID",
+    input: "digits",
+    prompt: (ctx) =>
+      t(ctx, "জাতীয় পরিচয়পত্র নম্বর দিন, শেষে #। না থাকলে শুধু # চাপুন", "Enter the NID number, then #. If there is none, just press #"),
+    handle: (v, ctx, s) => {
+      const d = v.replace(/\D/g, "");
+      if (!d) return { next: "MATTER" }; // skipped — the DLAO verifies identity another way
+      if (![10, 13, 17].includes(d.length)) return { error: t(ctx, "১০, ১৩ বা ১৭ সংখ্যা দিন, অথবা শুধু #", "Enter 10, 13 or 17 digits, or just #") };
+      IntakeGateway.capture(s.sessionId, { applicant: { nidNumber: d } }, tagFor(ctx, s, "digits"));
       return { next: "MATTER" };
     },
   },

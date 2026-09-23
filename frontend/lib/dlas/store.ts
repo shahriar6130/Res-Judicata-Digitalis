@@ -15,6 +15,7 @@
 
 import { useSyncExternalStore } from "react";
 import { SCHEMA_VERSION, type DlasDb } from "./schema";
+import { demoUdcDirectory } from "./udc-directory";
 
 export const DLAS_KEY = "dlas.db.v1";
 const EVENT = "dlas:db-changed";
@@ -26,6 +27,9 @@ export function emptyDb(): DlasDb {
     counters: { application: 0, case: 0, auditSeq: 0 },
     citizens: [],
     udcOperators: [],
+    officers: [],
+    udcCentres: demoUdcDirectory(new Date(0).toISOString()),
+    eligibilityRulesets: [],
     sessions: [],
     applications: [],
     tasks: [],
@@ -55,8 +59,26 @@ function parse(raw: string | null): DlasDb {
       counters: { ...base.counters, ...(p.counters ?? {}) },
       citizens: Array.isArray(p.citizens) ? p.citizens : [],
       udcOperators: Array.isArray(p.udcOperators) ? p.udcOperators : [],
+      officers: Array.isArray(p.officers) ? p.officers : [],
+      // The demo UDC directory is written into the JSON on first read; it is saved with the next write.
+      udcCentres: Array.isArray(p.udcCentres) && p.udcCentres.length ? p.udcCentres : demoUdcDirectory(new Date().toISOString()),
+      eligibilityRulesets: Array.isArray(p.eligibilityRulesets) ? p.eligibilityRulesets : [],
       sessions: Array.isArray(p.sessions) ? p.sessions : [],
-      applications: Array.isArray(p.applications) ? p.applications : [],
+      // Records written before Step 2 existed get the new fields as null.
+      applications: Array.isArray(p.applications)
+        ? p.applications.map((a) => ({
+            ...a,
+            review: a.review
+              ? {
+                  ...a.review,
+                  identity: { ...a.review.identity, nid: a.review.identity.nid ?? { status: null, formatValid: null, simulatedRegistryCheck: null } },
+                  verifiedAt: a.review.verifiedAt ?? null,
+                  pathway: a.review.pathway ?? null,
+                }
+              : null,
+            closedAt: a.closedAt ?? null,
+          }))
+        : [],
       tasks: Array.isArray(p.tasks) ? p.tasks : [],
       outbox: Array.isArray(p.outbox) ? p.outbox : [],
       otp: Array.isArray(p.otp) ? p.otp : [],

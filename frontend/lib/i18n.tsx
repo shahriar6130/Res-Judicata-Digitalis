@@ -62,6 +62,10 @@ export type MessageKey =
   | "roleAdminSub"
   | "navAssignments"
   | "navTimeline"
+  | "dlaoNavNew"
+  | "dlaoNavReview"
+  | "dlaoNavDecided"
+  | "dlaoNavTasks"
   | "navAssignedCases"
   | "navHearingReports"
   | "navCalendar"
@@ -1236,6 +1240,10 @@ export const messages: Messages = {
     roleAdminSub: "সিস্টেম প্রশাসন",
     navAssignments: "নিয়োগ",
     navTimeline: "সময়রেখা",
+    dlaoNavNew: "নতুন আবেদন",
+    dlaoNavReview: "যাচাই চলছে",
+    dlaoNavDecided: "সিদ্ধান্ত হয়েছে",
+    dlaoNavTasks: "ফলো-আপ কাজ",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
     navHearingReports: "শুনানির প্রতিবেদন",
     navCalendar: "ক্যালেন্ডার",
@@ -2500,6 +2508,10 @@ export const messages: Messages = {
     roleAdminSub: "System Admin",
     navAssignments: "Assignments",
     navTimeline: "Timeline",
+    dlaoNavNew: "New applications",
+    dlaoNavReview: "In verification",
+    dlaoNavDecided: "Decided",
+    dlaoNavTasks: "Follow-up tasks",
     navAssignedCases: "Assigned Cases",
     navHearingReports: "Hearing Reports",
     navCalendar: "Calendar",

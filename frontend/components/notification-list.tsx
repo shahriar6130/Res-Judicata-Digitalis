@@ -53,7 +53,11 @@ export function NotificationList() {
               <button
                 type="button"
                 className={`${styles.row} ${item.unread ? styles.rowUnread : ""}`}
-                onClick={() => navigate(item.href)}
+                onClick={() => {
+                  // Opening a notification counts as seeing the feed — the glow stops.
+                  if (me && item.unread) CitizenAuth.markNotificationsRead(me.citizenId);
+                  navigate(item.href);
+                }}
               >
                 <span
                   className={`${styles.unreadDot} ${item.unread ? styles.unreadDotOn : ""}`}

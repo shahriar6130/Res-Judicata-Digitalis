@@ -1,12 +1,13 @@
 "use client";
 
 import type { CitizenCaseSummary } from "@/lib/case-demo";
-import { useCitizenCases } from "@/lib/dlas/citizen-view";
+import { useCitizenCases, useCitizenNotifications, useCurrentCitizen } from "@/lib/dlas/citizen-view";
+import { CitizenAuth } from "@/lib/dlas";
 import { useI18n } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { StatusPill } from "@/components/status-pill";
-import { Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
+import { Bell, Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
 import styles from "./home-dashboard.module.css";
 
 /* ------------------------------------------------------------------ *
@@ -56,6 +57,10 @@ export function HomeDashboard() {
   const profile = useCitizenProfile();
   const cases = useCitizenCases();
   const { navigate } = useHashRoute();
+  const me = useCurrentCitizen();
+  const unread = useCitizenNotifications().filter((n) => n.unread);
+  // Most important new item first: a document request, else the newest.
+  const top = unread.find((n) => n.id.startsWith("task-") && n.title.en.startsWith("Document needed")) ?? unread[0];
 
   const greeting = greetingFor(new Date());
   const greetingText = t(greetingKey(greeting));
@@ -70,6 +75,32 @@ export function HomeDashboard() {
         </h1>
         <p className={styles.subhead}>{t("homeHowCanWeHelp")}</p>
       </header>
+
+      {top ? (
+        <button
+          type="button"
+          className={styles.alert}
+          onClick={() => {
+            if (me) CitizenAuth.markNotificationsRead(me.citizenId);
+            navigate(top.href);
+          }}
+        >
+          <span className={styles.alertIcon} aria-hidden>
+            <Bell size={20} />
+          </span>
+          <span className={styles.alertBody}>
+            <span className={styles.alertTitle}>{top.title[lang]}</span>
+            <span className={styles.alertSub}>
+              {top.body[lang]}
+              {unread.length > 1 ? ` · +${unread.length - 1} ${lang === "bn" ? "আরও নতুন" : "more new"}` : ""}
+            </span>
+          </span>
+          <span className={styles.alertCta}>
+            {lang === "bn" ? "খুলুন" : "Open"}
+            <ChevronRight size={16} aria-hidden />
+          </span>
+        </button>
+      ) : null}
 
       <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>
         <button

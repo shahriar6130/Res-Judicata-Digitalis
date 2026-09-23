@@ -27,7 +27,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import styles from "../udc.module.css";
-import { UdcDoor, useDlasDb, useCurrentUdcOperator, SAFE_TIMES } from "@/lib/dlas";
+import { FileStore, UdcDoor, useDlasDb, useCurrentUdcOperator, SAFE_TIMES } from "@/lib/dlas";
 
 interface Props {
   temporaryId: string;
@@ -185,7 +185,8 @@ function UdcIntakeWorkspaceBody({
     const confirmed = DocumentCaptureService.confirmByApplicant(updated);
     const next = AssistedIntakeService.attachDocument(intake, confirmed);
     setIntake(next);
-    UdcDoor.syncDocument(next.temporaryId, confirmed, { name: file.name, type: file.type });
+    const preview = await FileStore.put(`DOC-${confirmed.id}`, file, file.type || "application/octet-stream");
+    UdcDoor.syncDocument(next.temporaryId, confirmed, { name: file.name, type: file.type }, preview);
   }
 
   function setItem(itemId: string, state: ChecklistItemState) {

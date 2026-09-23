@@ -48,6 +48,7 @@ export type ProvenanceSource =
   | "REPRESENTATIVE_REPORTED" // said by a representative (e.g. Ripon for Moyuri)
   | "OPERATOR_ENTERED" // UDC/helpline typed it on the applicant's behalf
   | "AI_INFERRED" // speech-to-text / classifier output, unconfirmed
+  | "OFFICER_VERIFIED" // checked/corrected by an authorised DLAO officer
   | "SYSTEM_DERIVED"; // computed by the platform (office, timestamps…)
 
 export type Confidence = "CONFIRMED" | "STATED" | "INFERRED";
@@ -140,6 +141,10 @@ export interface DocumentRef {
   sha256: string | null; // integrity hash of the attached bytes
   sensitive: boolean; // restricted access (e.g. intimate images)
   qualityNote: string | null; // e.g. "blurred — retake requested"
+  preview?: "STORED" | "TOO_LARGE" | "NONE"; // officer-viewable copy in localStorage["dlas.files.v1"]
+  requested?: { by: string; byName: string; at: string; note: string | null } | null; // DLAO asked the applicant for it
+  uploadedAt?: string | null; // when the file was attached after submission
+  uploadedVia?: "APPLICANT_WEB" | "UDC" | "OFFICE" | null;
 }
 
 export interface ApplicationData {
@@ -147,6 +152,7 @@ export interface ApplicationData {
     fullName: string | null;
     phone: string | null; // 01XXXXXXXXX
     phoneOwnedByApplicant: boolean | null; // false => UDC/shop/relative number
+    nidNumber: string | null; // 10, 13 or 17 digits — verified by the DLAO in Step 2
     gender: Gender | null;
     district: DistrictCode | null;
     addressLine: string | null;
@@ -344,10 +350,126 @@ export interface ApplicationRecord {
   };
   taskIds: string[];
   audit: AuditEntry[];
+  review: DlaoReview | null; // Step 2 — set once an office receives the application
+  closedAt: string | null;
   version: number;
   createdAt: string;
   submittedAt: string;
   updatedAt: string;
+}
+
+/* ---------- Step 2 · Verification & eligibility (DLAO / SCLAC / LLAC) ---------- */
+
+export type StepState = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED";
+
+export type IdentityOutcome = "CONFIRMED" | "CORRECTED" | "DISPUTED" | "UNREACHABLE";
+export type FactStatus = "CORROBORATED" | "DISPUTED" | "UNVERIFIABLE" | "NOT_REVIEWED";
+export type FactsOutcome = "SUFFICIENT" | "NEEDS_CLARIFICATION" | "INSUFFICIENT";
+export type EligibilityRecommendation =
+  | "ELIGIBLE_INCOME"
+  | "ELIGIBLE_EXEMPT_CATEGORY"
+  | "NOT_ELIGIBLE_INCOME"
+  | "INSUFFICIENT_INFORMATION";
+
+export interface DlaoReview {
+  officerId: string;
+  officerName: string;
+  office: string; // DLAO-<DISTRICT> or SCLAC / LLAC-<DISTRICT>
+  receivedAt: string;
+  identity: {
+    state: StepState;
+    outcome: IdentityOutcome | null;
+    method: "PHONE_CALL" | "OFFICE_VISIT" | "UDC_VIDEO" | "DOCUMENT_CHECK" | null;
+    note: string | null;
+    corrections: { path: string; from: string | null; to: string }[];
+    attempts: number;
+    at: string | null;
+    nid: {
+      status: "MATCHES_DOCUMENT" | "MISMATCH" | "NOT_PROVIDED" | null;
+      formatValid: boolean | null;
+      simulatedRegistryCheck: { at: string; result: "FORMAT_OK" | "FORMAT_INVALID"; note: string } | null;
+    };
+  };
+  facts: {
+    state: StepState;
+    items: { key: string; label: string; value: string | null; status: FactStatus; note: string | null }[];
+    missingEvidence: string[];
+    outcome: FactsOutcome | null;
+    at: string | null;
+  };
+  eligibility: {
+    state: StepState;
+    rulesetVersion: string | null;
+    courtLevel: "SUPREME_COURT" | "OTHER_COURTS";
+    declaredAnnualIncomeBdt: number | null; // null = not disclosed
+    incomeBand: "AT_OR_BELOW_THRESHOLD" | "ABOVE_THRESHOLD" | "NOT_DISCLOSED" | null;
+    exemptCategories: string[]; // EligibilityRuleset.exemptCategories[].code
+    vulnerabilityNotes: string | null;
+    recommendation: EligibilityRecommendation | null;
+    reasons: string[];
+    advisoryOnly: true;
+    at: string | null;
+  };
+  decision: {
+    decision: "ELIGIBLE" | "NOT_ELIGIBLE";
+    reason: string; // mandatory, even when agreeing with the recommendation
+    followedRecommendation: boolean;
+    by: string;
+    byName: string;
+    at: string;
+  } | null;
+  notes: { at: string; by: string; byName: string; text: string }[];
+  verifiedAt: string | null; // identity + documents + case facts all checked by the officer
+  pathway: {
+    type: PathwayType;
+    recommended: PathwayType;
+    recommendationReasons: string[];
+    followedRecommendation: boolean;
+    reason: string;
+    by: string;
+    byName: string;
+    at: string;
+  } | null;
+}
+
+export type PathwayType = "GRAM_ADALAT" | "MEDIATION" | "LAWYER";
+
+export interface EligibilityRuleset {
+  version: string;
+  status: "WORKING_DRAFT"; // to be checked against the Legal Aid Services Policy text by the team
+  source: string;
+  incomeThresholdAnnualBdt: { SUPREME_COURT: number; OTHER_COURTS: number };
+  exemptCategories: { code: string; label: { bn: string; en: string } }[];
+  createdAt: string;
+}
+
+/* ---------- UDC centre directory (citizen "my legal aid centre" → UDC list) ---------- */
+
+export interface UdcCentre {
+  centreId: string;
+  name: { bn: string; en: string };
+  area: { bn: string; en: string }; // upazila / pourashava
+  district: DistrictCode;
+  hours: { bn: string; en: string };
+  services: string[]; // ASSISTED_APPLICATION, DOCUMENT_SCAN, STATUS_CHECK, VIDEO_CONSENT
+  source: "DEMO_DIRECTORY" | "REGISTERED_OPERATOR";
+  operatorId: string | null; // set when a real UDC operator signed up for this centre
+  createdAt: string;
+}
+
+/* ---------- DLAO officer accounts (sign-up: name + phone + office) ---------- */
+
+export type OfficeType = "DLAO" | "SCLAC" | "LLAC";
+
+export interface DlaoOfficerAccount {
+  officerId: string; // OFC-XXXXXX
+  name: string;
+  phone: string; // login id (no password in the prototype)
+  officeType: OfficeType;
+  district: DistrictCode | null; // null for SCLAC (national, Supreme Court)
+  createdAt: string;
+  lastLoginAt: string | null;
+  audit: AuditEntry[];
 }
 
 /* ---------- Tasks (human work items created by the workflow) ---------- */
@@ -357,14 +479,18 @@ export type TaskType =
   | "URGENT_SAFETY_REVIEW"
   | "COMPLETE_MISSING_INFO"
   | "DOCUMENT_FOLLOW_UP"
-  | "HUMAN_CALLBACK";
+  | "DOCUMENT_REVIEW"
+  | "HUMAN_CALLBACK"
+  | "GRAM_ADALAT_REFERRAL"
+  | "MEDIATION_SCHEDULING"
+  | "LAWYER_ASSIGNMENT";
 
 export interface Task {
   taskId: string; // TSK-XXXXXX
   type: TaskType;
   applicationId: string | null;
   sessionId: string | null;
-  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR";
+  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR" | "MEDIATOR" | "GRAM_ADALAT";
   office: string | null;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
   priority: "NORMAL" | "HIGH" | "URGENT";
@@ -429,6 +555,9 @@ export interface DlasDb {
   counters: { application: number; case: number; auditSeq: number };
   citizens: CitizenAccount[];
   udcOperators: UdcOperatorAccount[];
+  officers: DlaoOfficerAccount[];
+  udcCentres: UdcCentre[];
+  eligibilityRulesets: EligibilityRuleset[];
   sessions: IntakeSession[];
   applications: ApplicationRecord[];
   tasks: Task[];
@@ -445,6 +574,7 @@ export function emptyApplicationData(): ApplicationData {
       fullName: null,
       phone: null,
       phoneOwnedByApplicant: null,
+      nidNumber: null,
       gender: null,
       district: null,
       addressLine: null,

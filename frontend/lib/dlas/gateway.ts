@@ -513,6 +513,8 @@ export const IntakeGateway = {
         routing: { office, recommendedPriority: priority, reasons, advisoryOnly: true, humanDecision: null },
         taskIds: [],
         audit: [],
+        review: null,
+        closedAt: null,
         version: 1,
         createdAt: s.createdAt,
         submittedAt: t,

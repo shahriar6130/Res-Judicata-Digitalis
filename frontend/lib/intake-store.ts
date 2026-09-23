@@ -115,6 +115,8 @@ export type IntakeDraft = {
   proxyPhone: string;
   /** District code (lib/dlas DISTRICTS) — needed for routing in the shared record. */
   district: string;
+  /** Applicant's NID number (optional; verified by the DLAO). */
+  nidNumber: string;
 
   /* --- Step 2: Matter --- */
   matter: MatterCategory | null;
@@ -176,6 +178,7 @@ export function emptyDraft(): IntakeDraft {
     proxyName: "",
     proxyPhone: "",
     district: "",
+    nidNumber: "",
     matter: null,
     partyName: "",
     partyAddress: "",

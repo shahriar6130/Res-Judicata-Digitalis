@@ -136,6 +136,16 @@ function OverviewPane({ lang }: { lang: Lang }) {
           cta={{ label: t("udcViewOnMap"), href: "#udc/office" }}
         />
         <PreviewCard
+          icon={<MapPin size={20} />}
+          title={lang === "bn" ? "কাছের ইউডিসি কেন্দ্র" : "UDC centres in your district"}
+          body={
+            office.udcCentres.length
+              ? office.udcCentres.slice(0, 2).map((c) => c.name[lang]).join(" · ")
+              : none
+          }
+          cta={{ label: t("udcViewOnMap"), href: "#udc/office" }}
+        />
+        <PreviewCard
           icon={<User size={20} />}
           title={t("udcOfficerNameLabel")}
           body={lang === "bn" ? "এখনো নিযুক্ত হয়নি" : "Not assigned yet"}
@@ -246,6 +256,41 @@ function OfficePane() {
           </table>
         </article>
       </div>
+
+      <article className={styles.intakeCard}>
+        <h3 className={styles.cardTitle}>
+          <MapPin size={18} aria-hidden />{" "}
+          {lang === "bn"
+            ? `ইউডিসি কেন্দ্র — ${office.district ? office.district.bn : "আপনার জেলা"}`
+            : `UDC centres — ${office.district ? office.district.en : "your district"}`}
+        </h3>
+        {office.udcCentres.length === 0 ? (
+          <p className={styles.metaHint}>{none}</p>
+        ) : (
+          <dl className={styles.metaList}>
+            {office.udcCentres.map((c) => (
+              <div key={c.centreId} className={styles.metaRow}>
+                <dt>
+                  <Building size={16} aria-hidden /> {c.name[lang]}
+                </dt>
+                <dd>
+                  {c.area[lang]} · {c.hours[lang]}
+                  {c.operatorName ? ` · ${lang === "bn" ? "উদ্যোক্তা" : "Operator"}: ${c.operatorName}` : ""}
+                  <span className={styles.metaHint}>
+                    {" "}
+                    · {c.source === "DEMO_DIRECTORY" ? (lang === "bn" ? "ডেমো তালিকা" : "demo directory") : lang === "bn" ? "নিবন্ধিত কেন্দ্র" : "registered centre"}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <p className={styles.metaHint}>
+          {lang === "bn"
+            ? "তালিকাটি আপনার সর্বশেষ আবেদনের জেলা অনুযায়ী।"
+            : "Listed by the district of your latest application."}
+        </p>
+      </article>
 
       <article className={styles.intakeCard}>
         <h3 className={styles.cardTitle}>

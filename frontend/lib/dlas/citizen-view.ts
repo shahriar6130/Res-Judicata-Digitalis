@@ -20,8 +20,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { CaseRecord, CaseStatus, CitizenCaseSummary, DocumentRecord, TimelineEvent } from "../case-demo";
 import { useDlasDb } from "./store";
-import { DISTRICTS, MATTERS, label, safeTimeLabel } from "./reference";
-import { PIPELINE, type ApplicationRecord, type CitizenAccount, type DlasDb } from "./schema";
+import { DISTRICTS, DOC_TYPES, MATTERS, label, safeTimeLabel } from "./reference";
+import { PIPELINE, type ApplicationRecord, type PathwayType, type DocType, type CitizenAccount, type DlasDb, type UdcCentre } from "./schema";
 
 const CURRENT_KEY = "dlas.citizen.current";
 
@@ -97,7 +97,7 @@ export function toSummary(a: ApplicationRecord): CitizenCaseSummary {
   const other = a.data.matter.opposingParty?.split(",")[0]?.trim() ?? "—";
   return {
     id: a.applicationId,
-    displayId: `#${a.applicationId}`,
+    displayId: a.caseId ? `#${a.caseId}` : `#${a.applicationId}`,
     status: statusOf(a),
     complainantBn: a.data.applicant.fullName ?? "—",
     complainantEn: a.data.applicant.fullName ?? "—",
@@ -118,7 +118,27 @@ const STAGE_TEXT: Record<string, { tBn: string; tEn: string; dBn: string; dEn: s
   CLOSURE: { tBn: "নিষ্পত্তি", tEn: "Closure", dBn: "", dEn: "" },
 };
 
+function auditAt(a: ApplicationRecord, action: string): string | null {
+  return a.audit.find((e) => e.action === action)?.at ?? null;
+}
+
+const PATHWAY_TEXT: Record<PathwayType, { bn: string; en: string }> = {
+  GRAM_ADALAT: { bn: "গ্রাম আদালতে প্রেরিত", en: "Referred to the Gram Adalat (village court)" },
+  MEDIATION: { bn: "মধ্যস্থতায় প্রেরিত — মধ্যস্থতাকারী যোগাযোগ করবেন", en: "Referred to mediation — a mediator will contact you" },
+  LAWYER: { bn: "প্যানেল আইনজীবী নিয়োগ করা হবে", en: "A panel lawyer will be assigned" },
+};
+
 function timeline(a: ApplicationRecord): TimelineEvent[] {
+  // Rejected: the record is closed after verification — show exactly that.
+  if (a.status === "REJECTED" && a.review?.decision) {
+    const d = a.review.decision;
+    const recv = a.review.receivedAt;
+    return [
+      { id: "ACCESS_APPLICATION", titleBn: STAGE_TEXT.ACCESS_APPLICATION.tBn, titleEn: STAGE_TEXT.ACCESS_APPLICATION.tEn, descriptionBn: STAGE_TEXT.ACCESS_APPLICATION.dBn, descriptionEn: STAGE_TEXT.ACCESS_APPLICATION.dEn, dateBn: fmt(a.submittedAt, "bn"), dateEn: fmt(a.submittedAt, "en"), state: "completed" },
+      { id: "VERIFICATION_REVIEW", titleBn: STAGE_TEXT.VERIFICATION_REVIEW.tBn, titleEn: STAGE_TEXT.VERIFICATION_REVIEW.tEn, descriptionBn: `${a.review.officerName} পর্যালোচনা করেছেন`, descriptionEn: `Reviewed by ${a.review.officerName}`, dateBn: fmt(recv, "bn"), dateEn: fmt(recv, "en"), state: "completed" },
+      { id: "CLOSED", titleBn: "আবেদন গৃহীত হয়নি — বন্ধ", titleEn: "Not accepted — application closed", descriptionBn: `কারণ: ${d.reason} · প্রশ্ন বা আপিলের জন্য ১৬৬৯৯`, descriptionEn: `Reason: ${d.reason} · Call 16699 to ask or appeal`, dateBn: fmt(d.at, "bn"), dateEn: fmt(d.at, "en"), state: "completed" },
+    ];
+  }
   // Step 1 is done at submit; the next backbone stage is "current" (waiting on a human).
   const doneUpTo = PIPELINE.indexOf(a.stage);
   return PIPELINE.map((stage, i) => {
@@ -128,13 +148,21 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
       id: stage,
       titleBn: s.tBn,
       titleEn: s.tEn,
-      descriptionBn: s.dBn,
-      descriptionEn: s.dEn,
-      dateBn: i === 0 ? fmt(a.submittedAt, "bn") : "",
-      dateEn: i === 0 ? fmt(a.submittedAt, "en") : "",
+      descriptionBn: stage === "CASE_OPENED" && a.caseId ? `কেস আইডি ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? PATHWAY_TEXT[a.review.pathway.type].bn : s.dBn,
+      descriptionEn: stage === "CASE_OPENED" && a.caseId ? `Case ID ${a.caseId}` : stage === "SERVICE_DELIVERY" && a.review?.pathway ? PATHWAY_TEXT[a.review.pathway.type].en : s.dEn,
+      dateBn: stageDate(a, i) ? fmt(stageDate(a, i)!, "bn") : "",
+      dateEn: stageDate(a, i) ? fmt(stageDate(a, i)!, "en") : "",
       state,
     };
   });
+}
+
+function stageDate(a: ApplicationRecord, i: number): string | null {
+  if (i === 0) return a.submittedAt;
+  if (i === 1) return a.review?.receivedAt ?? null;
+  if (i === 2) return auditAt(a, "case.created");
+  if (i === 3) return a.review?.pathway?.at ?? null;
+  return null;
 }
 
 function documents(a: ApplicationRecord): DocumentRecord[] {
@@ -156,7 +184,7 @@ export function toCaseRecord(a: ApplicationRecord): CaseRecord {
     id: a.applicationId,
     titleBn: t.bn,
     titleEn: t.en,
-    displayId: `#${a.applicationId}`,
+    displayId: a.caseId ? `#${a.caseId}` : `#${a.applicationId}`,
     officeBn: office ? `${office.label.bn} জেলা লিগ্যাল এইড অফিস` : "—",
     officeEn: office ? `${office.label.en} District Legal Aid Office` : "—",
     applicantBn: filer ?? "—",
@@ -186,6 +214,13 @@ export function useCitizenCases(): CitizenCaseSummary[] {
   const db = useDlasDb();
   const me = useCurrentCitizen();
   return useMemo(() => applicationsFor(db, me).map(toSummary), [db, me]);
+}
+
+/** The raw shared record for one of the logged-in citizen's applications (documents, provenance…). */
+export function useCitizenApplication(id: string): ApplicationRecord | null {
+  const db = useDlasDb();
+  const me = useCurrentCitizen();
+  return useMemo(() => applicationsFor(db, me).find((x) => x.applicationId === id) ?? null, [db, me, id]);
 }
 
 /** One of the logged-in citizen's cases, or null. */
@@ -235,6 +270,19 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
         COMPLETE_MISSING_INFO: { icon: "bell", bn: "কিছু তথ্য বাকি আছে", en: "Some information is missing" },
         HUMAN_CALLBACK: { icon: "user", bn: "সহায়তা কর্মী আপনাকে ফোন করবেন", en: "A helpline agent will call you back" },
       };
+      const ctx = t.context as { docType?: DocType; requested?: boolean } | undefined;
+      if (t.type === "DOCUMENT_FOLLOW_UP" && ctx?.requested && ctx.docType) {
+        const noteBn = t.reason.includes(" — ") ? ` — ${t.reason.split(" — ").slice(1).join(" — ")}` : "";
+        out.push({
+          id: `task-${t.taskId}`,
+          at: t.createdAt,
+          icon: "bell",
+          title: { bn: `নথি প্রয়োজন: ${label(DOC_TYPES, ctx.docType, "bn")}`, en: `Document needed: ${label(DOC_TYPES, ctx.docType, "en")}` },
+          body: { bn: `${a.applicationId} · এখানে ক্লিক করে আপলোড করুন${noteBn}`, en: `${a.applicationId} · click to upload it${noteBn}` },
+          href: `cases/${a.applicationId}`,
+        });
+        continue;
+      }
       const m = map[t.type];
       if (!m) continue;
       out.push({
@@ -242,9 +290,28 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
         at: t.createdAt,
         icon: m.icon,
         title: { bn: m.bn, en: m.en },
-        body: { bn: `${a.applicationId} · ${t.reason}`, en: `${a.applicationId} · ${t.reason}` },
+        body:
+          t.type === "HUMAN_CALLBACK"
+            ? { bn: `${a.applicationId} · আপনার নিরাপদ সময়ে: ${safeTimeLabel(a.data.safeContact, "bn")}`, en: `${a.applicationId} · at your safe time: ${safeTimeLabel(a.data.safeContact, "en")}` }
+            : { bn: `${a.applicationId} · ${t.reason}`, en: `${a.applicationId} · ${t.reason}` },
         href: `cases/${a.applicationId}`,
       });
+    }
+  }
+  for (const a of apps) {
+    if (a.review && !a.review.decision) {
+      out.push({ id: `rev-${a.applicationId}`, at: a.review.receivedAt, icon: "shield", title: { bn: "অফিস আপনার আবেদন পর্যালোচনা করছে", en: "The office is reviewing your application" }, body: { bn: `${a.applicationId} · ${a.review.office}`, en: `${a.applicationId} · ${a.review.office}` }, href: `cases/${a.applicationId}` });
+    }
+    const d = a.review?.decision;
+    if (d?.decision === "ELIGIBLE" && a.caseId) {
+      out.push({ id: `acc-${a.applicationId}`, at: d.at, icon: "check", title: { bn: `আবেদন গৃহীত — কেস আইডি ${a.caseId}`, en: `Application accepted — Case ID ${a.caseId}` }, body: { bn: a.applicationId, en: a.applicationId }, href: `cases/${a.applicationId}` });
+    }
+    const pw = a.review?.pathway;
+    if (pw && a.caseId) {
+      out.push({ id: `pw-${a.applicationId}`, at: pw.at, icon: "check", title: { bn: PATHWAY_TEXT[pw.type].bn, en: PATHWAY_TEXT[pw.type].en }, body: { bn: a.caseId, en: a.caseId }, href: `cases/${a.applicationId}` });
+    }
+    if (d?.decision === "NOT_ELIGIBLE") {
+      out.push({ id: `rej-${a.applicationId}`, at: d.at, icon: "bell", title: { bn: "আবেদন গৃহীত হয়নি", en: "Application not accepted" }, body: { bn: `কারণ: ${d.reason}`, en: `Reason: ${d.reason}` }, href: `cases/${a.applicationId}` });
     }
   }
   for (const m of db.outbox.filter((x) => x.to === me.phone && x.kind === "SMS_CONFIRMATION")) {
@@ -280,6 +347,8 @@ export type MyOffice = {
   openTasks: number;
   safeTime: { bn: string; en: string } | null;
   latestApplicationId: string | null;
+  /** UDC centres in the district of the latest application (demo directory + signed-up operators). */
+  udcCentres: (UdcCentre & { operatorName: string | null })[];
 };
 
 export function useMyOffice(): MyOffice {
@@ -298,6 +367,13 @@ export function useMyOffice(): MyOffice {
         ? { bn: safeTimeLabel(latest.data.safeContact, "bn"), en: safeTimeLabel(latest.data.safeContact, "en") }
         : null,
       latestApplicationId: latest?.applicationId ?? null,
+      udcCentres: d
+        ? db.udcCentres
+            .filter((c) => c.district === d.code)
+            // Real, signed-up centres first; demo directory after.
+            .sort((x, y) => (x.source === y.source ? 0 : x.source === "REGISTERED_OPERATOR" ? -1 : 1))
+            .map((c) => ({ ...c, operatorName: c.operatorId ? db.udcOperators.find((o) => o.operatorId === c.operatorId)?.name ?? null : null }))
+        : [],
     };
   }, [db, me]);
 }

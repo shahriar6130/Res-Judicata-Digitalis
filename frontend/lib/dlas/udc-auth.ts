@@ -55,6 +55,18 @@ export const UdcAuth = {
         audit: [{ seq: db.counters.auditSeq, at: now, actor: "udc_operator", role: "udc_operator", action: "udc.signed_up", detail: { phone } }],
       };
       db.udcOperators.push(a);
+      // The operator's real centre joins the directory citizens see.
+      db.udcCentres.push({
+        centreId: `UDCC-${a.operatorId}`,
+        name: { bn: a.centre, en: a.centre },
+        area: { bn: a.centre, en: a.centre },
+        district: a.district,
+        hours: { bn: "কেন্দ্রের সময় অনুযায়ী", en: "As per centre hours" },
+        services: ["ASSISTED_APPLICATION", "DOCUMENT_SCAN", "STATUS_CHECK"],
+        source: "REGISTERED_OPERATOR",
+        operatorId: a.operatorId,
+        createdAt: now,
+      });
       return a;
     });
     setCurrent(account.operatorId);

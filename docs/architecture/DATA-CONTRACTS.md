@@ -46,6 +46,7 @@ flowchart LR
 | `shakkho.dlao.inbox.v1` | localStorage | `lib/shakkho/bridges/dlao-inbox.bridge.ts` | legacy DLAO inbox tasks |
 | `shakkho.referrals.inbox.v1` | localStorage | `lib/shakkho/bridges/referral-inbox.bridge.ts` | legacy referral inbox |
 | `shakkho.udc.v1` | IndexedDB | `lib/shakkho/services/offline-store.service.ts` | legacy UDC offline drafts |
+| `dlas.files.v1` | localStorage | `lib/dlas/files.ts` | officer-viewable copies of uploaded documents, keyed by `docId` (images ≤1200px JPEG, PDFs ≤450 KB); `DocumentRef.preview` says `STORED` / `TOO_LARGE` / `NONE` |
 | `rjd.intake.drafts` / `rjd.intake.pending` | localStorage | `lib/intake-store.ts` | citizen wizard's own draft + offline queue (the wizard also writes `dlas.db.v1` at every step) |
 | `shakkho.lang`, `shakkho.udc.sidebar.v1` | localStorage | UI | language, sidebar state |
 
@@ -61,6 +62,9 @@ flowchart LR
   "v": 1,
   "schemaVersion": "dlas.application.v1",
   "counters": { "application": 5, "case": 0, "auditSeq": 212 },
+  "udcCentres":   [ /* UdcCentre — { centreId, name{bn,en}, area{bn,en}, district, hours, services[], source DEMO_DIRECTORY|REGISTERED_OPERATOR, operatorId } — 2 demo centres per district + every signed-up UDC operator */ ],
+  "officers":     [ /* DlaoOfficerAccount — { officerId OFC-XXXXXX, name, phone, officeType DLAO|SCLAC|LLAC, district, audit[] } */ ],
+  "eligibilityRulesets": [ /* { version "LASP-2014-working-v1", status WORKING_DRAFT, incomeThresholdAnnualBdt{SUPREME_COURT,OTHER_COURTS}, exemptCategories[] } */ ],
   "udcOperators": [ /* UdcOperatorAccount — { operatorId UDC-XXXXXX, name, phone, centre, district, createdAt, lastLoginAt, audit[] } */ ],
   "citizens":     [ /* CitizenAccount — { citizenId, name, phone, createdAt, lastLoginAt, notificationsReadAt, audit[] } */ ],
   "sessions":     [ /* IntakeSession — one per attempt at any door (pre-submission) */ ],
@@ -229,6 +233,8 @@ Step 1 ends at `ACCESS_APPLICATION` + `status: SUBMITTED` + open `ELIGIBILITY_RE
 | Route | Role | Reads / writes |
 |---|---|---|
 | `/portal/udc` | UDC sign-in | **Sign up** (name + mobile + UDC centre + district) / **Log in** (mobile only) → `dlas.db.v1.udcOperators`, current id in `dlas.udc.current`; every assisted record carries `filedBy.operatorId` |
+| `/dlo` | DLAO / SCLAC / LLAC sign-in | **Sign up** (name + mobile + office + district) / **Log in** (mobile only) → `dlas.db.v1.officers`, current id in `dlas.dlao.current` |
+| `/dashboard/dlo` (`#new` `#review` `#decided` `#tasks` `#app/<APP-ID>`) | officer | **Step 2** — office queue + review workspace; writes `applications[].review`, `status`, `stage`, `caseId`, `closedAt`, `tasks`, `outbox`, `audit` via `DlaoReviewService` (`lib/dlas/dlao.ts`) |
 | `/` | citizen sign-in | **Sign up** (name + mobile) / **Log in** (mobile only) → `dlas.db.v1.citizens`, current id in `dlas.citizen.current` |
 | `/dashboard/citizen#intake` (alias `#complaint`) | citizen / representative | **"Lodge a complaint"** — the 5-step wizard (the separate old complaint form was removed as redundant); **writes** `dlas.db.v1` at every step via `CitizenDoor` (OTP, district, draft, submit → APP-ID); also its own `rjd.intake.*` |
 | `/dashboard/udc/intake/new` → `/dashboard/udc/intake/[temporaryId]` | UDC | existing new-intake + workspace; **writes** `dlas.db.v1` via `UdcDoor` (start, consents, translation, documents, submit) before the offline queue, which then reuses the same APP-ID |
@@ -250,3 +256,51 @@ Step 1 ends at `ACCESS_APPLICATION` + `status: SUBMITTED` + open `ELIGIBILITY_RE
 | `/verify/[certNumber]` | public verify | static |
 
 Next steps move each provider module onto `dlas.db.v1` in the order of the backbone (DLAO review → case ID → mediation / lawyer / referral), reusing `IntakeGateway`-style services so everything stays one record.
+
+
+---
+
+## 6. Step 2 — Verification & eligibility (`record.review`)
+
+```
+Application received by relevant office      receive()            SUBMITTED → UNDER_REVIEW, stage VERIFICATION_REVIEW
+Verify identity & NID                        checkNidRegistry()   SIMULATED — format check only (10/13/17 digits), labelled on the record
+                                             verifyIdentity()     + nid: MATCHES_DOCUMENT | MISMATCH | NOT_PROVIDED (MISMATCH blocks; CONFIRMED+MISMATCH refused)
+                                                                  CONFIRMED | CORRECTED (→ OFFICER_VERIFIED provenance) | DISPUTED | UNREACHABLE (→ BLOCKED, INFO_REQUESTED, HUMAN_CALLBACK task)
+Verify documents & facts                     reviewFacts()        SUFFICIENT (→ review.verifiedAt, audit application.verified = VERIFIED) | NEEDS_CLARIFICATION | INSUFFICIENT (→ BLOCKED, COMPLETE_MISSING_INFO task)
+                                             markDocumentReceived(), setDocumentType() (officer re-classifies an upload → OFFICER_VERIFIED provenance)
+Vulnerability & eligibility (advisory)       assessEligibility()  recommendation from the JSON ruleset — exempt category first, then income band
+Eligible for legal aid?  (HUMAN)             decide()             reason ≥ 10 chars, always
+   Yes → Case ID DLAS-YYYY-NNNNN, status ACCEPTED, stage CASE_OPENED, applicant notified (SMS rules apply)
+   No  → status REJECTED, stage CLOSURE, closedAt, all tasks closed, applicant notified
+Where to send? (HUMAN, accepted cases only)  choosePathway()      GRAM_ADALAT | MEDIATION | LAWYER, reason ≥ 10 chars; recommendPathway() is advisory
+   → stage SERVICE_DELIVERY, task GRAM_ADALAT_REFERRAL (GRAM_ADALAT) | MEDIATION_SCHEDULING (MEDIATOR) | LAWYER_ASSIGNMENT (DLAO), applicant notified
+Record eligibility details and notes         addNote()
+```
+
+**Something missing or disputed** (`reviewFacts` → INSUFFICIENT / NEEDS_CLARIFICATION): the applicant is told **automatically** — a dashboard notification (from the open `COMPLETE_MISSING_INFO` task) plus a simulated SMS through the safe-contact rules (neutral wording / SMS-off respected; audit `applicant.info_requested`). With `requestCall: true` the officer also opens a `HUMAN_CALLBACK` task for the helpline at the applicant's safe time. Identity `UNREACHABLE` likewise sends an automatic "we tried to reach you" SMS and opens a call-back task.
+
+An application shows **UNVERIFIED** until `review.verifiedAt` is set, i.e. the officer has checked identity + NID and the documents and case facts.
+
+```jsonc
+"review": {
+  "officerId": "OFC-7K2M9Q", "officerName": "…", "office": "DLAO-JHENAIDAH", "receivedAt": "…",
+  "identity":    { "state": "COMPLETED", "outcome": "CORRECTED", "method": "PHONE_CALL", "note": "…",
+                   "corrections": [{ "path": "applicant.nidNumber", "from": "1234567890", "to": "1234567891" }], "attempts": 2, "at": "…",
+                   "nid": { "status": "MATCHES_DOCUMENT", "formatValid": true,
+                            "simulatedRegistryCheck": { "at": "…", "result": "FORMAT_OK", "note": "Simulated — … only the number format was checked" } } },
+  "facts":       { "state": "COMPLETED", "items": [{ "key": "matter.summary", "label": "…", "value": "…", "status": "CORROBORATED", "note": null }],
+                   "missingEvidence": [], "outcome": "SUFFICIENT", "at": "…" },
+  "eligibility": { "state": "COMPLETED", "rulesetVersion": "LASP-2014-working-v1", "courtLevel": "OTHER_COURTS",
+                   "declaredAnnualIncomeBdt": 250000, "incomeBand": "ABOVE_THRESHOLD", "exemptCategories": ["WOMEN_CHILD_OPPRESSION"],
+                   "vulnerabilityNotes": "…", "recommendation": "ELIGIBLE_EXEMPT_CATEGORY", "reasons": ["…"], "advisoryOnly": true, "at": "…" },
+  "decision":    { "decision": "ELIGIBLE", "reason": "…", "followedRecommendation": true, "by": "OFC-…", "byName": "…", "at": "…" },
+  "notes":       [{ "at": "…", "by": "OFC-…", "byName": "…", "text": "…" }],
+  "verifiedAt":  "…",
+  "pathway":     { "type": "MEDIATION", "recommended": "MEDIATION", "recommendationReasons": ["…"], "followedRecommendation": true,
+                   "reason": "…", "by": "OFC-…", "byName": "…", "at": "…" }
+}
+```
+
+Officer scope: DLAO sees its district, LLAC sees labour matters of its district, SCLAC sees all.
+The eligibility ruleset is a **working draft** stored in the JSON; correct it there (new version) after checking the Legal Aid Services Policy text — the UI always shows the version used.

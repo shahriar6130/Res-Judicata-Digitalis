@@ -130,7 +130,7 @@ export const ROLE_LABEL: Record<AuditEntry["role"], Bi> = {
 };
 
 /** Actions the system generates while a person triggered them: shown as "System", with who ran it. */
-const SYSTEM_ACTIONS = new Set(["settlement.testimonial_sent_to_citizen", "settlement.appeal_window_lapsed", "incident.red_flagged", "incident.classified", "mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
+const SYSTEM_ACTIONS = new Set(["duplicate.flagged_for_review", "settlement.testimonial_sent_to_citizen", "settlement.appeal_window_lapsed", "incident.red_flagged", "incident.classified", "mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
 
 export type AuditCategory = "INTAKE" | "VERIFICATION" | "PATHWAY" | "MEDIATION" | "SETTLEMENT" | "FAILURE" | "LAWYER" | "NOTICE" | "ACCESS" | "OTHER";
 
@@ -235,6 +235,8 @@ const PHRASES: Record<string, Phrase> = {
   "incident_group.linked": P("OTHER", (d) => B(`একই ঘটনার গ্রুপে যুক্ত — ${str(d.title)}`, `Linked to same-incident group — ${str(d.title)}`)),
   "incident_group.unlinked": P("OTHER", () => B("গ্রুপ থেকে আলাদা করা হয়েছে", "Unlinked from the group")),
   "incident_group.shared_evidence_linked": P("OTHER", (d) => B(`গ্রুপের সাধারণ প্রমাণ যুক্ত — ${str(d.title)} (কপি নয়)`, `Group shared evidence linked — ${str(d.title)} (not copied)`)),
+  "duplicate.flagged_for_review": P("OTHER", (d) => B(`সম্ভাব্য দ্বৈত/ঝুঁকি — পর্যালোচনার জন্য চিহ্নিত (${str(d.score)}/100)`, `Flagged for duplicate / risk review (${str(d.score)}/100)`)),
+  "duplicate.review_decided": P("OTHER", (d) => B(`দ্বৈত পর্যালোচনা: ${str(d.outcome)} — “${str(d.note)}”`, `Duplicate review: ${str(d.outcome)} — “${str(d.note)}”`)),
   "case.closed": P("SETTLEMENT", () => B("কেস বন্ধ করা হয়েছে", "Case closed")),
   "settlement.follow_up_completed": P("SETTLEMENT", (d) => B(`নিষ্পত্তির ফলো-আপ সম্পন্ন: ${words(d.kind)}`, `Settlement follow-up completed: ${words(d.kind)}`)),
   "settlement.returned_for_correction": P("SETTLEMENT", () => B("সংশোধনের জন্য ফেরত", "Returned for correction")),

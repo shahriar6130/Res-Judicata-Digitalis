@@ -74,6 +74,7 @@ export type MessageKey =
   | "dlaoNavUrgent"
   | "dlaoNavTransfers"
   | "dlaoNavGroups"
+  | "dlaoNavDuplicates"
   | "dlaoNavMediationOutcomes"
   | "navMyMediations"
   | "navAssignedCases"
@@ -1274,6 +1275,7 @@ export const messages: Messages = {
     dlaoNavUrgent: "জরুরি কেস",
     dlaoNavTransfers: "কেস স্থানান্তর",
     dlaoNavGroups: "কেস গ্রুপ (একই ঘটনা)",
+    dlaoNavDuplicates: "দ্বৈত / ঝুঁকি যাচাই",
     dlaoNavMediationOutcomes: "ব্যর্থ মধ্যস্থতা",
     navMyMediations: "আমার মধ্যস্থতা",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
@@ -2564,6 +2566,7 @@ export const messages: Messages = {
     dlaoNavUrgent: "Urgent cases",
     dlaoNavTransfers: "Case transfers",
     dlaoNavGroups: "Group cases (same incident)",
+    dlaoNavDuplicates: "Duplicate / fraud-risk check",
     dlaoNavMediationOutcomes: "Failed mediation reviews",
     navMyMediations: "My mediations",
     navAssignedCases: "Assigned Cases",

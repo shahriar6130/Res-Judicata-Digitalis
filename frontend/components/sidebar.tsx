@@ -379,6 +379,7 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/dlo#urgent", label: "dlaoNavUrgent", key: "urgent", Icon: AlertCircle },
     { href: "/dashboard/dlo#transfers", label: "dlaoNavTransfers", key: "transfers", Icon: FileText },
     { href: "/dashboard/dlo#groups", label: "dlaoNavGroups", key: "groups", Icon: Users },
+    { href: "/dashboard/dlo#duplicates", label: "dlaoNavDuplicates", key: "duplicates", Icon: AlertCircle },
     { href: "/dashboard/dlo#lawyers", label: "dlaoNavLawyers", key: "lawyers", Icon: Scale },
     { href: "/dashboard/dlo#mediators", label: "dlaoNavMediators", key: "mediators", Icon: HelpingHand },
     { href: "/dashboard/dlo#mediation-monitor", label: "dlaoNavMediationMonitor", key: "mediation-monitor", Icon: Scale },

@@ -867,8 +867,24 @@ export interface DlasDb {
   adminAudit: AuditEntry[];
   helplineAgents?: HelplineAgentAccount[]; // 16699 call-centre agents (created on first sign-up)
   officeNotices?: OfficeNotice[]; // office-wide notifications (DLAO case transfers) — lib/dlas/case-transfer.ts
+  duplicateReviews?: DuplicateReview[]; // T4 — duplicate / fraud-risk flags + human decisions (lib/dlas/duplicate-check.ts)
   incidentGroups?: IncidentGroup[]; // T3 — related-incident groups (linked, not merged) — lib/dlas/incident-groups.ts
   updatedAt: string | null;
+}
+
+/** T4 — a flagged pair and the human decision. Advisory only: nothing is rejected, merged or labelled. */
+export interface DuplicateReview {
+  reviewId: string; // DUP-XXXXXX
+  pairKey: string; // "<appA>~<appB>" (sorted)
+  aId: string;
+  bId: string;
+  kind: "POSSIBLE_DUPLICATE" | "RISK_SIGNAL";
+  score: number; // 0–100 confidence
+  headline: string;
+  evidence: { kind: "FOR" | "AGAINST" | "INFO"; text: string; weight: number }[];
+  flaggedAt: string;
+  rulesVersion: string;
+  decision: { outcome: "SAME_PERSON" | "DIFFERENT_PEOPLE" | "NEEDS_VERIFICATION"; note: string; by: string; byName: string; at: string } | null;
 }
 
 /** T3 — several applicants, one incident. The cases are LINKED (each keeps its own record,

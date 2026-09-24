@@ -34,3 +34,4 @@ export { draftSettlementPoints, SETTLEMENT_DRAFT_VERSION, type SettlementDraft }
 export { SettlementAppealService, sweepSettlementAppeals, useSettlementAppealSweep, appealOf, appealWindowOpen, APPEAL_WINDOW_DAYS } from "./settlement-appeal";
 export { CaseSummaryService, buildCaseSummary, CASE_SUMMARY_VERSION, type CaseSummary, type SummaryRole } from "./case-summary";
 export { IncidentGroupService, groupSuggestions, groupOf, citizenGroupView, useIncidentGroups, useIncidentGroup, readGroup, type GroupSuggestion } from "./incident-groups";
+export { DuplicateReviewService, scanApplications, scorePair, useDuplicateCheck, openDuplicateFor, loadDuplicateDemo, normName, similarity, DUPLICATE_RULES_VERSION, type PairResult, type Evidence } from "./duplicate-check";

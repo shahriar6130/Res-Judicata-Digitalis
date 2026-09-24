@@ -50,6 +50,7 @@ import {
   incidentOf,
   isRedFlagged,
   groupOf,
+  openDuplicateFor,
 } from "@/lib/dlas";
 import styles from "@/components/dlas/dlas.module.css";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
@@ -66,12 +67,13 @@ import { OfficeNoticeBar, TransferBanner, TransferTag } from "./office-notices";
 import { IncidentFlagBanner } from "./incident-flag";
 import { AiSummary } from "@/components/dlas/ai-summary";
 import { CaseGroupBanner, IncidentGroupDetail, IncidentGroups } from "./incident-groups";
+import { DuplicateBanner, DuplicateCheck } from "./duplicate-check";
 import { DistrictCases, UrgentCases } from "./district-cases";
 import { MediationLifecycleView } from "@/components/demo/lifecycle-timeline";
 import ui from "./dlao.module.css";
 
 type QueueView = "overview" | "new" | "review" | "decided" | "tasks";
-type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string } | { kind: "mediators" } | { kind: "mediationMonitor" } | { kind: "districtCases" } | { kind: "urgent" } | { kind: "transfers" } | { kind: "groups" } | { kind: "group"; id: string } | { kind: "mediator"; id: string; tab: string };
+type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string } | { kind: "mediators" } | { kind: "mediationMonitor" } | { kind: "districtCases" } | { kind: "urgent" } | { kind: "transfers" } | { kind: "groups" } | { kind: "group"; id: string } | { kind: "duplicates" } | { kind: "mediator"; id: string; tab: string };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
@@ -83,6 +85,7 @@ function parseHash(h: string): View {
   if (raw === "urgent") return { kind: "urgent" };
   if (raw === "transfers") return { kind: "transfers" };
   if (raw === "groups") return { kind: "groups" };
+  if (raw === "duplicates") return { kind: "duplicates" };
   if (raw.startsWith("group/")) return { kind: "group", id: decodeURIComponent(raw.slice(6)) };
   if (raw === "mediators/new") return { kind: "mediators" }; // adding mediators is self sign-up only
   if (raw.startsWith("mediator/")) {
@@ -265,7 +268,7 @@ export function DlaoWorkspace() {
         {tx("ধাপ ২ · যাচাই ও যোগ্যতা", "Step 2 · Verification & eligibility")} · {officeCode(o)}
       </p>
       <OfficeNoticeBar />
-      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : view.kind === "mediators" ? <MediatorsRegistry /> : view.kind === "mediationMonitor" ? <MediationMonitor /> : view.kind === "districtCases" ? <DistrictCases /> : view.kind === "urgent" ? <UrgentCases /> : view.kind === "transfers" ? <CaseTransfers /> : view.kind === "groups" ? <IncidentGroups /> : view.kind === "group" ? <IncidentGroupDetail key={view.id} id={view.id} /> : view.kind === "mediator" ? <MediatorDetail key={view.id} id={view.id} tab={view.tab} /> : <Queue bucket={view.bucket} />}
+      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : view.kind === "mediators" ? <MediatorsRegistry /> : view.kind === "mediationMonitor" ? <MediationMonitor /> : view.kind === "districtCases" ? <DistrictCases /> : view.kind === "urgent" ? <UrgentCases /> : view.kind === "transfers" ? <CaseTransfers /> : view.kind === "groups" ? <IncidentGroups /> : view.kind === "duplicates" ? <DuplicateCheck /> : view.kind === "group" ? <IncidentGroupDetail key={view.id} id={view.id} /> : view.kind === "mediator" ? <MediatorDetail key={view.id} id={view.id} tab={view.tab} /> : <Queue bucket={view.bucket} />}
     </div>
   );
 }
@@ -535,6 +538,7 @@ function Review({ id }: { id: string }) {
       <TransferBanner a={a} />
       <IncidentFlagBanner a={a} />
       <CaseGroupBanner a={a} group={groupOf(db, a)} />
+      <DuplicateBanner flag={openDuplicateFor(db, a.applicationId)} />
       <AiSummary applicationId={a.applicationId} role="DLO" />
       <div className={ui.layout}>
         <section className={ui.main}>

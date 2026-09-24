@@ -652,17 +652,13 @@ export interface AssignmentLedger {
 
 /** Stage-based payment reconciliation (T1). Amounts come from the fee schedule — never set here. */
 export interface PaymentReconciliation {
-  status: "ACCRUING" | "PENDING_CASE_COMPLETION" | "DLAO_REVIEW" | "APPROVED" | "PAID";
+  status: "ACCRUING" | "PENDING_CASE_COMPLETION" | "DLAO_REVIEW";
   payableHearings: number; // attended hearings
   completedStages: { hearingId: string; at: string; result: "ATTENDED" | "NOT_HELD" }[];
   missedHearings: number;
   eligibleAmount: "DEMO_RATE";
   note: string;
   at: string;
-  /** DLAO approval against the fee schedule (human decision). */
-  approval?: { payableHearings: number; computedHearings: number; note: string; by: string; byName: string; at: string };
-  /** SIMULATED disbursement — no money moves in the prototype. */
-  disbursement?: { ref: string; method: "SIMULATED_TRANSFER"; simulated: true; by: string; byName: string; at: string };
 }
 
 export interface LawyerAccessGrant {
@@ -749,8 +745,6 @@ export interface LawyerMatter {
   access: LawyerAccessGrant[]; // who may open the full record; revoked on reassignment
   shortlists: LawyerShortlist[];
   completion: { outcome: "WON" | "LOST" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER" | "JUDGMENT"; reason: string; by: string; byName: string; at: string } | null;
-  /** Final DLAO closure of a lawyer-path case (after completion + simulated payment). */
-  closure?: { reason: string; by: string; byName: string; at: string } | null;
 }
 
 /* ---------- Tasks (human work items created by the workflow) ---------- */

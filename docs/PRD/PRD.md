@@ -262,7 +262,7 @@ Closure is blocked until the required:
 
 are present.
 
-Closure is a human decision and ledger event. Lawyer completion output, payment processing, payment approval, simulated disbursement and final payment audit are a separate post-closure lifecycle, allowing `CLOSED · PAYMENT_PENDING`. T1 stage-based payment reconciliation on reassignment remains independent of closure. The case remains available for permitted reporting and future reference.
+Closure is a human decision and ledger event. In the implemented lawyer path, the Legal Aid Officer records completion, approves the payable-hearing ledger, records the clearly labelled simulated payout, and only then closes the case; the close action is unavailable while any recorded lawyer payment is unpaid. T1 stage-based payment reconciliation on reassignment remains independent until final completion. The case remains available for permitted reporting and future reference.
 
 ---
 

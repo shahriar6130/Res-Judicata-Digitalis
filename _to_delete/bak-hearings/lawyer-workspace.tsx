@@ -6,7 +6,7 @@
  *  localStorage["dlas.db.v1"] via LawyerService — nothing hardcoded.
  *
  *  Hash routes:  #overview · #intake · #cases[/<APP-ID>] · #notifications ·
- *                #attendance · #reports · #calendar · #hearings
+ *                #attendance · #reports · #calendar
  *  (#case/<APP-ID> and #assigned are kept as aliases.)
  * ------------------------------------------------------------------ */
 
@@ -50,14 +50,14 @@ import {
 import styles from "@/components/dlas/dlas.module.css";
 import ui from "@/components/dlao/dlao.module.css";
 
-type View = { kind: "overview" | "intake" | "notifications" | "attendance" | "reports" | "calendar" | "hearings" } | { kind: "cases"; open: string | null };
+type View = { kind: "overview" | "intake" | "notifications" | "attendance" | "reports" | "calendar" } | { kind: "cases"; open: string | null };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
   if (raw.startsWith("case/")) return { kind: "cases", open: decodeURIComponent(raw.slice(5)) };
   if (raw.startsWith("cases/")) return { kind: "cases", open: decodeURIComponent(raw.slice(6)) };
   if (raw === "cases" || raw === "assigned") return { kind: "cases", open: null };
-  if (raw === "intake" || raw === "notifications" || raw === "attendance" || raw === "reports" || raw === "calendar" || raw === "hearings") return { kind: raw };
+  if (raw === "intake" || raw === "notifications" || raw === "attendance" || raw === "reports" || raw === "calendar") return { kind: raw };
   return { kind: "overview" };
 }
 
@@ -174,8 +174,6 @@ export function LawyerWorkspace() {
         <Reports />
       ) : view.kind === "calendar" ? (
         <Calendar />
-      ) : view.kind === "hearings" ? (
-        <AllHearings />
       ) : (
         <Overview />
       )}
@@ -193,7 +191,6 @@ function Overview() {
     ["reports", w.overdue.length, tx("প্রতিবেদন দেরি", "Updates overdue"), w.overdue.length ? "err" : "neutral"],
     ["reports", w.due.length, tx("প্রতিবেদন বাকি", "Updates due"), w.due.length ? "warn" : "neutral"],
     ["calendar", w.upcoming.length, tx("আসন্ন শুনানি", "Upcoming hearings"), "neutral"],
-    ["hearings", w.upcoming.length + w.due.length + w.overdue.length + w.reported.length, tx("সব শুনানি", "All hearings"), "neutral"],
     ["cases", w.accepted.length, tx("চলমান মামলা", "Active cases"), "neutral"],
   ];
   type Action = { key: string; tone: Tone; title: string; sub: string; href: string; at: string };
@@ -759,7 +756,6 @@ function UpdateSummary({ u }: { u: HearingUpdate }) {
       <Tag tone={u.attendance === "ATTENDED" ? "ok" : u.attendance === "NOT_ATTENDED" ? "err" : "neutral"}>{pretty(u.attendance)}</Tag>
       <Tag>{pretty(u.outcome)}</Tag>
       {u.late ? <Tag tone="err">{tx("দেরিতে", "Late")}</Tag> : <Tag tone="ok">{tx("সময়মতো", "On time")}</Tag>}
-      {u.beforeHearing ? <Tag tone="warn" title={tx("প্রোটোটাইপ: শুনানির তারিখের আগেই প্রতিবেদন", "Prototype: reported before the hearing date")}>{tx("তারিখের আগে (প্রোটোটাইপ)", "Before hearing date (prototype)")}</Tag> : null}
       <Tag title={tx("আইনজীবীর নিজস্ব প্রতিবেদন", "Self-reported by the lawyer")}>{tx("আইনজীবীর প্রতিবেদন", "Lawyer reported")}</Tag>
       <span className={ui.sub}>
         {u.note}
@@ -880,9 +876,6 @@ function Calendar() {
   return (
     <>
       <h1 className={styles.title}>{tx("শুনানির সময়সূচি", "Hearing schedule")}</h1>
-      <div className={ui.bar} style={{ marginBottom: "var(--s-4)" }}>
-        <Button onClick={() => { window.location.hash = "hearings"; }}>{tx("সব শুনানি — উপস্থিতি ও প্রতিবেদন →", "All hearings — attend & report →")}</Button>
-      </div>
       <section className={ui.main} style={{ marginBottom: "var(--s-6)" }}>
         <div className={ui.sectionHead}>
           {tx("আসন্ন", "Upcoming")} ({upcoming.length})
@@ -897,117 +890,6 @@ function Calendar() {
           {list(past)}
         </section>
       ) : null}
-    </>
-  );
-}
-
-/* ------------------------------ all hearings ------------------------------ */
-
-/** PROTOTYPE: a future hearing can be attended/reported now, so the whole flow can be walked through. Marked on the record. */
-function EarlyReport({ a, hearing }: { a: ApplicationRecord; hearing: Hearing }) {
-  const { lang, tx } = useTx();
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button type="button" className={ui.textBtn} onClick={() => setOpen(true)}>
-        {tx("▶ এখন উপস্থিত হন ও প্রতিবেদন দিন (প্রোটোটাইপ)", "▶ Attend now & report (prototype)")}
-      </button>
-    );
-  }
-  return (
-    <div style={{ marginTop: "var(--s-2)" }}>
-      <Banner tone="warn" icon="⏩">
-        {tx(
-          `প্রোটোটাইপ: এই শুনানি ${formatDateTime(hearing.at, lang)}-এ। প্রদর্শনের জন্য আগেই প্রতিবেদন দেওয়া যায় — রেকর্ডে "তারিখের আগে" চিহ্ন ও অডিট থাকবে।`,
-          `Prototype: this hearing is on ${formatDateTime(hearing.at, lang)}. You can report it early for the demo — the record and audit mark it "before hearing date".`,
-        )}
-      </Banner>
-      <UpdateForm a={a} hearing={hearing} />
-      <button type="button" className={ui.textBtn} onClick={() => setOpen(false)}>
-        {tx("বাতিল", "Cancel")}
-      </button>
-    </div>
-  );
-}
-
-function AllHearings() {
-  const { lang, tx } = useTx();
-  const w = useLawyerWork();
-  type Filter = "ALL" | "UPCOMING" | "TO_REPORT" | "REPORTED";
-  const [filter, setFilter] = useState<Filter>("ALL");
-  const [open, setOpen] = useState<string | null>(null);
-  const all = [...w.upcoming, ...w.due, ...w.overdue, ...w.reported].sort((x, y) => x.h.at.localeCompare(y.h.at));
-  const match = (st: HearingState) => filter === "ALL" || (filter === "UPCOMING" ? st === "UPCOMING" : filter === "REPORTED" ? st === "REPORTED" : st === "UPDATE_DUE" || st === "OVERDUE");
-  const shown = all.filter((x) => match(x.state));
-  const counts: [Filter, string, number][] = [
-    ["ALL", tx("সব", "All"), all.length],
-    ["UPCOMING", tx("আসন্ন", "Upcoming"), w.upcoming.length],
-    ["TO_REPORT", tx("প্রতিবেদন বাকি", "To report"), w.due.length + w.overdue.length],
-    ["REPORTED", tx("প্রতিবেদন দেওয়া", "Reported"), w.reported.length],
-  ];
-  return (
-    <>
-      <h1 className={styles.title}>{tx("সব শুনানি", "All hearings")}</h1>
-      <p className={styles.lead}>
-        {tx("আপনার সব মামলার প্রতিটি শুনানি — আগের ও আসন্ন। যেকোনো শুনানিতে উপস্থিতি ও ফলাফল জানাতে পারেন।", "Every hearing across your cases — past and upcoming. Record attendance and the outcome for any of them.")}
-      </p>
-      <Banner tone="warn" icon="⏩">
-        {tx("প্রোটোটাইপ: আসন্ন শুনানিও এখনই রিপোর্ট করা যায়, যাতে পুরো প্রবাহ দেখানো যায়। এমন প্রতিবেদনে “তারিখের আগে (প্রোটোটাইপ)” চিহ্ন ও অডিট থাকে।", "Prototype: upcoming hearings can be reported now so the full flow can be demonstrated. Such reports are tagged “Before hearing date (prototype)” and audited.")}
-      </Banner>
-      <div className={ui.bar} role="tablist" style={{ margin: "var(--s-4) 0" }}>
-        {counts.map(([k, l, n]) => (
-          <Button key={k} variant={filter === k ? undefined : "secondary"} aria-pressed={filter === k} onClick={() => setFilter(k)}>
-            {l} ({n})
-          </Button>
-        ))}
-      </div>
-      {shown.length === 0 ? (
-        <p className={styles.hint}>{all.length ? tx("এই ফিল্টারে কোনো শুনানি নেই।", "No hearings under this filter.") : tx("এখনো কোনো শুনানি নেই — মামলার পাতায় শুনানি যোগ করুন।", "No hearings yet — add one from a case page.")}</p>
-      ) : (
-        <section className={ui.main}>
-          <div className={ui.rows}>
-            {shown.map(({ c, h, state }) => {
-              const u = h.updateId ? c.a.lawyer?.updates.find((x) => x.updateId === h.updateId) : undefined;
-              const isOpen = open === h.hearingId && !h.updateId;
-              return (
-                <Row key={h.hearingId} label={formatDateTime(h.at, lang)}>
-                  <a className={styles.mono} href={`#cases/${c.a.applicationId}`}>
-                    {c.a.caseId ?? c.a.applicationId}
-                  </a>
-                  <HearingTag state={state} />
-                  <span className={ui.sub}>
-                    {h.court}
-                    {h.purpose ? ` · ${h.purpose}` : ""} · {c.a.data.applicant.fullName ?? "—"}
-                  </span>
-                  {u ? (
-                    <div style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      <UpdateSummary u={u} />
-                    </div>
-                  ) : isOpen ? (
-                    <div style={{ flexBasis: "100%", marginTop: "var(--s-2)" }}>
-                      {state === "UPCOMING" ? (
-                        <Banner tone="warn" icon="⏩">
-                          {tx(`প্রোটোটাইপ: শুনানির তারিখ ${formatDateTime(h.at, lang)} — আগেই প্রতিবেদন দিচ্ছেন।`, `Prototype: the hearing date is ${formatDateTime(h.at, lang)} — you are reporting early.`)}
-                        </Banner>
-                      ) : null}
-                      <UpdateForm a={c.a} hearing={h} />
-                      <button type="button" className={ui.textBtn} onClick={() => setOpen(null)}>
-                        {tx("বাতিল", "Cancel")}
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ flexBasis: "100%" }}>
-                      <Button variant={state === "UPCOMING" ? "secondary" : undefined} onClick={() => setOpen(h.hearingId)}>
-                        {state === "UPCOMING" ? tx("▶ এখন উপস্থিত হন ও প্রতিবেদন দিন (প্রোটোটাইপ)", "▶ Attend now & report (prototype)") : tx("উপস্থিতি ও প্রতিবেদন দিন", "Record attendance & report")}
-                      </Button>
-                    </div>
-                  )}
-                </Row>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </>
   );
 }
@@ -1164,10 +1046,6 @@ function CaseView({ id, embedded = false }: { id: string; embedded?: boolean }) 
                           <span className={ui.sub}>
                             {tx("প্রতিবেদনের শেষ সময়", "Report due")} {formatDateTime(h.updateDueAt, lang)}
                           </span>
-                        ) : own && state === "UPCOMING" && s!.status === "ACCEPTED" ? (
-                          <div style={{ flexBasis: "100%" }}>
-                            <EarlyReport a={a} hearing={h} />
-                          </div>
                         ) : null}
                       </Row>
                     );

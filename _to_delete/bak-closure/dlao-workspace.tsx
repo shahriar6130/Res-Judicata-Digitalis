@@ -1455,112 +1455,6 @@ function PathwayStep({ a, run }: StepProps) {
 
 const COMPLETION_OUTCOMES = ["WON", "LOST", "SETTLED", "WITHDRAWN_BY_CLIENT", "OTHER"] as const;
 
-/** Payment review on the lawyer path: approve (human) → pay (SIMULATED). */
-function PaymentAction({ a, x, run }: { a: ApplicationRecord; x: NonNullable<ApplicationRecord["lawyer"]>["assignments"][number]; run: StepProps["run"] }) {
-  const { lang } = useI18n();
-  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
-  const p = x.payment!;
-  const [open, setOpen] = useState(false);
-  const [count, setCount] = useState(String(p.payableHearings));
-  const [note, setNote] = useState("");
-  if (p.status === "PAID" && p.disbursement) {
-    return (
-      <div className={styles.hint}>
-        💸 {tx("পাঠানো (সিমুলেটেড)", "Sent (simulated)")} · {p.disbursement.ref} · {formatDateTime(p.disbursement.at, lang)}
-      </div>
-    );
-  }
-  if (p.status === "APPROVED") {
-    return (
-      <div style={{ marginTop: 4 }}>
-        <div className={styles.hint}>
-          ✓ {tx("অনুমোদন", "Approved by")} {p.approval?.byName} · {p.approval ? formatDateTime(p.approval.at, lang) : ""}
-          {p.approval && p.approval.payableHearings !== p.approval.computedHearings ? ` · ${tx("সংশোধিত", "adjusted")} ${p.approval.computedHearings}→${p.approval.payableHearings}: ${p.approval.note}` : ""}
-        </div>
-        <Button variant="secondary" onClick={() => run(() => DlaoLawyerService.payLawyer(a.applicationId, x.assignmentId))}>
-          💸 {tx("পেমেন্ট পাঠান (সিমুলেটেড)", "Pay lawyer (simulated)")}
-        </Button>
-        <div className={styles.hint}>{tx("ডেমো বোতাম — কোনো টাকা লেনদেন হয় না, শুধু রেফারেন্স ও অডিট তৈরি হয়।", "Demo button — no money moves; it only records a reference and an audit entry.")}</div>
-      </div>
-    );
-  }
-  if (p.status !== "DLAO_REVIEW") return null;
-  if (!open) {
-    return (
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        {tx("পেমেন্ট পর্যালোচনা ও অনুমোদন", "Review & approve payment")}
-      </Button>
-    );
-  }
-  const n = Number(count);
-  const computed = p.completedStages.filter((h) => h.result === "ATTENDED").length || p.payableHearings;
-  const changed = n !== computed;
-  return (
-    <div style={{ display: "grid", gap: 6, marginTop: 4, minWidth: 220 }}>
-      <label className={styles.field}>
-        <span className={styles.label}>{tx(`প্রদেয় শুনানি (হিসাব: ${computed})`, `Payable hearings (computed: ${computed})`)}</span>
-        <input className={styles.input} type="number" min={0} max={p.completedStages.length} value={count} onChange={(e) => setCount(e.target.value)} />
-      </label>
-      {changed ? (
-        <label className={styles.field}>
-          <span className={styles.label}>{tx("সংশোধনের কারণ (কমপক্ষে ১০ অক্ষর)", "Reason for the change (at least 10 characters)")}</span>
-          <input className={styles.input} value={note} onChange={(e) => setNote(e.target.value)} />
-        </label>
-      ) : null}
-      <div className={ui.bar}>
-        <Button disabled={count === "" || (changed && note.trim().length < 10)} onClick={() => run(() => { DlaoLawyerService.approvePayment(a.applicationId, x.assignmentId, { payableHearings: n, note }); setOpen(false); })}>
-          {tx("অনুমোদন", "Approve")}
-        </Button>
-        <Button variant="secondary" onClick={() => setOpen(false)}>
-          {tx("বাতিল", "Cancel")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/** Final DLAO step on the lawyer path: close the case after completion and simulated payout. */
-function LawyerCaseClosure({ a, run }: StepProps) {
-  const { lang } = useI18n();
-  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
-  const m = a.lawyer!;
-  const comp = m.completion!;
-  const [reason, setReason] = useState("");
-  const unpaid = m.assignments.filter((s) => s.payment && s.payment.status !== "PAID");
-  if (m.closure) {
-    return (
-      <div className={ui.section}>
-        <Banner tone="ok" icon="✓">
-          <strong>{tx("কেস বন্ধ", "Case closed")}</strong> — {pretty(comp.outcome)} · {m.closure.reason} · {m.closure.byName}, {formatDateTime(m.closure.at, lang)}
-        </Banner>
-      </div>
-    );
-  }
-  return (
-    <div className={ui.section} id="lawyer-close">
-      <div className={ui.sectionHead}>{tx("কেস বন্ধ করুন", "Close the case")}</div>
-      <p className={styles.hint}>
-        {tx("ধাপ:", "Steps:")} ① {tx("প্রতিনিধিত্ব সম্পন্ন", "Representation completed")} ✓ ({pretty(comp.outcome)}) · ② {tx("পেমেন্ট অনুমোদন ও পাঠানো", "Approve and pay")} {unpaid.length ? "…" : "✓"} · ③ {tx("কেস বন্ধ", "Close case")}
-      </p>
-      {unpaid.length ? (
-        <Banner tone="warn" icon="!">
-          {tx(`বন্ধ করার আগে পেমেন্ট অনুমোদন করে পাঠান: ${unpaid.map((s) => s.lawyerName).join(", ")} (উপরের হিসাব টেবিলে)।`, `Approve and pay the lawyer first: ${unpaid.map((s) => s.lawyerName).join(", ")} (in the ledger above).`)}
-        </Banner>
-      ) : null}
-      <label className={styles.field}>
-        <span className={styles.label}>{tx("বন্ধের নোট (কমপক্ষে ১০ অক্ষর)", "Closing note (at least 10 characters)")}</span>
-        <input className={styles.input} value={reason} onChange={(e) => setReason(e.target.value)} />
-      </label>
-      <div className={ui.bar}>
-        <Button disabled={!!unpaid.length || reason.trim().length < 10} onClick={() => run(() => DlaoLawyerService.closeCase(a.applicationId, reason))}>
-          {tx("কেস বন্ধ করুন", "Close case")}
-        </Button>
-        <span className={styles.hint}>{tx("নাগরিককে জানানো হবে; কেস ‘নিষ্পন্ন’ হবে ও অডিটে থাকবে।", "The citizen is notified; the case becomes Resolved and is audited.")}</span>
-      </div>
-    </div>
-  );
-}
-
 function LawyerAssignPanel({ a, run }: StepProps) {
   const { lang } = useI18n();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
@@ -1866,11 +1760,10 @@ function LawyerAssignPanel({ a, run }: StepProps) {
                     <td>
                       {x.payment ? (
                         <>
-                          <Tag tone={x.payment.status === "PAID" || x.payment.status === "APPROVED" ? "ok" : x.payment.status === "DLAO_REVIEW" ? "warn" : x.payment.status === "PENDING_CASE_COMPLETION" ? "warn" : "neutral"}>{pretty(x.payment.status)}</Tag>
+                          <Tag tone={x.payment.status === "DLAO_REVIEW" ? "ok" : x.payment.status === "PENDING_CASE_COMPLETION" ? "warn" : "neutral"}>{pretty(x.payment.status)}</Tag>
                           <div className={styles.hint}>
                             {tx(`${x.payment.payableHearings}টি শুনানি × জেলা ফি`, `${x.payment.payableHearings} hearing(s) × district fee`)} ({x.payment.eligibleAmount})
                           </div>
-                          <PaymentAction a={a} x={x} run={run} />
                         </>
                       ) : (
                         "—"
@@ -1884,8 +1777,6 @@ function LawyerAssignPanel({ a, run }: StepProps) {
           <p className={styles.hint}>{rules.feeBasis}</p>
         </div>
       ) : null}
-
-      {m?.completion ? <LawyerCaseClosure a={a} run={run} /> : null}
 
       {m?.access.length ? (
         <div className={ui.section}>

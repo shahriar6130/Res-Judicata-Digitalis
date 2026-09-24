@@ -4,10 +4,10 @@ import { useState, useSyncExternalStore } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useDlasDb } from "@/lib/dlas/store";
 import { DISTRICTS, MATTERS, label } from "@/lib/dlas/reference";
-import { AdminService, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
+import { AdminService, type AdminHearingInput, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
 import { MEDIATION_CASE_TYPES, MEDIATION_TRACKS } from "@/lib/dlas/mediators";
 import { exportBackup, importBackup, previewBackup, type BackupPreview } from "@/lib/dlas/backup";
-import type { AuditEntry, DlasDb } from "@/lib/dlas/schema";
+import type { AuditEntry, DlasDb, Hearing } from "@/lib/dlas/schema";
 import css from "./admin-workspace.module.css";
 import { AdminMediationOversight } from "./mediation-oversight";
 
@@ -29,6 +29,10 @@ function displayRecord(db: DlasDb, role: ManagedRole) {
 }
 
 const recordPhone = (role: ManagedRole, record: { phone?: string; contact?: { phone?: string } }) => role === "mediators" ? record.contact?.phone ?? "" : record.phone ?? "";
+const localDateTimeValue = (iso: string) => {
+  const date = new Date(iso);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
 
 export function AdminWorkspace() {
   const { lang } = useI18n();
@@ -38,6 +42,7 @@ export function AdminWorkspace() {
   const [role, setRole] = useState<ManagedRole>("citizens");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<{ role: ManagedRole; id: string | null; input: ManagedInput } | null>(null);
+  const [hearingEditing, setHearingEditing] = useState<{ applicationId: string; hearingId: string | null; input: AdminHearingInput } | null>(null);
   const [deleting, setDeleting] = useState<{ role: ManagedRole; id: string; name: string } | null>(null);
   const [error, setError] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -81,6 +86,26 @@ export function AdminWorkspace() {
       AdminService.saveAccount(editing.role, editing.id, editing.input);
       setEditing(null); setError("");
       setNotice(tx("পরিবর্তন সংরক্ষিত হয়েছে।", "Changes saved."));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }
+  function editHearing(applicationId: string, hearing?: Hearing) {
+    setError(""); setNotice("");
+    setHearingEditing({
+      applicationId,
+      hearingId: hearing?.hearingId ?? null,
+      input: {
+        at: hearing ? localDateTimeValue(hearing.at) : "",
+        court: hearing?.court ?? "",
+        purpose: hearing?.purpose ?? "",
+      },
+    });
+  }
+  function saveHearing() {
+    if (!hearingEditing) return;
+    try {
+      AdminService.saveHearing(hearingEditing.applicationId, hearingEditing.hearingId, hearingEditing.input);
+      setHearingEditing(null); setError("");
+      setNotice(tx("শুনানির তথ্য সংরক্ষিত হয়েছে।", "Hearing information saved."));
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }
   function remove() {
@@ -142,7 +167,28 @@ export function AdminWorkspace() {
       {items.map((r) => { const key = managedIdField[role]; const accountId = String(r[key]); return <div className={css.person} key={accountId}><div><strong>{r.name}</strong><small>{accountId} · {recordPhone(role, r)}{r.district ? ` · ${r.district}` : ""}{r.centre ? ` · ${r.centre}` : ""}{role === "mediators" ? ` · ${String(r.status ?? "")}` : ""}</small></div><div className={css.rowActions}><button className={css.secondary} onClick={() => edit(role, r)}>{tx("সম্পাদনা", "Edit")}</button><button className={css.danger} onClick={() => { setDeleteError(""); setNotice(""); setDeleting({ role, id: accountId, name: r.name }); }}>{tx("মুছুন", "Delete")}</button></div></div>; })}
       {!items.length ? <p className={css.empty}>{tx("কোনো মিল পাওয়া যায়নি। নতুন অ্যাকাউন্ট যোগ করতে পারেন।", "No matching accounts. You can add a new one.")}</p> : null}
     </section> : null}
-    {section === "cases" ? <section className={css.panel}><div className={css.panelHead}><div><p className={css.kicker}>{tx("সব অফিস ও চ্যানেল", "ALL OFFICES AND CHANNELS")}</p><h2>{tx("আবেদন পর্যবেক্ষণ", "Application monitor")}</h2></div><strong>{db.applications.length}</strong></div>{db.applications.slice().reverse().map((a) => <div className={css.person} key={a.applicationId}><div><strong>{a.applicationId} · {a.data.applicant.fullName ?? "—"}</strong><small>{label(MATTERS, a.data.matter.category, lang)} · {a.routing.office} · {a.channel.code} · {a.status}</small></div><span className={css.status}>{a.review?.decision?.decision ?? tx("সিদ্ধান্ত বাকি", "Pending")}</span></div>)}{!db.applications.length ? <p className={css.empty}>{tx("এখনো কোনো আবেদন নেই।", "No applications yet.")}</p> : null}<p className={css.subtle}>{tx("আবেদন সংশোধন ও আইনগত সিদ্ধান্ত সংশ্লিষ্ট ডিএলও যাচাই কর্মপ্রবাহে নথিভুক্ত হয়।", "Application corrections and legal decisions are recorded in the responsible DLO review workflow.")}</p></section> : null}
+    {section === "cases" ? <section className={css.panel}>
+      <div className={css.panelHead}><div><p className={css.kicker}>{tx("সব অফিস ও চ্যানেল", "ALL OFFICES AND CHANNELS")}</p><h2>{tx("আবেদন ও শুনানি পর্যবেক্ষণ", "Applications and hearings")}</h2></div><strong>{db.applications.length}</strong></div>
+      {db.applications.slice().reverse().map((a) => {
+        const hearings = [...(a.lawyer?.hearings ?? [])].sort((x, y) => x.at.localeCompare(y.at));
+        return <article className={css.caseRecord} key={a.applicationId}>
+          <div className={css.caseSummary}>
+            <div><strong>{a.applicationId} · {a.data.applicant.fullName ?? "—"}</strong><small>{label(MATTERS, a.data.matter.category, lang)} · {a.routing.office} · {a.channel.code} · {a.status}</small></div>
+            <div className={css.rowActions}><span className={css.status}>{a.review?.decision?.decision ?? tx("সিদ্ধান্ত বাকি", "Pending")}</span><button type="button" className={css.secondary} onClick={() => editHearing(a.applicationId)}>{tx("+ শুনানি যোগ করুন", "+ Add hearing")}</button></div>
+          </div>
+          <div className={css.hearingList}>
+            <div className={css.hearingHead}><strong>{tx("শুনানির তথ্য", "Hearing information")}</strong><span>{hearings.length}</span></div>
+            {hearings.map((hearing) => <div className={css.hearingRow} key={hearing.hearingId}>
+              <div><strong>{new Date(hearing.at).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</strong><small>{hearing.court}{hearing.purpose ? ` · ${hearing.purpose}` : ""} · {tx("ফল", "Outcome")}: {hearing.result ?? tx("এখনও নেই", "Not recorded")}</small></div>
+              <button type="button" className={css.secondary} onClick={() => editHearing(a.applicationId, hearing)}>{tx("শুনানি সম্পাদনা", "Edit hearing")}</button>
+            </div>)}
+            {!hearings.length ? <p className={css.subtle}>{tx("কোনো শুনানি নথিভুক্ত নেই।", "No hearings recorded.")}</p> : null}
+          </div>
+        </article>;
+      })}
+      {!db.applications.length ? <p className={css.empty}>{tx("এখনো কোনো আবেদন নেই।", "No applications yet.")}</p> : null}
+      <p className={css.subtle}>{tx("প্রশাসক শুনানির সময়, আদালত ও উদ্দেশ্য সংশোধন করতে পারেন। উপস্থিতি ও ফলাফল আইনজীবীর প্রতিবেদন হিসেবে অপরিবর্তিত থাকে; আইনগত সিদ্ধান্ত সংশ্লিষ্ট ডিএলও কর্মপ্রবাহে থাকে।", "Administrators may correct a hearing's date, court and purpose. Attendance and outcomes remain unchanged as lawyer-reported evidence; legal decisions stay in the responsible DLO workflow.")}</p>
+    </section> : null}
     {section === "rules" ? <section className={css.panel}><p className={css.kicker}>{tx("সংস্করণযুক্ত নীতিমালা", "VERSIONED POLICY")}</p><h2>{tx("সক্রিয় নিয়ম", "Current rules")}</h2><p>{tx("এলিজিবিলিটি নিয়মের কর্মরত সংস্করণ", "Working eligibility ruleset")}: <strong>{db.eligibilityRulesets.at(-1)?.version ?? "—"}</strong></p><p>{tx("আইনজীবীর নিয়ম", "Lawyer rules")}: <strong>{db.lawyerRules?.version ?? "—"}</strong></p><p className={css.subtle}>{tx("আইনগত সিদ্ধান্ত কেবল অনুমোদিত ডিএলও কর্মকর্তা নেন।", "Legal decisions remain with authorised DLO officers.")}</p></section> : null}
     {section === "mediation" ? <AdminMediationOversight /> : null}
     {section === "audit" ? <section className={css.panel}><p className={css.kicker}>{tx("সংরক্ষিত ইতিহাস", "PERSISTED HISTORY")}</p><h2>{tx("সাম্প্রতিক অডিট ঘটনা", "Recent audit events")}</h2>{audit.map((e: AuditEntry) => <div className={css.line} key={e.seq}><span><strong>{e.action}</strong><small>{e.actor} · {e.role}</small></span><time>{new Date(e.at).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</time></div>)}{!audit.length ? <p className={css.empty}>{tx("এখনো কোনো অডিট ঘটনা নেই।", "No audit events yet.")}</p> : null}</section> : null}
@@ -153,6 +199,13 @@ export function AdminWorkspace() {
         {backup ? <div className={css.preview}><h3>{tx("ইমপোর্টের সারাংশ", "Import preview")}</h3><p>{backup.exportedAt ? new Date(backup.exportedAt).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB") : tx("পুরোনো রেকর্ড ফরম্যাট", "Older record format")}</p><div className={css.line}><span>{tx("আবেদন", "Applications")}</span><strong>{backup.applications}</strong></div><div className={css.line}><span>{tx("অ্যাকাউন্ট", "Accounts")}</span><strong>{backup.people}</strong></div><div className={css.line}><span>{tx("সংরক্ষিত নথি", "Stored documents")}</span><strong>{backup.documents}</strong></div><p className={css.subtle}>{tx("ইমপোর্ট করলে এই ব্রাউজারের বর্তমান অ্যাপ তথ্য বদলে যাবে।", "Import replaces this browser's current app data.")}</p><button type="button" className={css.primary} onClick={() => { try { importBackup(backup); } catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); } }}>{tx("বর্তমান তথ্য বদলে ইমপোর্ট করুন", "Replace current data and import")}</button></div> : null}
       </section>
     </div> : null}
+    {hearingEditing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-hearing-title"><div className={css.panelHead}><div><p className={css.kicker}>{hearingEditing.applicationId}</p><h2 id="admin-hearing-title">{hearingEditing.hearingId ? tx("শুনানি সম্পাদনা", "Edit hearing") : tx("শুনানি যোগ করুন", "Add hearing")}</h2></div><button type="button" className={css.secondary} onClick={() => { setHearingEditing(null); setError(""); }}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); saveHearing(); }} className={css.form}>
+      <label>{tx("শুনানির তারিখ ও সময়", "Hearing date and time")}<input required type="datetime-local" value={hearingEditing.input.at} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, at: e.target.value } })} /></label>
+      <label>{tx("আদালত", "Court")}<input required minLength={2} value={hearingEditing.input.court} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, court: e.target.value } })} /></label>
+      <label className={css.fullField}>{tx("শুনানির উদ্দেশ্য", "Purpose")}<input value={hearingEditing.input.purpose} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, purpose: e.target.value } })} /></label>
+      <p className={`${css.subtle} ${css.fullField}`}>{tx("উপস্থিতি বা ফলাফল এখানে বদলানো হয় না; সেগুলো আইনজীবীর প্রতিবেদন হিসেবে সংরক্ষিত থাকে।", "Attendance and outcome are not changed here; they remain preserved as lawyer-reported evidence.")}</p>
+      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit">{tx("শুনানি সংরক্ষণ করুন", "Save hearing")}</button>
+    </form></section></div> : null}
     {editing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-edit-title"><div className={css.panelHead}><div><p className={css.kicker}>{roles.find((r) => r.key === editing.role)?.[lang]}</p><h2 id="admin-edit-title">{editing.id ? tx("অ্যাকাউন্ট সম্পাদনা", "Edit account") : tx("অ্যাকাউন্ট যোগ করুন", "Add account")}</h2></div><button className={css.secondary} onClick={() => setEditing(null)}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); save(); }} className={css.form}>
       <label>{tx("নাম", "Name")}<input required minLength={2} value={editing.input.name} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, name: e.target.value } })} /></label>
       <label>{tx("মোবাইল", "Mobile")}<input required inputMode="tel" value={editing.input.phone} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, phone: e.target.value } })} /></label>

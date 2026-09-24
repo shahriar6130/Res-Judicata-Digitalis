@@ -62,7 +62,9 @@ application has an outstanding document, and omit the section entirely when none
 Lead with the signed-in officer's applications and follow-up tasks. Each worklist row shows its
 application reference, applicant, channel, matter, waiting time, suggested priority, verification
 state and review stage. The review workspace keeps identity, documents, eligibility and officer
-decision as distinct steps, with the source record and audit trail available alongside them.
+decision as distinct steps. The active review form uses the full content width and does not reserve
+a side column for an audit trail. Audit data remains recorded and available through the dedicated
+activity and developer inspection surfaces.
 
 The implemented `/dashboard/dlo` Overview (`#overview`, also the default route) uses a dark
 editorial header with the active workload count, four linked queue totals, three compact charts,
@@ -73,6 +75,11 @@ a light active state with a visible keyboard focus outline. All colours and font
 The worklist uses stacked, hairline-separated records instead of a wide table. Details wrap into
 fewer columns as the viewport narrows, so the page needs no horizontal scrolling; opening an
 application keeps the existing review workspace.
+
+For a lawyer-path case, the DLO workspace ends with a visible three-step sequence: complete the
+representation, approve and send the clearly labelled simulated lawyer payment, then close the
+case with a required note. The Close case control remains disabled until every recorded lawyer
+payment is marked paid. A closed case shows its outcome, officer, closing note, and timestamp.
 Each application and follow-up record also has a labelled, outlined **Open application** control,
 so the application ID is not the only way to enter the review.
 
@@ -195,11 +202,16 @@ The `/device`, `/device/ivr`, and `/device/ussd` views use a compact introductor
 The `/dashboard/admin#users` account directory includes Mediators and UDC operators as peer role tabs. Mediator rows show name, mediator ID, phone, district, and status. The add/edit dialog records the mediator's account details, registry role, status, qualification, mediation tracks, and case types. UDC operator rows and forms continue to show the linked centre and district, and saving an operator synchronizes its registered UDC centre record. The overview count includes both groups.
 
 Every account row includes Edit and Delete controls. Delete requires confirmation, returns an inline error when an active mediator or lawyer assignment blocks removal, and keeps historical application and audit records. Deleting a UDC operator also removes only that operator's linked registered centre entry.
+
+The Admin Applications section expands each application with its hearing schedule. Hearing rows show
+date and time, court, purpose, and the preserved lawyer-reported outcome. Administrators may add a
+hearing or correct its date, court, and purpose in a focused dialog. The edit surface does not change
+attendance or outcomes, and every schedule addition or correction is audited.
 ## Admin sidebar
 
-The admin dashboard uses the selected theme's dedicated admin palette across the complete workspace. In Blue White, the sidebar uses `#333366`, the hero uses `#10448a`, active controls use `#5d65b0`, and white or lightly blue-tinted surfaces support panels, metrics, forms, dialogs, notices, and tables. The sidebar contains Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Its compact workspace heading reads System administration.
+The admin dashboard uses the selected theme's dedicated admin palette across the complete workspace. The active theme gives the sidebar, সাক্ষ্য wordmark plate, hero, controls, page surface, panels, dialogs, notices, and tables one burgundy family; the wordmark never falls back to the shared black plate. In Blue White, those same scoped tokens resolve to its saved blue palette. The sidebar contains Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Its compact workspace heading reads System administration.
 
-Under the image theme, the same admin variables resolve to black navigation, paper panels, gray rules, and red actions so administration participates in the global courthouse treatment. Restoring the archived black theme also restores the previous red administrator palette and original role colors.
+Under the image theme, the same admin variables resolve to its saved courthouse treatment. Restoring the black theme restores the burgundy administrator palette and original role colors.
 
 
 ### Blue White visual refresh

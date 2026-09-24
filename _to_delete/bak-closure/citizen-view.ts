@@ -167,16 +167,6 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
       state,
     };
   });
-  // Lawyer path: DLAO recorded the court outcome, then closed the case.
-  const comp = a.lawyer?.completion;
-  if (comp) {
-    const o = base.find((x) => x.id === "OUTCOME");
-    const word = { WON: ["জয়", "Won"], LOST: ["হার", "Lost"], SETTLED: ["আপস", "Settled"], WITHDRAWN_BY_CLIENT: ["আপনি প্রত্যাহার করেছেন", "Withdrawn by you"], OTHER: ["অন্যান্য", "Other"], JUDGMENT: ["রায়", "Judgment"] }[comp.outcome];
-    if (o) Object.assign(o, { descriptionBn: `আদালতের ধাপ শেষ — ফলাফল: ${word[0]} · ${comp.reason}`, descriptionEn: `Court stage complete — outcome: ${word[1]} · ${comp.reason}` });
-    const cl = a.lawyer?.closure;
-    const c = base.find((x) => x.id === "CLOSURE");
-    if (c && cl) Object.assign(c, { descriptionBn: `কেস বন্ধ করেছেন ${cl.byName} · ${cl.reason}`, descriptionEn: `Case closed by ${cl.byName} · ${cl.reason}`, state: "completed" as const });
-  }
   const tst = a.mediation?.workspace?.settlementWorkflow?.testimonial;
   if (tst) {
     const c = base.find((x) => x.id === "CLOSURE");
@@ -218,8 +208,6 @@ function stageDate(a: ApplicationRecord, i: number): string | null {
   if (i === 1) return a.review?.receivedAt ?? null;
   if (i === 2) return auditAt(a, "case.created");
   if (i === 3) return a.review?.pathway?.at ?? null;
-  if (i === 5) return a.lawyer?.completion?.at ?? null;
-  if (i === 6) return a.lawyer?.closure?.at ?? null;
   return null;
 }
 

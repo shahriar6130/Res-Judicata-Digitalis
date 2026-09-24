@@ -15,6 +15,11 @@ verification for applicant, filer, matter, urgency, and safe-contact information
 Changing verified fields reopens the related check; a district change reroutes open work.
 Legal decisions remain officer actions. Prototype data lives in browser `dlas.db.v1`.
 
+The administrator Applications section shows each application's hearing schedule. Administrators
+can add hearings or edit the date/time, court, and purpose; lawyer-reported attendance and outcomes
+remain read-only. Hearing schedule changes persist to `dlas.db.v1`, are audited, and update the due
+date of an existing open lawyer-report task when applicable.
+
 The admin Backup tab downloads a dated JSON bundle of app-owned browser storage,
 including the shared record and stored document previews. To restore, choose a JSON
 file, review the counts, and use **Replace current data and import**. Older `/debug`
@@ -92,6 +97,13 @@ Overview link and labelled queue counts. Worklist links open `#app/<APP-ID>` for
 flow; each application and follow-up record has a visible **Open application** control. The records
 wrap their labelled fields across the available width without horizontal scrolling. All queue
 figures come from `dlas.db.v1` and follow the selected Bangla or English language.
+The open-application review form uses the full workspace width and has no separate audit-trail
+sidebar. Audit entries are still persisted and remain available through the existing activity and
+debug views.
+For lawyer-path cases, the Panel lawyer section provides the complete ending flow: record the
+representation outcome, review the payable-hearing count, use **Pay lawyer (simulated)**, and enter
+a closing note to enable **Close case**. Closure is blocked until every recorded lawyer payment is
+paid, then the application becomes `RESOLVED`, the citizen is notified, and the action is audited.
 
 The legacy lawyer dashboard at `/dashboard/lawyer` has focused Overview, Assignments, Reports,
 and Schedule views that match its sidebar links. The assignment offer supports acceptance or a
@@ -184,6 +196,7 @@ Every People row has a Delete action with a confirmation dialog. Deletion preser
 ### Admin sidebar
 
 The admin sidebar links to Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
+The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one burgundy visual identity.
 
 
 ### Blue White visual refresh

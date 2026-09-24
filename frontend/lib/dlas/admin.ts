@@ -1,6 +1,6 @@
 import { mutate } from "./store";
 import { DISTRICTS, MATTERS, normalizePhone } from "./reference";
-import type { AuditEntry, DistrictCode, DlasDb, MatterCategory, MediationCaseType, MediationTrack, MediatorRecord, MediatorRole, MediatorStatus, OfficeType } from "./schema";
+import type { AuditEntry, DistrictCode, DlasDb, Hearing, MatterCategory, MediationCaseType, MediationTrack, MediatorRecord, MediatorRole, MediatorStatus, OfficeType } from "./schema";
 
 export type ManagedRole = "citizens" | "lawyers" | "officers" | "mediators" | "udcOperators";
 export type ManagedInput = {
@@ -18,6 +18,12 @@ export type ManagedInput = {
   tracks?: string[];
 };
 
+export type AdminHearingInput = {
+  at: string;
+  court: string;
+  purpose: string;
+};
+
 const idField = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", mediators: "mediatorId", udcOperators: "operatorId" } as const;
 const prefix = { citizens: "CIT", lawyers: "LAW", officers: "OFC", mediators: "MED", udcOperators: "UDC" } as const;
 const id = (p: string) => `${p}-${Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0")}`;
@@ -29,6 +35,79 @@ function log(db: DlasDb, action: string, detail: Record<string, unknown>, accoun
 }
 
 export const AdminService = {
+  saveHearing(applicationId: string, hearingId: string | null, input: AdminHearingInput) {
+    const hearingAt = new Date(input.at);
+    const court = input.court.trim();
+    const purpose = input.purpose.trim() || null;
+    if (Number.isNaN(hearingAt.getTime())) throw new Error("Enter the hearing date and time.");
+    if (court.length < 2) throw new Error("Enter the court.");
+
+    return mutate((db) => {
+      const application = db.applications.find((a) => a.applicationId === applicationId);
+      if (!application) throw new Error("Application no longer exists.");
+      const matter = (application.lawyer ??= { assignments: [], hearings: [], updates: [], access: [], shortlists: [], completion: null });
+      const at = hearingAt.toISOString();
+      const updateDueAt = new Date(hearingAt.getTime() + (db.lawyerRules?.updateDueHours ?? 48) * 3_600_000).toISOString();
+
+      if (hearingId) {
+        const hearing = matter.hearings.find((h) => h.hearingId === hearingId);
+        if (!hearing) throw new Error("Hearing no longer exists.");
+        const before = { at: hearing.at, court: hearing.court, purpose: hearing.purpose };
+        hearing.at = at;
+        hearing.court = court;
+        hearing.purpose = purpose;
+        if (!hearing.updateId) hearing.updateDueAt = updateDueAt;
+        const task = db.tasks.find((t) => t.applicationId === applicationId && t.status !== "DONE" && t.type === "HEARING_UPDATE_DUE" && t.context?.hearingId === hearingId);
+        if (task && !hearing.updateId) {
+          task.dueAt = updateDueAt;
+          task.reason = `Report on the ${new Date(at).toLocaleString("en-GB")} hearing (${court})`;
+        }
+        log(db, "hearing.admin_updated", { applicationId, hearingId, before, after: { at, court, purpose }, outcomeUnchanged: true }, application.audit);
+        application.updatedAt = new Date().toISOString();
+        return hearing;
+      }
+
+      const assignment = [...matter.assignments].reverse().find((a) => a.status === "ACCEPTED") ?? null;
+      const hearing: Hearing = {
+        hearingId: id("HRG"),
+        assignmentId: assignment?.assignmentId ?? null,
+        result: null,
+        at,
+        court,
+        purpose,
+        addedBy: "admin:prototype",
+        addedAt: new Date().toISOString(),
+        updateDueAt,
+        updateId: null,
+        overdueFlaggedAt: null,
+        clientNotifiedAt: null,
+      };
+      matter.hearings.push(hearing);
+      if (assignment) {
+        const taskId = id("TSK");
+        db.tasks.push({
+          taskId,
+          type: "HEARING_UPDATE_DUE",
+          applicationId,
+          sessionId: application.channel.sessionId,
+          assignedRole: "PANEL_LAWYER",
+          assigneeId: assignment.lawyerId,
+          office: application.routing.office,
+          status: "OPEN",
+          priority: application.routing.recommendedPriority,
+          reason: `Report on the ${new Date(at).toLocaleString("en-GB")} hearing (${court})`,
+          dueAt: updateDueAt,
+          createdAt: new Date().toISOString(),
+          context: { hearingId: hearing.hearingId },
+        });
+        application.taskIds.push(taskId);
+      }
+      log(db, "hearing.admin_added", { applicationId, hearingId: hearing.hearingId, at, court, purpose, assignmentId: hearing.assignmentId }, application.audit);
+      application.updatedAt = new Date().toISOString();
+      return hearing;
+    });
+  },
+
   saveAccount(role: ManagedRole, accountId: string | null, input: ManagedInput) {
     const name = input.name.trim();
     const phone = normalizePhone(input.phone);

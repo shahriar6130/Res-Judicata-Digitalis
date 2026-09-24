@@ -717,66 +717,6 @@ export const DlaoLawyerService = {
       return m.completion;
     });
   },
-
-  /** DLAO approves a lawyer's payment against the fee schedule. Changing the computed hearing count needs a note. */
-  approvePayment(applicationId: string, assignmentId: string, input: { payableHearings: number; note: string }) {
-    const o = officer();
-    return withCase(applicationId, (db, a) => {
-      const s = a.lawyer?.assignments.find((x) => x.assignmentId === assignmentId);
-      if (!s?.payment) throw new Error("No payment to review for this lawyer");
-      if (s.payment.status !== "DLAO_REVIEW") throw new Error(s.payment.status === "APPROVED" || s.payment.status === "PAID" ? "Payment already approved" : "Complete the representation first");
-      const computed = s.payment.completedStages.filter((x) => x.result === "ATTENDED").length || s.payment.payableHearings;
-      const n = Math.floor(Number(input.payableHearings));
-      if (!Number.isFinite(n) || n < 0 || n > s.payment.completedStages.length) throw new Error(`Payable hearings must be between 0 and ${s.payment.completedStages.length}`);
-      if (n !== computed && input.note.trim().length < 10) throw new Error("You changed the hearing count — write a reason of at least 10 characters");
-      s.payment.status = "APPROVED";
-      s.payment.payableHearings = n;
-      s.payment.approval = { payableHearings: n, computedHearings: computed, note: input.note.trim(), by: o.officerId, byName: o.name, at: now() };
-      s.payment.note = `Approved by ${o.name}: ${n} hearing(s) × district fee (DEMO_RATE)`;
-      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.payment_approved", detail: { officer: o.name, assignmentId, lawyerId: s.lawyerId, payableHearings: n, computedHearings: computed, adjusted: n !== computed, note: input.note.trim() } });
-      smsLawyer(db, a, s.lawyerId, `DLAS: payment for ${a.caseId} approved — ${n} hearing(s) at the district fee rate.`);
-      return s.payment;
-    });
-  },
-
-  /** SIMULATED payout (no payment gateway in the prototype) — records a demo transfer reference. */
-  payLawyer(applicationId: string, assignmentId: string) {
-    const o = officer();
-    return withCase(applicationId, (db, a) => {
-      const s = a.lawyer?.assignments.find((x) => x.assignmentId === assignmentId);
-      if (!s?.payment) throw new Error("No payment for this lawyer");
-      if (s.payment.status === "PAID") throw new Error("Already paid");
-      if (s.payment.status !== "APPROVED") throw new Error("Approve the payment first");
-      s.payment.status = "PAID";
-      s.payment.disbursement = { ref: rid("SIMPAY"), method: "SIMULATED_TRANSFER", simulated: true, by: o.officerId, byName: o.name, at: now() };
-      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.payment_disbursed", detail: { officer: o.name, assignmentId, lawyerId: s.lawyerId, payableHearings: s.payment.payableHearings, ref: s.payment.disbursement.ref, simulated: true, note: "SIMULATED — no money moved" } });
-      smsLawyer(db, a, s.lawyerId, `DLAS: payment for ${a.caseId} sent (simulated) — ref ${s.payment.disbursement.ref}.`);
-      return s.payment;
-    });
-  },
-
-  /** Final step on the lawyer path: the DLAO closes the case after every simulated payout is recorded. */
-  closeCase(applicationId: string, reason: string) {
-    const o = officer();
-    if (reason.trim().length < 10) throw new Error("A closing note of at least 10 characters is required");
-    return withCase(applicationId, (db, a) => {
-      const m = a.lawyer;
-      if (!m?.completion) throw new Error("Complete the representation first");
-      if (a.closedAt || m.closure) throw new Error("This case is already closed");
-      const unpaid = m.assignments.filter((s) => s.payment && s.payment.status !== "PAID");
-      if (unpaid.length) throw new Error(`Approve and pay ${unpaid.map((s) => s.lawyerName).join(", ")} before closing`);
-      const from = a.status;
-      m.closure = { reason: reason.trim(), by: o.officerId, byName: o.name, at: now() };
-      a.status = "RESOLVED";
-      a.stage = "CLOSURE";
-      a.closedAt = now();
-      closeTasks(db, a, o.officerId, "dlao", () => true);
-      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "status.changed", detail: { from, to: "RESOLVED" } });
-      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "application.closed", detail: { officer: o.name, pathway: "LAWYER", outcome: m.completion.outcome, reason: reason.trim(), payments: m.assignments.filter((s) => s.payment).map((s) => ({ lawyerId: s.lawyerId, status: s.payment!.status, payableHearings: s.payment!.payableHearings })) } });
-      notifyClient(db, a, o.officerId, "dlao", `Update on your reference ${a.caseId}. Please call 16699 for details.`, `DLAS legal aid: case ${a.caseId} is closed (outcome: ${m.completion.outcome.replace(/_/g, " ").toLowerCase()}). Call 16699 if you have questions.`);
-      return m.closure;
-    });
-  },
 };
 
 /* ================================================================== *
@@ -920,8 +860,6 @@ export const LawyerService = {
       if (!h) throw new Error("Choose the hearing you are reporting on");
       if (h.assignmentId !== s.assignmentId) throw new Error("This hearing belonged to the previous lawyer — you can read it but not report on it");
       if (h.updateId) throw new Error("This hearing already has a report");
-      // PROTOTYPE: a future hearing may be reported early so the full flow can be demonstrated; it is marked, never hidden.
-      const early = Date.now() < new Date(h.at).getTime();
       const u: HearingUpdate = {
         updateId: rid("UPD"),
         hearingId: h.hearingId,
@@ -933,14 +871,13 @@ export const LawyerService = {
         byName: me.name,
         at: now(),
         late: Date.now() > new Date(h.updateDueAt).getTime(),
-        ...(early ? { beforeHearing: true } : {}),
       };
       m.updates.push(u);
       h.updateId = u.updateId;
       h.result = u.attendance === "ATTENDED" ? "ATTENDED" : u.attendance === "NOT_ATTENDED" ? "MISSED" : "NOT_HELD";
-      a.provenance[`lawyer.updates.${u.updateId}`] = { source: "LAWYER_REPORTED", method: "AGENT_FORM", confidence: "STATED", by: me.lawyerId, at: now(), note: early ? "self-reported by the panel lawyer — PROTOTYPE: reported before the hearing date" : "self-reported by the panel lawyer" };
+      a.provenance[`lawyer.updates.${u.updateId}`] = { source: "LAWYER_REPORTED", method: "AGENT_FORM", confidence: "STATED", by: me.lawyerId, at: now(), note: "self-reported by the panel lawyer" };
       closeTasks(db, a, me.lawyerId, "panel_lawyer", (t) => (t.type === "HEARING_UPDATE_DUE" || t.type === "LAWYER_UPDATE_OVERDUE") && (t.context as { hearingId?: string } | undefined)?.hearingId === h.hearingId);
-      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "hearing.update_submitted", detail: { lawyer: me.name, updateId: u.updateId, hearingId: h.hearingId, attendance: u.attendance, result: h.result, outcome: u.outcome, nextDate: u.nextDate, late: u.late, beforeHearing: early } });
+      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "hearing.update_submitted", detail: { lawyer: me.name, updateId: u.updateId, hearingId: h.hearingId, attendance: u.attendance, result: h.result, outcome: u.outcome, nextDate: u.nextDate, late: u.late } });
       if (a.stage === "SERVICE_DELIVERY") a.stage = "FOLLOW_UP";
       if (u.nextDate) addHearingTo(db, a, me, s, { at: u.nextDate, court: input.nextCourt.trim() || h.court, purpose: "", notifyClient: input.notifyClient });
       checkReassign(db, a, s);
@@ -1132,10 +1069,6 @@ export function lawyerNotificationsFor(db: DlasDb, me: PanelLawyerAccount | unde
         out.push({ id: `wd-${s.assignmentId}`, at: m.access.find((g) => g.assignmentId === s.assignmentId)?.revokedAt ?? s.respondedAt ?? s.offeredAt, tone: "err", title: { bn: `মামলা অন্য আইনজীবীকে দেওয়া হয়েছে: ${cid}`, en: `Case reassigned: ${cid}` }, body: { bn: `আপনার প্রবেশাধিকার শেষ। কারণ: ${s.declineReason ?? "—"}`, en: `Your access has ended. Reason: ${s.declineReason ?? "—"}` }, href: "#cases" });
       if (s.status === "COMPLETED" && m.completion)
         out.push({ id: `done-${s.assignmentId}`, at: m.completion.at, tone: "ok", title: { bn: `মামলা সম্পন্ন: ${cid}`, en: `Case completed: ${cid}` }, body: { bn: `উপস্থিত শুনানি ${s.ledger.hearingsAttended} — পেমেন্ট পর্যালোচনায়।`, en: `${s.ledger.hearingsAttended} attended hearing(s) — sent for payment review.` }, href: "#cases" });
-      if (s.payment?.approval)
-        out.push({ id: `payok-${s.assignmentId}`, at: s.payment.approval.at, tone: "ok", title: { bn: `পেমেন্ট অনুমোদিত: ${cid}`, en: `Payment approved: ${cid}` }, body: { bn: `${s.payment.approval.payableHearings}টি শুনানি × জেলা ফি${s.payment.approval.payableHearings !== s.payment.approval.computedHearings ? ` (সংশোধিত: ${s.payment.approval.note})` : ""}`, en: `${s.payment.approval.payableHearings} hearing(s) × district fee${s.payment.approval.payableHearings !== s.payment.approval.computedHearings ? ` (adjusted: ${s.payment.approval.note})` : ""}` }, href: "#cases" });
-      if (s.payment?.disbursement)
-        out.push({ id: `paid-${s.assignmentId}`, at: s.payment.disbursement.at, tone: "ok", title: { bn: `পেমেন্ট পাঠানো হয়েছে (সিমুলেটেড): ${cid}`, en: `Payment sent (simulated): ${cid}` }, body: { bn: `রেফারেন্স ${s.payment.disbursement.ref} — প্রোটোটাইপে কোনো টাকা লেনদেন হয় না।`, en: `Ref ${s.payment.disbursement.ref} — no money moves in the prototype.` }, href: "#cases" });
       if (s.reassignFlaggedAt && s.status === "ACCEPTED")
         out.push({ id: `rf-${s.assignmentId}`, at: s.reassignFlaggedAt, tone: "err", title: { bn: `${cid}: শুনানি মিসের সীমা পার হয়েছে`, en: `${cid}: missed-hearing limit reached` }, body: { bn: "অফিস অন্য আইনজীবী দিতে পারে।", en: "The office may assign another lawyer." }, href: `#cases/${a.applicationId}` });
       if (s.status !== "ACCEPTED") continue;

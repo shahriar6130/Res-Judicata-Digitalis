@@ -394,7 +394,6 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/lawyer#attendance", label: "navAttendance", key: "attendance", Icon: Check },
     { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
     { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
-    { href: "/dashboard/lawyer#hearings", label: "navAllHearings", key: "hearings", Icon: Scale },
   ],
   mediator: [{ href: "/dashboard/mediator#cases", label: "navMyMediations", key: "cases", Icon: Briefcase }],
   admin: [

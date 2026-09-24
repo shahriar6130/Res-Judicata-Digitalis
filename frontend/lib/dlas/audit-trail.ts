@@ -254,6 +254,11 @@ const PHRASES: Record<string, Phrase> = {
   "lawyer.accepted": P("LAWYER", () => B("আইনজীবী গ্রহণ করেছেন", "Lawyer accepted")),
   "lawyer.declined": P("LAWYER", () => B("আইনজীবী প্রত্যাখ্যান করেছেন", "Lawyer declined")),
   "lawyer.access_granted": P("LAWYER", () => B("আইনজীবীকে প্রবেশাধিকার", "Lawyer given case access"), false),
+  "lawyer.representation_completed": P("LAWYER", (d) => B(`আইনজীবীর প্রতিনিধিত্ব সম্পন্ন — ${words(d.outcome)}`, `Lawyer representation completed — ${words(d.outcome)}`)),
+  "lawyer.payment_approved": P("LAWYER", (d) => B(`আইনজীবীর পেমেন্ট অনুমোদিত — ${str(d.payableHearings)}টি শুনানি`, `Lawyer payment approved — ${str(d.payableHearings)} hearing(s)`)),
+  "lawyer.payment_disbursed": P("LAWYER", (d) => B(`পেমেন্ট পাঠানো হয়েছে (সিমুলেটেড) — ${str(d.ref)}`, `Payment sent (simulated) — ${str(d.ref)}`)),
+  "hearing.admin_added": P("LAWYER", (d) => B(`প্রশাসক শুনানি যোগ করেছেন — ${str(d.court)}`, `Administrator added a hearing — ${str(d.court)}`)),
+  "hearing.admin_updated": P("LAWYER", () => B("প্রশাসক শুনানির সময়সূচি সংশোধন করেছেন", "Administrator corrected the hearing schedule")),
   // notices & tasks
   "notice.sms_sent": P("NOTICE", () => B("আবেদনকারীকে নিরাপদ SMS পাঠানো (সিমুলেটেড)", "Sent a safe SMS to the applicant (simulated)"), false),
   "notice.not_sent": P("NOTICE", (d) => B(`SMS পাঠানো হয়নি — ${words(d.reason)}`, `SMS not sent — ${words(d.reason)}`)),

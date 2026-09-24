@@ -59,6 +59,11 @@ administrator audit entries. The applications view monitors every office and cha
 legal decisions remain in the DLO workflow. The policy section displays the currently
 stored ruleset versions.
 
+The Admin Applications view also lists every application's hearings and permits an administrator to
+add or edit the hearing date/time, court, and purpose. Lawyer-reported attendance and outcomes are
+read-only in this editor. Each change updates the shared record and appends an administrator audit
+entry; changing an unreported hearing also keeps its open reporting task deadline in sync.
+
 During verification, a logged-in DLO officer can correct applicant identity/contact,
 filer, matter, urgency, and safe-contact fields with a required reason. Corrections write
 field provenance and before/after audit values, reopen affected verification steps, and
@@ -121,10 +126,12 @@ previous keys where possible.
 - The old hard-coded officer dashboard (demo cases, alerts, assignments, timeline) was removed. `/dashboard/dlo` is the office queue (New · In verification · Decided · Follow-up tasks) and a 5-step review workspace, all from `dlas.db.v1`.
 - `/dashboard/dlo` and `#overview` show a live active-workload count, linked totals for all four buckets, composition/matter/channel charts when applications exist, and a new-application worklist. `#new`, `#review`, `#decided`, and `#tasks` show only their respective worklist. The DLO sidebar exposes these five destinations with office counts. Counts and charts derive from the signed-in officer's office queue; the overview does not create or change review records.
 - Every application and follow-up task record provides an explicit **Open application** link to `#app/<APP-ID>` in addition to the linked application reference.
+- An open application renders the active review step at the full workspace width. The case-review page does not show a separate audit-trail sidebar; existing audit records remain persisted and available in the activity/debug surfaces.
 - Office worklists use responsive labelled records, retaining all queue fields without horizontal scrolling. The application action remains visible with the record header.
 - Steps follow the Step-2 diagram: received → identity → documents & facts → vulnerability & eligibility (advisory recommendation from the JSON ruleset) → human decision. Yes creates Case ID `DLAS-YYYY-NNNNN` and allows eligibility notes; No requires a reason, notifies the applicant and closes the application (REJECTED). Blocked steps open follow-up tasks.
 - Divergence from the earlier Prompt 12 draft: Case ID creation and rejection are part of this step because the Step-2 diagram includes them; pathway selection (mediation / lawyer / referral) remains the next step.
 - Citizen side updates automatically: status, timeline, Case ID, "not accepted — reason" and notifications.
+- Lawyer-path closure is officer-controlled: the DLO records representation completion, reviews each lawyer's payable-hearing count, uses the explicitly simulated Pay lawyer button, and then closes the case with a reason of at least 10 characters. Close remains unavailable until every recorded lawyer payment is `PAID`; closure sets `RESOLVED`, records `closedAt`, closes remaining tasks, notifies the citizen safely, and appends audit entries.
 
 ## Feature 6 — successful mediation settlement
 
@@ -205,6 +212,7 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 - Clicking Overview from a hash section clears the hash and restores the overview.
 - Exactly one sidebar item is active: the hashless Overview item is active only when no section hash is present.
 - Admin colors are scoped through --admin-* tokens. The active black theme restores the original red administrator palette.
+- The Admin sidebar, including the সাক্ষ্য wordmark plate, uses the scoped admin palette rather than the shared black wordmark background. Other role sidebars remain unchanged.
 
 ## Theme snapshot and restoration
 

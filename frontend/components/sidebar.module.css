@@ -788,6 +788,10 @@
   --sidebar-active-fg: var(--admin-sidebar-active-fg);
 }
 .adminSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.adminSidebar .brand > span {
+  background: var(--admin-hero-bg);
+  border: 1px solid var(--admin-sidebar-border);
+}
 .adminSidebar .nav { padding: var(--s-8) var(--s-4); }
 .adminSidebar .legacyList { gap: var(--s-2); }
 .adminSidebar .legacyLink { min-height: 46px; padding: var(--s-3) var(--s-4); border: 1px solid transparent; font-size: var(--t-small); line-height: var(--leading-small); }

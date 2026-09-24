@@ -684,3 +684,43 @@ Code: `lib/dlas/duplicate-check.ts` (`scorePair`, `scanApplications`, `Duplicate
 - **Results:** POSSIBLE_DUPLICATE (score ≥ 45), RISK_SIGNAL ("one NID on two different names", "one phone for two different applicants — often a shared family/shop/UDC phone"; worded as *verify*, never *fraud*), SIMILAR_BUT_DIFFERENT (same-looking name but identifiers disagree → shown as checked and kept apart — the "trap cases").
 - **Human review:** side-by-side table (=/≠ per field) → decision SAME_PERSON | DIFFERENT_PEOPLE | NEEDS_VERIFICATION with a note (≥ 10 chars). Stored in `db.duplicateReviews[]` (`DuplicateReview`); audit `duplicate.flagged_for_review` (system) and `duplicate.review_decided {noAutomaticAction: true}` on both cases; scan run logged in `adminAudit`.
 - **Demo data (acceptance test):** "Load 13 demo records" files 13 clearly fictional "(demo)" records through the normal citizen door: 3 genuine duplicates, 2 risk signals, 2 same-name-different-people traps.
+
+## 29. Lawyer — all hearings & early reporting (prototype)
+
+- **View:** `/dashboard/lawyer#hearings` (sidebar "All hearings"; also a button on the Calendar and an Overview tile). Lists every hearing on the lawyer's accepted cases, past and future, with filters: All / Upcoming / To report / Reported.
+- **Action:** every unreported hearing has a button: "Record attendance & report", or for a future hearing "▶ Attend now & report (prototype)". The case page gets the same early action on its own upcoming hearings. Both use the existing `LawyerService.submitUpdate` form.
+- **Prototype rule:** a future hearing may be reported before its date so the full flow can be demonstrated. Nothing is hidden:
+  - `HearingUpdate.beforeHearing = true` (optional field)
+  - provenance note "PROTOTYPE: reported before the hearing date"
+  - the `hearing.update_submitted` audit event carries `detail.beforeHearing`
+  - the UI shows a "Before hearing date (prototype)" tag
+- **Unchanged guards:** the case must be accepted; the lawyer must own the hearing's assignment; one report per hearing; a next date creates the next hearing; reassignment checks still run.
+- **Test:** `t43hear` (a future hearing reported early → REPORTED, flagged, audited; a past hearing is not flagged; a second report is rejected).
+
+## 30. Lawyer path — payment approval, simulated payout, case closure
+
+The DLO closes a lawyer-path case in three steps, all on the DLO case page (`#app/<id>`) in the Panel lawyer section.
+
+1. **Complete representation** (existing `DlaoLawyerService.complete`): outcome plus a reason → stage OUTCOME, and each lawyer's payment goes to `DLAO_REVIEW`.
+2. **Approve payment**: `DlaoLawyerService.approvePayment(appId, assignmentId, {payableHearings, note})`.
+   - Runs from the "Review & approve payment" button in the Attendance & payment ledger.
+   - The computed count is the number of attended hearings. If the DLO changes it, a reason of at least 10 characters is required, and the count must fall between 0 and the number of completed stages.
+   - Result: `payment.status = "APPROVED"` and `payment.approval = {payableHearings, computedHearings, note, by, byName, at}`.
+   - Audited as `lawyer.payment_approved`; the lawyer gets a simulated SMS and a notice on their dashboard.
+3. **Pay lawyer (simulated)**: `DlaoLawyerService.payLawyer(appId, assignmentId)`.
+   - Allowed only after approval.
+   - Result: `payment.status = "PAID"` and `payment.disbursement = {ref: "SIMPAY-…", method: "SIMULATED_TRANSFER", simulated: true, …}`.
+   - Audited as `lawyer.payment_disbursed` with `simulated: true`. No money moves.
+4. **Close case**: `DlaoLawyerService.closeCase(appId, note)`.
+   - Requires `completion`. Blocked until every recorded lawyer payment is `PAID`. Needs a note of at least 10 characters.
+   - Result:
+     - `lawyer.closure = {reason, by, byName, at}`
+     - `status: RESOLVED`, `stage: CLOSURE`, `closedAt` set
+     - every open task on the case is closed
+     - audit entries `status.changed` and `application.closed {pathway: "LAWYER", outcome, payments}`
+     - the citizen gets an SMS using the safe-contact rules
+   - After this, the DLO page shows a "Case closed" banner, and the citizen timeline shows the Outcome step ("Court stage complete — outcome: …") and the Closure step ("Case closed by …").
+- **Schema:**
+  - `PaymentReconciliation.status` gains `APPROVED | PAID` and optional `approval` / `disbursement`.
+  - `LawyerMatter.closure?` is added.
+- **Test:** `t44close`.

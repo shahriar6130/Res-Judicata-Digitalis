@@ -82,7 +82,6 @@ export type MessageKey =
   | "navAttendance"
   | "navHearingReports"
   | "navCalendar"
-  | "navAllHearings"
   | "navOverview"
   | "navUsers"
   | "navRules"
@@ -1284,7 +1283,6 @@ export const messages: Messages = {
     navAttendance: "উপস্থিতি",
     navHearingReports: "শুনানির প্রতিবেদন",
     navCalendar: "ক্যালেন্ডার",
-    navAllHearings: "সব শুনানি",
     navOverview: "সংক্ষেপ",
     navUsers: "ব্যবহারকারী",
     navRules: "নিয়ম ও থ্রেশহোল্ড",
@@ -2576,7 +2574,6 @@ export const messages: Messages = {
     navAttendance: "Attendance",
     navHearingReports: "Hearing Reports",
     navCalendar: "Calendar",
-    navAllHearings: "All hearings",
     navOverview: "Overview",
     navUsers: "Users",
     navRules: "Rules & Thresholds",

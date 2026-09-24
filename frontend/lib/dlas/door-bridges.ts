@@ -43,7 +43,7 @@ const URGENCY_FLAGS = ["IMMEDIATE_DANGER", "VIOLENCE_OR_THREAT", "ONLINE_HARASSM
 export interface CitizenDraftLike {
   name: string;
   phone: string;
-  actingFor: "self" | "family" | "neighbor" | null;
+  actingFor: "self" | "family" | "neighbor" | "alleged" | null;
   proxyRel: string;
   proxyName: string;
   proxyPhone: string;
@@ -69,6 +69,7 @@ const CITIZEN_ENTRY = "/dashboard/citizen#intake";
 
 function mapRelation(text: string, actingFor: CitizenDraftLike["actingFor"]): Relation {
   if (actingFor === "neighbor") return "NEIGHBOUR";
+  if (actingFor === "alleged") return "OTHER";
   const t = text.toLowerCase();
   if (/ভাই|বোন|brother|sister|sibling/.test(t)) return "SIBLING";
   if (/স্বামী|স্ত্রী|husband|wife|spouse/.test(t)) return "SPOUSE";
@@ -94,7 +95,7 @@ function writeKey(key: string, v: string | null) {
 }
 
 export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): DeepPartial<ApplicationData> {
-  const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+  const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
   const applicantPhone = normalizePhone(rep ? d.proxyPhone : d.phone);
   const method: ContactMethod = rep && !applicantPhone ? "VIA_REPRESENTATIVE" : "CALL";
   return {
@@ -106,6 +107,7 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
       : { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
     matter: {
       category: mapLegacyMatter(d.matter),
+      assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
       summary: d.description.trim() || null,
       opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
     },
@@ -166,7 +168,7 @@ export const CitizenDoor = {
   sync(d: CitizenDraftLike, district: string | null, completedStep: number) {
     const sid = CitizenDoor.ensure();
     const tag: CaptureTag =
-      d.actingFor === "family" || d.actingFor === "neighbor"
+      d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged"
         ? { source: "REPRESENTATIVE_REPORTED", method: "WEB_FORM", by: `rep:${normalizePhone(d.phone) ?? "unknown"}` }
         : { source: "APPLICANT_STATED", method: "WEB_FORM", by: "applicant" };
     const step: IntakeStep | undefined = completedStep >= 4 ? "DOCUMENTS_ATTACHED" : completedStep >= 3 ? "DETAILS_CAPTURED" : undefined;
@@ -176,7 +178,7 @@ export const CitizenDoor = {
 
   /** Final submit from step 5. Returns the gateway result (errors are shown by the wizard). */
   async submit(d: CitizenDraftLike, district: string | null): Promise<SubmitResult> {
-    const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+    const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
     const by = rep ? `rep:${normalizePhone(d.phone) ?? "unknown"}` : "applicant";
     const tag: CaptureTag = rep
       ? { source: "REPRESENTATIVE_REPORTED", method: "WEB_FORM", by }
@@ -342,7 +344,7 @@ export const UdcDoor = {
       writeKey(key, session.sessionId);
     }
 
-    const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+    const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
     const statedApplicantPhone = normalizePhone(rep ? d.proxyPhone : d.phone);
     const applicantPhone = statedApplicantPhone ?? normalizePhone(d.phone);
     const contactPhone = normalizePhone(d.phone) ?? applicantPhone;
@@ -374,6 +376,7 @@ export const UdcDoor = {
         },
         matter: {
           category: mapLegacyMatter(d.matter),
+          assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
           summary: d.description.trim() || null,
           opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
         },

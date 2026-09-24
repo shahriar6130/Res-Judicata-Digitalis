@@ -390,6 +390,7 @@ export function factChecklist(a: ApplicationRecord): { key: string; label: strin
   const d = a.data;
   const items: { key: string; label: string; value: string | null }[] = [
     { key: "matter.category", label: "Type of problem", value: label(MATTERS, d.matter.category, "en") },
+    { key: "matter.assistanceRole", label: "Legal aid requested for", value: d.matter.assistanceRole === "ALLEGED_PERSON_DEFENCE" ? "Defence of an alleged person" : d.matter.assistanceRole === "CLAIMANT" ? "Applicant / claimant" : null },
     { key: "matter.summary", label: "What happened", value: d.matter.summary },
     { key: "matter.incidentDate", label: "Incident date", value: d.matter.incidentDate },
     { key: "matter.opposingParty", label: "Other party", value: d.matter.opposingParty },
@@ -413,7 +414,7 @@ function setUnderReview(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount,
   }
 }
 
-function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutralBody: string, fullBody: string) {
+function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutralBody: string, fullBody: string, context?: { kind: "DOCUMENT_REQUEST"; docId: string }) {
   const to = normalizePhone(a.data.safeContact.phone) ?? normalizePhone(a.data.applicant.phone);
   if (!to) {
     logA(db, a, o, "notice.not_sent", { reason: "no safe phone on record — applicant is told at the office / via 16699" });
@@ -431,6 +432,7 @@ function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutral
     simulated: true,
     status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE",
     at: now(),
+    ...(context ? { context } : {}),
   });
   logA(db, a, o, allowed ? "notice.sms_sent" : "notice.sms_suppressed", { to, neutral: a.data.safeContact.neutralWordingRequired });
 }
@@ -773,6 +775,7 @@ export const DlaoReviewService = {
         o,
         `Update on your reference ${a.applicationId}. Please log in to the portal or visit your UDC.`,
         `DLAS legal aid: please upload your ${name} for application ${a.applicationId} in the web portal (My cases), or bring it to your UDC. Help: 16699.`,
+        { kind: "DOCUMENT_REQUEST", docId: d.docId },
       );
       return a;
     });

@@ -200,6 +200,8 @@ export interface ApplicationData {
   };
   matter: {
     category: MatterCategory | null;
+    /** Whether aid is sought for the claimant/applicant or to defend an alleged person. */
+    assistanceRole: "CLAIMANT" | "ALLEGED_PERSON_DEFENCE" | null;
     summary: string | null; // in Bangla/English as recorded
     summaryOriginal: string | null; // applicant's own words if translated
     translation: {
@@ -742,6 +744,26 @@ export interface HearingUpdate {
   beforeHearing?: boolean; // PROTOTYPE: reported ahead of the hearing date (demo walkthrough)
 }
 
+/** Citizen-visible record generated when the DLAO closes a lawyer-path case. */
+export interface LawyerClosureTestimonial {
+  testimonialId: string; // TST-XXXXXX
+  issuedAt: string;
+  issuedBy: string;
+  issuedByName: string;
+  office: string;
+  applicationId: string;
+  caseRef: string;
+  applicantName: string;
+  respondentName: string | null;
+  matter: MatterCategory | null;
+  outcome: "WON" | "LOST" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER" | "JUDGMENT";
+  outcomeReason: string;
+  closureReason: string;
+  lawyerNames: string[];
+  hearingsRecorded: number;
+  simulated: true;
+}
+
 export interface LawyerMatter {
   assignments: LawyerAssignment[]; // history; at most one OFFERED/ACCEPTED at a time
   hearings: Hearing[];
@@ -751,6 +773,21 @@ export interface LawyerMatter {
   completion: { outcome: "WON" | "LOST" | "SETTLED" | "WITHDRAWN_BY_CLIENT" | "OTHER" | "JUDGMENT"; reason: string; by: string; byName: string; at: string } | null;
   /** Final DLAO closure of a lawyer-path case (after completion + simulated payment). */
   closure?: { reason: string; by: string; byName: string; at: string } | null;
+  /** Generated with closure and delivered to the citizen's case page. */
+  closureTestimonial?: LawyerClosureTestimonial | null;
+  /** Citizen-raised concerns about the assigned lawyer; approval does not itself pick the replacement. */
+  changeRequests?: LawyerChangeRequest[];
+}
+
+export interface LawyerChangeRequest {
+  requestId: string;
+  requestedAt: string;
+  requestedBy: string;
+  reason: "ALLEGED_ILLEGAL_CONDUCT";
+  status: "PENDING" | "APPROVED";
+  decidedAt: string | null;
+  decidedBy: string | null;
+  decidedByName: string | null;
 }
 
 /* ---------- Tasks (human work items created by the workflow) ---------- */
@@ -769,6 +806,7 @@ export type TaskType =
   | "HEARING_UPDATE_DUE" // panel lawyer: report on a hearing
   | "LAWYER_UPDATE_OVERDUE" // DLAO: a required lawyer update is late (no chase call needed)
   | "LAWYER_REASSIGN_REVIEW" // DLAO: lawyer missed the threshold number of hearings on this case
+  | "LAWYER_CHANGE_REQUEST" // DLAO: citizen alleges illegal conduct and asks for a different lawyer
   | "MEDIATOR_ASSIGNMENT" // DLAO: confirm a mediator for a case in the mediation pathway
   | "MEDIATION_OUTCOME_REVIEW" // DLAO: mediator recorded an outcome (settlement → signatures + certification; failed → failure record + pathway)
   | "MEDIATION_FAILURE_REVIEW" // DLAO: confirm/change the advisory next pathway after a formal failure record
@@ -815,6 +853,7 @@ export interface SimMessage {
   simulated: true;
   status: "DELIVERED" | "SUPPRESSED_UNSAFE";
   at: string;
+  context?: { kind: "DOCUMENT_REQUEST"; docId: string } | { kind: "LAWYER_CHANGE_APPROVED"; requestId: string };
 }
 
 export interface OtpChallenge {
@@ -954,6 +993,7 @@ export function emptyApplicationData(): ApplicationData {
     filedBy: { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
     matter: {
       category: null,
+      assistanceRole: null,
       summary: null,
       summaryOriginal: null,
       translation: null,

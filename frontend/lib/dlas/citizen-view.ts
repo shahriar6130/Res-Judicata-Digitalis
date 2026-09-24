@@ -397,11 +397,28 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
       }
       out.push({ id: `hrg-${h.hearingId}`, at: h.addedAt, icon: "bell", title: { bn: `শুনানি: ${formatDateTime(h.at, "bn")}`, en: `Hearing: ${formatDateTime(h.at, "en")}` }, body: { bn: `${a.caseId ?? a.applicationId} · ${h.court}`, en: `${a.caseId ?? a.applicationId} · ${h.court}` }, href: `cases/${a.applicationId}` });
     }
+    const closureTestimonial = a.lawyer?.closureTestimonial;
+    if (closureTestimonial) {
+      out.push({
+        id: `lawyer-testimonial-${closureTestimonial.testimonialId}`,
+        at: closureTestimonial.issuedAt,
+        icon: "check",
+        title: { bn: "কেস বন্ধ — প্রত্যয়নপত্র প্রস্তুত", en: "Case closed — testimonial ready" },
+        body: { bn: `${closureTestimonial.caseRef} · প্রত্যয়নপত্র ${closureTestimonial.testimonialId}`, en: `${closureTestimonial.caseRef} · Testimonial ${closureTestimonial.testimonialId}` },
+        href: `cases/${a.applicationId}`,
+      });
+    }
     if (d?.decision === "NOT_ELIGIBLE") {
       out.push({ id: `rej-${a.applicationId}`, at: d.at, icon: "bell", title: { bn: "আবেদন গৃহীত হয়নি", en: "Application not accepted" }, body: { bn: `কারণ: ${d.reason}`, en: `Reason: ${d.reason}` }, href: `cases/${a.applicationId}` });
     }
   }
   for (const m of db.outbox.filter((x) => x.to === me.phone && x.kind === "SMS_CONFIRMATION")) {
+    const messageContext = m.context;
+    if (messageContext?.kind === "DOCUMENT_REQUEST") {
+      const application = apps.find((a) => a.applicationId === m.applicationId);
+      const document = application?.data.documents.find((d) => d.docId === messageContext.docId);
+      if (document?.status === "ATTACHED") continue;
+    }
     out.push({
       id: `sms-${m.msgId}`,
       at: m.at,

@@ -717,10 +717,23 @@ The DLO closes a lawyer-path case in three steps, all on the DLO case page (`#ap
      - `lawyer.closure = {reason, by, byName, at}`
      - `status: RESOLVED`, `stage: CLOSURE`, `closedAt` set
      - every open task on the case is closed
-     - audit entries `status.changed` and `application.closed {pathway: "LAWYER", outcome, payments}`
-     - the citizen gets an SMS using the safe-contact rules
-   - After this, the DLO page shows a "Case closed" banner, and the citizen timeline shows the Outcome step ("Court stage complete — outcome: …") and the Closure step ("Case closed by …").
+     - audit entries `status.changed`, `application.closed {pathway: "LAWYER", outcome, payments}`, `lawyer.closure_testimonial_issued`, and `lawyer.closure_testimonial_sent_to_citizen`
+     - `lawyer.closureTestimonial` stores the generated simulated testimony ID, case/application references, parties, matter, outcome and reasons, lawyer names, hearing count, issuing officer/office, and issue time
+     - the citizen gets an in-app notification plus an SMS using the safe-contact rules
+   - After this, the DLO page shows a "Case closed" banner and testimonial reference. The citizen timeline shows the Outcome and Closure steps, and the owned case page renders the testimony.
 - **Schema:**
   - `PaymentReconciliation.status` gains `APPROVED | PAID` and optional `approval` / `disbursement`.
-  - `LawyerMatter.closure?` is added.
+  - `LawyerMatter.closure?` and `LawyerMatter.closureTestimonial?` are added.
 - **Test:** `t44close`.
+
+## Co-mediator, defence-aid, lawyer-change, and notification fields
+
+- `ApplicationData.matter.assistanceRole`: `CLAIMANT | ALLEGED_PERSON_DEFENCE | null`.
+- `MediationMatter.assignments[]` permits multiple simultaneous `ASSIGNED` records with unique
+  mediator IDs; each retains its own offer, eligibility/conflict result, access and end state.
+- `LawyerMatter.changeRequests[]`: `{requestId, requestedAt, requestedBy,
+  reason: ALLEGED_ILLEGAL_CONDUCT, status: PENDING | APPROVED, decidedAt, decidedBy,
+  decidedByName}`. `LAWYER_CHANGE_REQUEST` links the DLAO task by `context.requestId`.
+- `SimMessage.context` optionally links `DOCUMENT_REQUEST` to `docId` or
+  `LAWYER_CHANGE_APPROVED` to `requestId`. Projections omit a document-request message after the
+  linked document reaches `ATTACHED`; the outbox/audit record remains stored.

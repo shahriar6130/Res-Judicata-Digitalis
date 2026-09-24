@@ -103,7 +103,7 @@ export function MediatorAssignPanel({ a, run }: { a: ApplicationRecord; run: Run
   const liveById = new Map(v.live.map((c) => [c.mediatorId, c]));
   const rows: MediatorCandidate[] = (run0?.candidates ?? []).map((c) => liveById.get(c.mediatorId) ?? c);
   const excluded = rows.filter((c) => !c.eligible);
-  const canPick = !v.current && !picks.offer && status !== "COMPLETED";
+  const canPick = !picks.offer && status !== "COMPLETED";
 
   return (
     <section className={ui.panel} style={{ marginTop: "var(--s-5)" }} aria-label={tx("মধ্যস্থতাকারী নিয়োগ", "Mediator assignment")}>
@@ -125,9 +125,10 @@ export function MediatorAssignPanel({ a, run }: { a: ApplicationRecord; run: Run
         <Row label={tx("মধ্যস্থতার উৎস", "Mediation origin")}>
           <Tag tone={court ? "ink" : "ok"}>{(v.matter?.origin ?? (court ? "COURT_REFERRED" : "PRE_LITIGATION")).replaceAll("_", " ")}</Tag> {v.matter ? statusLabel(v.matter.pathwayStatus, lang) : ""}
         </Row>
+        {v.currents.length ? <Row label={tx("নিয়োগকৃত মধ্যস্থতাকারী", "Assigned mediators")}><strong>{v.currents.length}</strong> · {v.currents.map((x) => x.mediatorName).join(", ")}</Row> : null}
         {court ? <Row label={tx("আদালত রেফারেল তথ্য", "Court referral record")}>{[a.pathwayClassification?.inputs.courtName, a.pathwayClassification?.inputs.courtLevel?.replaceAll("_", " "), a.pathwayClassification?.inputs.courtCaseNo, a.pathwayClassification?.inputs.referralOrderReference, a.pathwayClassification?.inputs.referringAuthority, a.pathwayClassification?.inputs.currentLitigationStage?.replaceAll("_", " "), a.pathwayClassification?.inputs.referralDeadline].filter(Boolean).join(" · ") || "—"}</Row> : null}
         <Row label={tx("মামলার ধরন (ফিল্টারে ব্যবহৃত)", "Case type (used by the filters)")}>
-          {canPick && !v.pending ? (
+          {canPick && !v.current && !v.pending ? (
             <select className={styles.select} style={{ maxWidth: 320 }} value={v.caseType ?? ""} onChange={(e) => e.target.value && run(() => void MediatorAssignmentService.setCaseType(a.applicationId, e.target.value as MediationCaseType))}>
               <option value="">{tx("— বেছে নিন —", "— choose —")}</option>
               {MEDIATION_CASE_TYPES.filter((c) => c.track === v.track).map((c) => (
@@ -144,7 +145,7 @@ export function MediatorAssignPanel({ a, run }: { a: ApplicationRecord; run: Run
       </div>
 
       {/* ---------- assigned ---------- */}
-      {v.current ? <Assigned a={a} run={run} /> : null}
+      {v.currents.map((assignment, index) => <Assigned key={assignment.assignmentId} a={a} run={run} assignment={assignment} allowComplete={index === 0} />)}
 
       {/* ---------- awaiting confirmation ---------- */}
       {v.pending ? <Awaiting a={a} run={run} /> : null}
@@ -157,7 +158,7 @@ export function MediatorAssignPanel({ a, run }: { a: ApplicationRecord; run: Run
         <div style={{ marginTop: "var(--s-4)" }}>
           <div className={ui.bar}>
             <Button variant={run0 ? "secondary" : "primary"} disabled={!v.caseType} onClick={() => run(() => void MediatorAssignmentService.checkEligibility(a.applicationId))}>
-              {run0 ? tx("যোগ্যতা আবার যাচাই", "Re-check eligible mediators") : tx("যোগ্য মধ্যস্থতাকারী খুঁজুন", "Check eligible mediators")}
+              {v.currents.length ? tx("সহ-মধ্যস্থতাকারী যোগ করতে যোগ্যতা যাচাই", "Check eligibility to add a co-mediator") : run0 ? tx("যোগ্যতা আবার যাচাই", "Re-check eligible mediators") : tx("যোগ্য মধ্যস্থতাকারী খুঁজুন", "Check eligible mediators")}
             </Button>
             {run0 ? (
               <span className={styles.hint}>
@@ -474,13 +475,13 @@ function Awaiting({ a, run }: { a: ApplicationRecord; run: Run }) {
 
 /* ------------------------------ assigned ------------------------------ */
 
-function Assigned({ a, run }: { a: ApplicationRecord; run: Run }) {
+function Assigned({ a, run, assignment: c, allowComplete }: { a: ApplicationRecord; run: Run; assignment: MediatorAssignmentRecord; allowComplete: boolean }) {
   const { lang, tx } = useTx();
   const v = useMediatorAssignment(a);
   const [mode, setMode] = useState<"reassign" | "complete" | null>(null);
   const [text, setText] = useState("");
-  const c = v.current!;
-  const conflict = v.currentConflicts.length > 0;
+  const live = v.live.find((x) => x.mediatorId === c.mediatorId);
+  const conflict = !!live?.conflictIds.length;
   return (
     <div className={`${ui.flowStep} ${conflict ? "" : ui.confirmed}`} style={{ marginTop: "var(--s-4)", borderColor: conflict ? "var(--red)" : undefined, borderWidth: conflict ? 2 : undefined }}>
       <span className={ui.confirmedBadge} style={conflict ? { background: "var(--red)" } : undefined}>
@@ -493,7 +494,7 @@ function Assigned({ a, run }: { a: ApplicationRecord; run: Run }) {
       ) : null}
       <div className={ui.rows} style={{ marginTop: 8 }}>
         <Row label={tx("নিয়োগকৃত মধ্যস্থতাকারী", "Assigned mediator")}>
-          <strong>{c.mediatorName}</strong> {v.currentMediator?.sample ? <Tag tone="ink">{tx("নমুনা", "SAMPLE")}</Tag> : null}{" "}
+          <strong>{c.mediatorName}</strong> {live?.sample ? <Tag tone="ink">{tx("নমুনা", "SAMPLE")}</Tag> : null}{" "}
           <a className={ui.textBtn} href={`#mediator/${c.mediatorId}`}>
             {tx("প্রোফাইল", "Profile")}
           </a>
@@ -515,7 +516,7 @@ function Assigned({ a, run }: { a: ApplicationRecord; run: Run }) {
         <Button variant={conflict ? "destructive" : "secondary"} onClick={() => setMode("reassign")}>
           ⇄ {tx("পুনঃনিয়োগের অনুরোধ", "Request reassignment")}
         </Button>
-        {!conflict ? (
+        {!conflict && allowComplete ? (
           <Button variant="secondary" onClick={() => setMode("complete")}>
             {tx("মধ্যস্থতা সম্পন্ন", "Mark mediation completed")}
           </Button>
@@ -533,7 +534,7 @@ function Assigned({ a, run }: { a: ApplicationRecord; run: Run }) {
               disabled={text.trim().length < 10}
               onClick={() =>
                 run(() => {
-                  if (mode === "reassign") MediatorAssignmentService.requestReassignment(a.applicationId, text);
+                  if (mode === "reassign") MediatorAssignmentService.requestReassignment(a.applicationId, c.assignmentId, text);
                   else MediatorAssignmentService.complete(a.applicationId, text);
                   setMode(null);
                   setText("");

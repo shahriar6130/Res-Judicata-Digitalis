@@ -139,6 +139,9 @@ For lawyer-path cases, the Panel lawyer section provides the complete ending flo
 representation outcome, review the payable-hearing count, use **Pay lawyer (simulated)**, and enter
 a closing note to enable **Close case**. Closure is blocked until every recorded lawyer payment is
 paid, then the application becomes `RESOLVED`, the citizen is notified, and the action is audited.
+The same close action generates a persisted simulated case-closure testimonial containing the
+recorded outcome, reasons, lawyers, hearing count, issuing officer, and timestamp. It appears on
+the citizen's owned case page, creates a citizen notification, and is referenced by the safe SMS.
 
 The legacy lawyer dashboard at `/dashboard/lawyer` has focused Overview, Assignments, Reports,
 and Schedule views that match its sidebar links. The assignment offer supports acceptance or a
@@ -194,6 +197,20 @@ claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/lay
 Nothing hardcodes a color or font family outside `app/tokens.css` and
 `app/layout.tsx`; change the whole look in those two files.
 
+### Citizen representation and case-service updates
+
+- Assisted intake includes **For an alleged person**, preserving the represented person as the
+  applicant and recording `matter.assistanceRole = ALLEGED_PERSON_DEFENCE` for defence legal aid.
+- A lawyer-path case with an accepted lawyer shows a citizen **Request lawyer change** action for
+  alleged illegal conduct. It creates a high-priority DLAO task; DLAO approval persists on the
+  case and sends the citizen the promised approval/update-soon message.
+- Mediation assignment can retain several active, individually eligible mediators on one case.
+  Each co-mediator passes the same district, certificate, availability, case-type and conflict
+  checks, and duplicate assignment of the same mediator is blocked.
+- Mediation-completion banners and SMS announce completion and the testimonial without seven-day
+  appeal copy. A document-request task and its matching simulated-SMS notification disappear from
+  the citizen feed as soon as that requested document is attached.
+
 ### Saved theme
 
 The active theme is app/themes/black_theme.css, imported after app/tokens.css in app/globals.css. This restores the original black and off-white appearance and red admin palette. The blue_white.css and red_white.css alternatives remain saved.
@@ -229,12 +246,12 @@ npm run lint
 `/device` defaults to the IVR simulator; `/device/ivr` and `/device/ussd` select the corresponding phone flow. The interface uses a compact heading, a two-option mode switch, and one centered handset. The handset display has a compact fixed height with internal scrolling for longer prompts, and its keypad and call controls retain 44px targets. Every mount starts fresh: the active device session is not restored and the flow neither stores nor shows conversation history. Voice text entry appears inside the handset when required. The device surface omits message, live JSON, and debug-console panels while continuing to write required application fields, provenance, audit events, handoffs, and submissions.
 ### Admin mediator and UDC management
 
-`/dashboard/admin#users` includes Mediators and UDC operators. Mediator add/edit uses the shared `db.mediators` registry and captures status, role, district, qualification, mediation tracks, and case types. UDC operator add/edit uses `db.udcOperators` and synchronizes the associated registered UDC centre. Both flows append admin/account audit entries; the existing mediator verification, certification, assignment, and login workflows remain in place.
+`/dashboard/admin#users` includes Mediators and UDC operators. Mediator add/edit uses the shared `db.mediators` registry and captures status, role, district, qualification, mediation tracks, and case types. The dedicated `/dashboard/admin#training` section lists every mediator and edits training/certification status, provider, certificate number, issue/expiry dates, and a required training note. A training edit appends the administrative record and audit, resets prior verification, returns an active mediator to pending verification, survives the legacy auto-approval migration, and waits for the online-store result; it does not bypass the established verification requirement. UDC operator add/edit uses `db.udcOperators` and synchronizes the associated registered UDC centre. Both flows append admin/account audit entries; the existing mediator verification, certification, assignment, and login workflows remain in place.
 
 Every People row has a Delete action with a confirmation dialog. Deletion preserves historical application and admin audit records and writes a deletion audit event. Active mediator and lawyer assignments block removal with an inline message. Deleting a UDC operator also removes the operator's linked registered centre entry.
 ### Admin sidebar
 
-The admin sidebar links to Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
+The admin sidebar links to Overview, People, Mediator training, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
 The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one burgundy visual identity.
 
 

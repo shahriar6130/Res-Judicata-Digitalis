@@ -135,7 +135,7 @@ previous keys where possible.
 - Steps follow the Step-2 diagram: received → identity → documents & facts → vulnerability & eligibility (advisory recommendation from the JSON ruleset) → human decision. Yes creates Case ID `DLAS-YYYY-NNNNN` and allows eligibility notes; No requires a reason, notifies the applicant and closes the application (REJECTED). Blocked steps open follow-up tasks.
 - Divergence from the earlier Prompt 12 draft: Case ID creation and rejection are part of this step because the Step-2 diagram includes them; pathway selection (mediation / lawyer / referral) remains the next step.
 - Citizen side updates automatically: status, timeline, Case ID, "not accepted — reason" and notifications.
-- Lawyer-path closure is officer-controlled: the DLO records representation completion, reviews each lawyer's payable-hearing count, uses the explicitly simulated Pay lawyer button, and then closes the case with a reason of at least 10 characters. Close remains unavailable until every recorded lawyer payment is `PAID`; closure sets `RESOLVED`, records `closedAt`, closes remaining tasks, notifies the citizen safely, and appends audit entries.
+- Lawyer-path closure is officer-controlled: the DLO records representation completion, reviews each lawyer's payable-hearing count, uses the explicitly simulated Pay lawyer button, and then closes the case with a reason of at least 10 characters. Close remains unavailable until every recorded lawyer payment is `PAID`; closure sets `RESOLVED`, records `closedAt`, closes remaining tasks, and atomically generates a simulated case-closure testimonial with its own ID, recorded outcome and reasons, participating lawyers, hearing count, issuing officer, and timestamp. The testimony is persisted in the lawyer matter, exposed only through the owning citizen's case page, represented by a citizen notification, referenced in the safe-contact SMS, and covered by append-only issue/delivery audit entries.
 
 ## Feature 6 — successful mediation settlement
 
@@ -203,6 +203,7 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 
 - `ManagedRole` includes `mediators` and `udcOperators` alongside citizens, lawyers, and officers.
 - Admin mediator creation writes the existing `DlasDb.mediators` registry shape with a `MED-*` identifier, nested contact record, district, status, role, qualification, supported tracks, supported case types, default availability, and append-only mediator/admin audit entries.
+- `/dashboard/admin#training` is a persistent Mediator training section exposed in both admin navigation surfaces. It lists the shared mediator registry and allows the administrator to edit certification/training status, provider, certificate number, issue date, expiry date, and a required training-history note. Saving resets the record's verification fields, returns an active mediator to `PENDING_VERIFICATION`, appends a `TRAINING` administrative entry and `mediator.training_updated` audit event, and uses the same explicit online-save result as other admin mutations. Explicit training edits are excluded from the legacy auto-approval migration, so the saved training state survives reload. Completed training or certification still requires the established verification step before it qualifies for assignment.
 - Editing a mediator updates that same registry record; it does not create a second mediator account store or change mediator authentication.
 - UDC operator administration continues to write `DlasDb.udcOperators`. Saving an operator creates or updates the corresponding `REGISTERED_OPERATOR` entry in `DlasDb.udcCentres`.
 - Admin overview totals and audit aggregation include mediator and UDC operator accounts.
@@ -231,3 +232,18 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 ### Blue White visual refresh
 
 The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+
+## Co-mediators, defence intake, lawyer-change requests, and notification cleanup
+
+- A mediation case may have several `assignments[]` entries in `ASSIGNED`. The DLAO adds each
+  co-mediator through the existing ranked offer flow; eligibility/conflicts are rechecked, duplicate
+  active assignment is blocked, reassignment targets one record, and completion closes them all.
+- Citizen and UDC intake accept `actingFor: alleged`. The represented person is the applicant and
+  `matter.assistanceRole` records `ALLEGED_PERSON_DEFENCE`; other applications record `CLAIMANT`.
+- A citizen with an accepted lawyer can create one pending `lawyer.changeRequests[]` item for
+  alleged illegal conduct. This opens a high-priority `LAWYER_CHANGE_REQUEST` DLAO task. Approval
+  closes the task, audits the decision, and says the application is approved and an update will
+  follow soon; choosing the replacement remains a separate human action.
+- Mediation-completion notification copy contains no seven-day appeal statement. Appeal controls
+  remain inside case detail. Document-request SMS records its `docId`; attachment completes the
+  task and removes both task and matching SMS notification from the citizen projection.

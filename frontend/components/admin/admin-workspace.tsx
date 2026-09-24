@@ -4,8 +4,8 @@ import { useState, useSyncExternalStore } from "react";
 import { useI18n } from "@/lib/i18n";
 import { syncRemoteDbNow, useDlasDb, type RemoteSyncResult } from "@/lib/dlas/store";
 import { DISTRICTS, MATTERS, label } from "@/lib/dlas/reference";
-import { AdminService, type AdminHearingInput, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
-import { MEDIATION_CASE_TYPES, MEDIATION_TRACKS } from "@/lib/dlas/mediators";
+import { AdminService, type AdminHearingInput, type AdminMediatorTrainingInput, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
+import { CERTIFICATION_STATUSES, MEDIATION_CASE_TYPES, MEDIATION_TRACKS, lbl } from "@/lib/dlas/mediators";
 import { exportBackup, importBackup, previewBackup, type BackupPreview } from "@/lib/dlas/backup";
 import type { AuditEntry, DlasDb, Hearing } from "@/lib/dlas/schema";
 import css from "./admin-workspace.module.css";
@@ -19,8 +19,8 @@ const roles: { key: ManagedRole; bn: string; en: string }[] = [
   { key: "udcOperators", bn: "ইউডিসি অপারেটর", en: "UDC operators" },
 ];
 const managedIdField: Record<ManagedRole, string> = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", mediators: "mediatorId", udcOperators: "operatorId" };
-type Section = "overview" | "users" | "cases" | "mediation" | "rules" | "audit" | "backup";
-const sections: Section[] = ["overview", "users", "cases", "mediation", "rules", "audit", "backup"];
+type Section = "overview" | "users" | "training" | "cases" | "mediation" | "rules" | "audit" | "backup";
+const sections: Section[] = ["overview", "users", "training", "cases", "mediation", "rules", "audit", "backup"];
 const subscribeHash = (cb: () => void) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); };
 const currentHash = () => window.location.hash.slice(1);
 
@@ -43,6 +43,7 @@ export function AdminWorkspace() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<{ role: ManagedRole; id: string | null; input: ManagedInput } | null>(null);
   const [hearingEditing, setHearingEditing] = useState<{ applicationId: string; hearingId: string | null; input: AdminHearingInput } | null>(null);
+  const [trainingEditing, setTrainingEditing] = useState<{ mediatorId: string; name: string; input: AdminMediatorTrainingInput } | null>(null);
   const [deleting, setDeleting] = useState<{ role: ManagedRole; id: string; name: string } | null>(null);
   const [error, setError] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -120,6 +121,34 @@ export function AdminWorkspace() {
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setSaving(false); }
   }
+  function editTraining(mediatorId: string) {
+    const mediator = db.mediators.find((m) => m.mediatorId === mediatorId);
+    if (!mediator) return;
+    setError(""); setNotice("");
+    setTrainingEditing({
+      mediatorId,
+      name: mediator.name,
+      input: {
+        status: mediator.certification.status,
+        body: mediator.certification.body ?? "",
+        certificateNo: mediator.certification.certificateNo ?? "",
+        issuedOn: mediator.certification.issuedOn ?? "",
+        validUntil: mediator.certification.validUntil ?? "",
+        note: "",
+      },
+    });
+  }
+  async function saveTraining() {
+    if (!trainingEditing) return;
+    try {
+      setSaving(true);
+      AdminService.saveMediatorTraining(trainingEditing.mediatorId, trainingEditing.input);
+      const remote = await syncRemoteDbNow();
+      setTrainingEditing(null); setError("");
+      setNotice(syncedNotice(remote, ["প্রশিক্ষণ রেকর্ড", "Training record"]));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
+  }
   async function remove() {
     if (!deleting) return;
     try {
@@ -173,7 +202,7 @@ export function AdminWorkspace() {
       <div><p className={css.kicker}>{tx("সিস্টেম প্রশাসন / লাইভ রেকর্ড", "SYSTEM ADMINISTRATION / LIVE RECORD")}</p><h1>{tx("কার্যক্রম নিয়ন্ত্রণ", "Operations control")}</h1><p>{tx("নাগরিক, আইনজীবী, ডিএলও, মধ্যস্থতাকারী, ইউডিসি ও আবেদন একই রেকর্ড থেকে পর্যবেক্ষণ করুন।", "Monitor citizens, lawyers, DLOs, mediators, UDCs and applications from the shared record.")}</p></div>
       <span className={css.live}>{tx("স্থানীয় প্রোটোটাইপ", "Local prototype")}</span>
     </header>
-    <nav className={css.tabs} aria-label={tx("প্রশাসক বিভাগ", "Admin sections")}>{sections.map((s) => <a key={s} href={s === "overview" ? "/dashboard/admin" : `#${s}`} aria-current={section === s ? "page" : undefined}>{({ overview: tx("সংক্ষেপ", "Overview"), users: tx("ব্যবহারকারী", "People"), cases: tx("আবেদন", "Applications"), rules: tx("নীতিমালা", "Policy"), mediation: tx("মধ্যস্থতা তত্ত্বাবধান", "Mediation oversight"), audit: tx("অডিট", "Audit"), backup: tx("ব্যাকআপ", "Backup") })[s]}</a>)}</nav>
+    <nav className={css.tabs} aria-label={tx("প্রশাসক বিভাগ", "Admin sections")}>{sections.map((s) => <a key={s} href={s === "overview" ? "/dashboard/admin" : `#${s}`} aria-current={section === s ? "page" : undefined}>{({ overview: tx("সংক্ষেপ", "Overview"), users: tx("ব্যবহারকারী", "People"), training: tx("মধ্যস্থতাকারী প্রশিক্ষণ", "Mediator training"), cases: tx("আবেদন", "Applications"), rules: tx("নীতিমালা", "Policy"), mediation: tx("মধ্যস্থতা তত্ত্বাবধান", "Mediation oversight"), audit: tx("অডিট", "Audit"), backup: tx("ব্যাকআপ", "Backup") })[s]}</a>)}</nav>
     {notice ? <p className={css.notice} role="status">{notice}</p> : null}
     {section === "overview" ? <>
       <div className={css.metrics}>
@@ -195,6 +224,12 @@ export function AdminWorkspace() {
       <p className={css.subtle}>{roleName[lang]} · {items.length}</p>
       {items.map((r) => { const key = managedIdField[role]; const accountId = String(r[key]); return <div className={css.person} key={accountId}><div><strong>{r.name}</strong><small>{accountId} · {recordPhone(role, r)}{r.district ? ` · ${r.district}` : ""}{r.centre ? ` · ${r.centre}` : ""}{role === "mediators" ? ` · ${String(r.status ?? "")}` : ""}</small></div><div className={css.rowActions}><button className={css.secondary} onClick={() => edit(role, r)}>{tx("সম্পাদনা", "Edit")}</button><button className={css.danger} onClick={() => { setDeleteError(""); setNotice(""); setDeleting({ role, id: accountId, name: r.name }); }}>{tx("মুছুন", "Delete")}</button></div></div>; })}
       {!items.length ? <p className={css.empty}>{tx("কোনো মিল পাওয়া যায়নি। নতুন অ্যাকাউন্ট যোগ করতে পারেন।", "No matching accounts. You can add a new one.")}</p> : null}
+    </section> : null}
+    {section === "training" ? <section className={css.panel}>
+      <div className={css.panelHead}><div><p className={css.kicker}>{tx("মধ্যস্থতাকারী সক্ষমতা", "MEDIATOR CAPACITY")}</p><h2>{tx("প্রশিক্ষণ ও সনদ", "Training and certification")}</h2></div><strong>{db.mediators.length}</strong></div>
+      <p className={css.subtle}>{tx("প্রশিক্ষণ তথ্য পরিবর্তন করলে আগের যাচাই বাতিল হবে; সম্পন্ন প্রশিক্ষণ বা সনদ ব্যবহারের আগে আবার যাচাই করতে হবে।", "Editing training data resets prior verification; completed training or certification must be verified again before it qualifies.")}</p>
+      {db.mediators.map((mediator) => <div className={css.person} key={mediator.mediatorId}><div><strong>{mediator.name}</strong><small>{mediator.mediatorId} · {mediator.district} · {lbl(CERTIFICATION_STATUSES, mediator.certification.status, lang)}{mediator.certification.body ? ` · ${mediator.certification.body}` : ""}{mediator.certification.validUntil ? ` · ${tx("মেয়াদ", "valid until")} ${mediator.certification.validUntil}` : ""} · {mediator.certification.verifiedAt ? tx("যাচাইকৃত", "verified") : tx("যাচাই বাকি", "verification pending")}</small></div><button type="button" className={css.secondary} onClick={() => editTraining(mediator.mediatorId)}>{tx("প্রশিক্ষণ সম্পাদনা", "Edit training")}</button></div>)}
+      {!db.mediators.length ? <p className={css.empty}>{tx("এখনো কোনো মধ্যস্থতাকারী নেই। People বিভাগ থেকে একজন যোগ করুন।", "No mediators yet. Add one from the People section.")}</p> : null}
     </section> : null}
     {section === "cases" ? <section className={css.panel}>
       <div className={css.panelHead}><div><p className={css.kicker}>{tx("সব অফিস ও চ্যানেল", "ALL OFFICES AND CHANNELS")}</p><h2>{tx("আবেদন ও শুনানি পর্যবেক্ষণ", "Applications and hearings")}</h2></div><strong>{db.applications.length}</strong></div>
@@ -234,6 +269,16 @@ export function AdminWorkspace() {
       <label className={css.fullField}>{tx("শুনানির উদ্দেশ্য", "Purpose")}<input value={hearingEditing.input.purpose} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, purpose: e.target.value } })} /></label>
       <p className={`${css.subtle} ${css.fullField}`}>{tx("উপস্থিতি বা ফলাফল এখানে বদলানো হয় না; সেগুলো আইনজীবীর প্রতিবেদন হিসেবে সংরক্ষিত থাকে।", "Attendance and outcome are not changed here; they remain preserved as lawyer-reported evidence.")}</p>
       {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit" disabled={saving}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("শুনানি সংরক্ষণ করুন", "Save hearing")}</button>
+    </form></section></div> : null}
+    {trainingEditing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-training-title"><div className={css.panelHead}><div><p className={css.kicker}>{trainingEditing.mediatorId}</p><h2 id="admin-training-title">{tx("প্রশিক্ষণ সম্পাদনা", "Edit mediator training")} · {trainingEditing.name}</h2></div><button type="button" className={css.secondary} disabled={saving} onClick={() => { setTrainingEditing(null); setError(""); }}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); void saveTraining(); }} className={css.form}>
+      <label>{tx("অবস্থা", "Status")}<select value={trainingEditing.input.status} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, status: e.target.value as AdminMediatorTrainingInput["status"] } })}>{CERTIFICATION_STATUSES.map((status) => <option key={status.code} value={status.code}>{status.label[lang]}</option>)}</select></label>
+      <label>{tx("প্রশিক্ষণ / সনদ প্রদানকারী", "Training / certifying body")}<input value={trainingEditing.input.body} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, body: e.target.value } })} /></label>
+      <label>{tx("সনদ নম্বর", "Certificate number")}<input value={trainingEditing.input.certificateNo} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, certificateNo: e.target.value } })} /></label>
+      <label>{tx("ইস্যুর তারিখ", "Issued on")}<input type="date" value={trainingEditing.input.issuedOn} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, issuedOn: e.target.value } })} /></label>
+      <label>{tx("মেয়াদ শেষ", "Valid until")}<input type="date" value={trainingEditing.input.validUntil} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, validUntil: e.target.value } })} /></label>
+      <label className={css.fullField}>{tx("প্রশিক্ষণ নোট", "Training note")}<textarea required minLength={3} value={trainingEditing.input.note} onChange={(e) => setTrainingEditing({ ...trainingEditing, input: { ...trainingEditing.input, note: e.target.value } })} /></label>
+      <p className={`${css.subtle} ${css.fullField}`}>{tx("সংরক্ষণের পর যাচাই বাকি থাকবে। এই পরিবর্তন প্রশিক্ষণ ইতিহাস ও অডিটে যোগ হবে।", "After saving, verification will be pending. This change is appended to the training history and audit.")}</p>
+      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit" disabled={saving}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("প্রশিক্ষণ সংরক্ষণ করুন", "Save training")}</button>
     </form></section></div> : null}
     {editing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-edit-title"><div className={css.panelHead}><div><p className={css.kicker}>{roles.find((r) => r.key === editing.role)?.[lang]}</p><h2 id="admin-edit-title">{editing.id ? tx("অ্যাকাউন্ট সম্পাদনা", "Edit account") : tx("অ্যাকাউন্ট যোগ করুন", "Add account")}</h2></div><button className={css.secondary} onClick={() => setEditing(null)}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); save(); }} className={css.form}>
       <label>{tx("নাম", "Name")}<input required minLength={2} value={editing.input.name} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, name: e.target.value } })} /></label>

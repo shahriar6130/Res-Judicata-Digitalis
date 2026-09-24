@@ -262,7 +262,7 @@ Closure is blocked until the required:
 
 are present.
 
-Closure is a human decision and ledger event. In the implemented lawyer path, the Legal Aid Officer records completion, approves the payable-hearing ledger, records the clearly labelled simulated payout, and only then closes the case; the close action is unavailable while any recorded lawyer payment is unpaid. T1 stage-based payment reconciliation on reassignment remains independent until final completion. The case remains available for permitted reporting and future reference.
+Closure is a human decision and ledger event. In the implemented lawyer path, the Legal Aid Officer records completion, approves the payable-hearing ledger, records the clearly labelled simulated payout, and only then closes the case; the close action is unavailable while any recorded lawyer payment is unpaid. Closing atomically generates a simulated closure testimonial, sends a safe citizen notice, and makes the persisted testimony viewable on the owning citizen's case page. T1 stage-based payment reconciliation on reassignment remains independent until final completion. The case remains available for permitted reporting and future reference.
 
 ---
 
@@ -1164,6 +1164,11 @@ The IVR and USSD prototype shall present a single simulated handset with the cur
 ## Admin role directory expansion
 
 DBLA/Admin shall be able to find, add, edit, and delete accounts from the People directory, including the existing mediator and UDC operator records. Deletion requires a named confirmation and an audit entry. Historical application and audit records remain. Active mediator and lawyer assignments block deletion until resolved; deleting a UDC operator removes the linked registered centre. Mediators remain in the shared mediator registry used by assignment and mediator sign-in. UDC operators remain linked to the shared UDC centre directory. Admin creation does not bypass the established mediator certification and assignment checks, and all changes are audited.
+
+The Admin dashboard retains a dedicated Mediator training section for the canonical certification
+and training fields. Administrative edits reset prior verification, return active mediators to
+pending verification, append training history and audit evidence, and therefore cannot silently
+make a mediator eligible for assignment or be overwritten by legacy auto-approval migration.
 ## Admin navigation
 
 The admin sidebar shall provide working navigation to every implemented admin workspace, including mediation oversight. Navigation shall preserve the single-page hash workspace, allow a return to Overview, and communicate one active destination at a time. The complete admin workspace uses the selected theme across navigation, content surfaces, forms, dialogs, tables, and interaction states while retaining the shared accessible structure.
@@ -1176,3 +1181,14 @@ The product uses the CSS-only black_theme.css theme, restoring the original blac
 ### Blue White visual refresh
 
 The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+
+## Case-level service refinements
+
+The product shall allow several mediators on a case when each passes the same case-specific human-
+reviewed eligibility process. Citizens and UDC-assisted citizens shall be able to seek legal aid
+to defend an alleged person, with that purpose retained in the canonical record. A citizen with an
+assigned panel lawyer shall be able to report alleged illegal conduct through a lawyer-change
+request; the district officer receives actionable work, and approval acknowledges the application
+without claiming that a replacement is already assigned. Citizen notifications shall remain
+current: mediation completion copy shall not advertise a seven-day appeal window, and a requested
+document reminder shall disappear after successful submission.

@@ -537,7 +537,7 @@ export function AssistedIntake({ mode = "citizen" }: { mode?: "citizen" | "udc" 
               onChange={setField}
               errors={errors}
               applicantLabel={
-                draft.actingFor === "family" && draft.proxyName
+                draft.actingFor !== "self" && draft.proxyName
                   ? draft.proxyName
                   : draft.name
               }
@@ -703,6 +703,7 @@ function Step1Identity({
     { key: "self", titleKey: "actingSelfTitle", icon: <User size={18} /> },
     { key: "family", titleKey: "actingFamilyTitle", icon: <Users size={18} /> },
     { key: "neighbor", titleKey: "actingNeighborTitle", icon: <HelpingHand size={18} /> },
+    { key: "alleged", titleKey: "actingAllegedTitle", icon: <Shield size={18} /> },
   ];
 
   return (
@@ -801,7 +802,7 @@ function Step1Identity({
         </span>
       ) : null}
 
-      {draft.actingFor === "family" || draft.actingFor === "neighbor" ? (
+      {draft.actingFor === "family" || draft.actingFor === "neighbor" || draft.actingFor === "alleged" ? (
         <div className={styles.proxyDisclosure}>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>{t("proxyRelLabel")}</span>
@@ -1382,7 +1383,7 @@ function SidePreview({ draft, forwardOnly = false }: { draft: IntakeDraft; forwa
   const matterLabel = draft.matter ? t(matterTitleKey(draft.matter)) : null;
   const slotLabel = slotSummary(draft, t, lang);
   const applicantLabel =
-    draft.actingFor === "family" && draft.proxyName
+    draft.actingFor !== "self" && draft.proxyName
       ? draft.proxyName
       : draft.name;
 
@@ -1653,7 +1654,7 @@ function CitizenIdentityCheck({
       </label>
       <label className={styles.field}>
         <span className={styles.fieldLabel}>
-          {draft.actingFor === "family" || draft.actingFor === "neighbor"
+          {draft.actingFor === "family" || draft.actingFor === "neighbor" || draft.actingFor === "alleged"
             ? tx("আবেদনকারীর জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "Applicant's NID number (optional)")
             : tx("জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "NID number (optional)")}
         </span>

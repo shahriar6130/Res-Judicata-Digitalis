@@ -52,6 +52,7 @@ import type {
   HearingUpdate,
   LawyerAssignment,
   LawyerMatter,
+  LawyerClosureTestimonial,
   LawyerRuleset,
   LawyerShortlist,
   MatterCategory,
@@ -471,6 +472,7 @@ export function useLawyerWork() {
 
 function matterOf(a: ApplicationRecord): LawyerMatter {
   if (!a.lawyer) a.lawyer = { assignments: [], hearings: [], updates: [], access: [], shortlists: [], completion: null };
+  a.lawyer.changeRequests ??= [];
   return a.lawyer;
 }
 
@@ -766,14 +768,36 @@ export const DlaoLawyerService = {
       const unpaid = m.assignments.filter((s) => s.payment && s.payment.status !== "PAID");
       if (unpaid.length) throw new Error(`Approve and pay ${unpaid.map((s) => s.lawyerName).join(", ")} before closing`);
       const from = a.status;
-      m.closure = { reason: reason.trim(), by: o.officerId, byName: o.name, at: now() };
+      const at = now();
+      m.closure = { reason: reason.trim(), by: o.officerId, byName: o.name, at };
+      const testimonial: LawyerClosureTestimonial = {
+        testimonialId: rid("TST"),
+        issuedAt: at,
+        issuedBy: o.officerId,
+        issuedByName: o.name,
+        office: a.routing.office,
+        applicationId: a.applicationId,
+        caseRef: a.caseId ?? a.applicationId,
+        applicantName: a.data.applicant.fullName ?? "—",
+        respondentName: a.data.matter.opposingParty || null,
+        matter: a.data.matter.category,
+        outcome: m.completion.outcome,
+        outcomeReason: m.completion.reason,
+        closureReason: reason.trim(),
+        lawyerNames: [...new Set(m.assignments.filter((s) => s.status === "COMPLETED" || s.status === "WITHDRAWN").map((s) => s.lawyerName))],
+        hearingsRecorded: m.hearings.length,
+        simulated: true,
+      };
+      m.closureTestimonial = testimonial;
       a.status = "RESOLVED";
       a.stage = "CLOSURE";
-      a.closedAt = now();
+      a.closedAt = at;
       closeTasks(db, a, o.officerId, "dlao", () => true);
       audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "status.changed", detail: { from, to: "RESOLVED" } });
       audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "application.closed", detail: { officer: o.name, pathway: "LAWYER", outcome: m.completion.outcome, reason: reason.trim(), payments: m.assignments.filter((s) => s.payment).map((s) => ({ lawyerId: s.lawyerId, status: s.payment!.status, payableHearings: s.payment!.payableHearings })) } });
-      notifyClient(db, a, o.officerId, "dlao", `Update on your reference ${a.caseId}. Please call 16699 for details.`, `DLAS legal aid: case ${a.caseId} is closed (outcome: ${m.completion.outcome.replace(/_/g, " ").toLowerCase()}). Call 16699 if you have questions.`);
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.closure_testimonial_issued", detail: { testimonialId: testimonial.testimonialId, officer: o.name, outcome: testimonial.outcome, simulated: true } });
+      audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.closure_testimonial_sent_to_citizen", detail: { testimonialId: testimonial.testimonialId, applicationId: a.applicationId } });
+      notifyClient(db, a, o.officerId, "dlao", `Update on your reference ${testimonial.caseRef}. A closing record is available on your DLAS page.`, `DLAS legal aid: case ${testimonial.caseRef} is closed (outcome: ${m.completion.outcome.replace(/_/g, " ").toLowerCase()}). Testimonial ${testimonial.testimonialId} is available on your DLAS case page.`);
       return m.closure;
     });
   },

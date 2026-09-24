@@ -67,6 +67,9 @@ function isBrowser() {
 /** Mediators are auto-approved at sign-up. Records saved before that rule (still PENDING_VERIFICATION, non-sample) load as ACTIVE. */
 function autoApproveMediator(m: DlasDb["mediators"][number]): DlasDb["mediators"][number] {
   if (m.sample || m.status !== "PENDING_VERIFICATION") return m;
+  // Explicit administrator training edits must survive reload and still pass
+  // the normal verification gate; only untouched legacy registrations migrate.
+  if (m.adminRecord.some((entry) => entry.kind === "TRAINING")) return m;
   const c = m.certification;
   const valid = (c.status === "CERTIFIED" || c.status === "TRAINING_COMPLETED") && !!c.verifiedAt;
   return {
@@ -108,7 +111,8 @@ function parse(raw: string | null): DlasDb {
       // Records written before Step 2 existed get the new fields as null.
       applications: Array.isArray(p.applications)
         ? p.applications.map((a) => ({
-            ...a,
+          ...a,
+            data: { ...a.data, matter: { ...a.data.matter, assistanceRole: a.data.matter.assistanceRole ?? null } },
             review: a.review
               ? {
                   ...a.review,
@@ -126,7 +130,9 @@ function parse(raw: string | null): DlasDb {
                   ...a.lawyer,
                   access: a.lawyer.access ?? [],
                   shortlists: a.lawyer.shortlists ?? [],
+                  changeRequests: a.lawyer.changeRequests ?? [],
                   completion: a.lawyer.completion ?? null,
+                  closureTestimonial: a.lawyer.closureTestimonial ?? null,
                   hearings: a.lawyer.hearings.map((h) => ({ ...h, assignmentId: h.assignmentId ?? null, result: h.result ?? null })),
                   assignments: a.lawyer.assignments.map((s) => ({
                     ...s,
@@ -134,7 +140,7 @@ function parse(raw: string | null): DlasDb {
                     reassignFlaggedAt: s.reassignFlaggedAt ?? null,
                     payment: s.payment ?? null,
                     ledger: s.ledger ?? { hearingsAttended: 0, hearingsMissed: 0, hearingsNotHeld: 0, hearingsUnreported: 0, updatesOnTime: 0, updatesLate: 0, updatedAt: s.offeredAt },
-                  })),
+            })),
                 }
               : null,
           }))

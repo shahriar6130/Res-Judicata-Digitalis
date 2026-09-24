@@ -31,7 +31,7 @@
  *
  *    POST /api/v1/cases
  *    {
- *      "applicant": { "name": "...", "phone": "...", "actingFor": "self"|"family"|"neighbor", ... },
+ *      "applicant": { "name": "...", "phone": "...", "actingFor": "self"|"family"|"neighbor"|"alleged", ... },
  *      "matter":    { "category": "family"|"land"|"civil"|"criminal"|"labour"|"other" },
  *      "respondent":{ "name": "...", "address": "..." },
  *      "narrative": "...",
@@ -70,7 +70,7 @@
  *  retry-with-backoff loop the helpline and case-support apps use.
  * ------------------------------------------------------------------ */
 
-export type ActingFor = "self" | "family" | "neighbor";
+export type ActingFor = "self" | "family" | "neighbor" | "alleged";
 
 export type MatterCategory =
   | "family"

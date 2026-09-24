@@ -148,9 +148,9 @@ export function CitizenSettlementAlerts() {
             ⚖
           </span>
           <div>
-            <strong>{tx("নিষ্পত্তির প্রত্যয়নপত্র — আপনার উত্তর দরকার", "Settlement testimonial — your response is needed")}</strong> · {a.caseId}
+            <strong>{tx("মধ্যস্থতা সম্পন্ন — নিষ্পত্তির প্রত্যয়নপত্র প্রস্তুত", "Mediation completed — settlement testimonial ready")}</strong> · {a.caseId}
             <div>
-              {tx("মেনে নিন বা আপিল করুন", "Accept it or appeal")} · {tx("শেষ সময়", "until")} {formatDateTime(a.mediation!.workspace!.settlementWorkflow!.appeal!.windowEndsAt, lang)} →
+              {tx("কেসের বিস্তারিত ও প্রত্যয়নপত্র দেখুন", "View the case details and testimonial")} →
             </div>
           </div>
         </a>

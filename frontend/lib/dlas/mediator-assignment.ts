@@ -141,6 +141,7 @@ function matterOf(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount): Medi
 }
 
 export const currentAssignment = (m: MediationMatter | null) => m?.assignments.find((x) => x.status === "ASSIGNED") ?? null;
+export const activeAssignments = (m: MediationMatter | null | undefined) => m?.assignments.filter((x) => x.status === "ASSIGNED") ?? [];
 export const pendingAssignment = (m: MediationMatter | null) => m?.assignments.find((x) => x.status === "AWAITING_OFFICER_CONFIRMATION") ?? null;
 
 /* ------------------------------ checks ------------------------------ */
@@ -196,13 +197,14 @@ export function evaluateMediator(db: Pick<DlasDb, "applications">, m: MediatorRe
   const cert = certificationState(m, at);
   const conflictIds = conflictsFor(m, a);
   const removedBefore = matter.assignments.some((s) => s.mediatorId === m.mediatorId && s.status === "REASSIGNMENT_REQUESTED");
+  const alreadyAssigned = matter.assignments.some((s) => s.mediatorId === m.mediatorId && s.status === "ASSIGNED");
   const trackOk = m.tracks.includes(matter.track);
   const checks: MediatorCandidateCheck[] = [
     { key: "STATUS", ok: m.status === "ACTIVE", detail: m.status },
     { key: "CERTIFICATION", ok: cert === "VALID", detail: cert === "VALID" ? (m.certification.validUntil ? `valid until ${m.certification.validUntil}` : "verified") : cert },
     { key: "JURISDICTION", ok: m.district === district && trackOk, detail: m.district !== district ? `serves ${m.district}, case is in ${district ?? "—"}` : trackOk ? `${m.district} · ${matter.track === "COURT_REFERRED" ? "court-referred" : "pre-litigation"}` : `does not take ${matter.track === "COURT_REFERRED" ? "court-referred" : "pre-litigation"} matters` },
     { key: "AVAILABILITY", ok: avail !== "UNAVAILABLE" && load < m.availability.maxActiveMatters, detail: avail === "UNAVAILABLE" ? (m.availability.unavailableUntil ? `unavailable until ${m.availability.unavailableUntil}` : "unavailable") : load >= m.availability.maxActiveMatters ? `at capacity (${load}/${m.availability.maxActiveMatters})` : `${avail.toLowerCase()} · ${load}/${m.availability.maxActiveMatters}` },
-    { key: "CONFLICT", ok: conflictIds.length === 0 && !removedBefore, detail: conflictIds.length ? `CONFLICT DETECTED — ${conflictIds.length} declaration(s) match this case` : removedBefore ? "previously removed from this case" : "no declared conflict with this case" },
+    { key: "CONFLICT", ok: conflictIds.length === 0 && !removedBefore && !alreadyAssigned, detail: conflictIds.length ? `CONFLICT DETECTED — ${conflictIds.length} declaration(s) match this case` : removedBefore ? "previously removed from this case" : alreadyAssigned ? "already assigned to this case" : "no declared conflict with this case" },
     { key: "CASE_TYPE", ok: !!matter.caseType && m.caseTypes.includes(matter.caseType), detail: !matter.caseType ? "case type not set" : m.caseTypes.includes(matter.caseType) ? `handles ${lbl(MEDIATION_CASE_TYPES, matter.caseType, "en")}` : `does not handle ${lbl(MEDIATION_CASE_TYPES, matter.caseType, "en")}` },
   ];
   const complaints = m.adminRecord.filter((x) => x.kind === "COMPLAINT").length;
@@ -246,7 +248,8 @@ export function useMediatorAssignment(a: ApplicationRecord) {
     const pseudo = { track, caseType, assignments: matter?.assignments ?? [] };
     const pool = db.mediators.filter((m) => m.district === district);
     const live = pool.map((m) => evaluateMediator(db, m, a, pseudo, t));
-    const current = currentAssignment(matter);
+    const currents = activeAssignments(matter);
+    const current = currents[0] ?? null;
     const pending = pendingAssignment(matter);
     const byId = (id: string | undefined) => db.mediators.find((m) => m.mediatorId === id);
     const currentConflicts = current ? conflictsFor(byId(current.mediatorId)!, a) : [];
@@ -260,6 +263,7 @@ export function useMediatorAssignment(a: ApplicationRecord) {
       excluded: live.filter((c) => !c.eligible),
       lastRun: matter?.runs[matter.runs.length - 1] ?? null,
       current,
+      currents,
       currentMediator: byId(current?.mediatorId),
       currentConflicts,
       pending,
@@ -315,14 +319,13 @@ export const MediatorAssignmentService = {
   checkEligibility(applicationId: string) {
     return withOfficerApp(applicationId, (db, a, o) => {
       const matter = matterOf(db, a, o);
-      if (currentAssignment(matter)) throw new Error("A mediator is already assigned — request reassignment first");
       if (matter.assignmentStatus === "COMPLETED") throw new Error("Mediation is completed");
       const t = Date.now();
       const candidates = db.mediators.filter((m) => m.district === handlingDistrict(a)).map((m) => evaluateMediator(db, m, a, matter, t));
       const run: MediatorEligibilityRun = { runId: rid("MER"), at: now(), by: o.officerId, byName: o.name, caseType: matter.caseType, track: matter.track, district: handlingDistrict(a), candidates };
       matter.runs.push(run);
       const eligible = candidates.filter((c) => c.eligible).length;
-      if (!pendingAssignment(matter)) matter.assignmentStatus = eligible ? "RECOMMENDED" : matter.assignmentStatus === "REASSIGNMENT_REQUESTED" ? "REASSIGNMENT_REQUESTED" : "PENDING";
+      if (!pendingAssignment(matter)) matter.assignmentStatus = activeAssignments(matter).length ? "ASSIGNED" : eligible ? "RECOMMENDED" : matter.assignmentStatus === "REASSIGNMENT_REQUESTED" ? "REASSIGNMENT_REQUESTED" : "PENDING";
       logOfficerAction(db, a, o, "mediation.eligibility_checked", {
         runId: run.runId,
         caseType: matter.caseType,
@@ -340,7 +343,6 @@ export const MediatorAssignmentService = {
   recommend(applicationId: string, mediatorId: string, note: string) {
     return withOfficerApp(applicationId, (db, a, o) => {
       const matter = matterOf(db, a, o);
-      if (currentAssignment(matter)) throw new Error("A mediator is already assigned — request reassignment first");
       const run = matter.runs[matter.runs.length - 1];
       if (!run) throw new Error("Check eligible mediators first");
       const { m, c } = liveCandidate(db, a, matter, mediatorId);
@@ -438,16 +440,16 @@ export const MediatorAssignmentService = {
   },
 
   /** Remove the assigned mediator (conflict found later, unavailable, request…). Access is revoked; a new assignment is required. */
-  requestReassignment(applicationId: string, reason: string) {
+  requestReassignment(applicationId: string, assignmentId: string, reason: string) {
     if (reason.trim().length < 10) throw new Error("Give the reason for reassignment (at least 10 characters)");
     return withOfficerApp(applicationId, (db, a, o) => {
       const matter = matterOf(db, a, o);
-      const rec = currentAssignment(matter);
+      const rec = matter.assignments.find((x) => x.assignmentId === assignmentId && x.status === "ASSIGNED");
       if (!rec) throw new Error("No mediator is assigned");
       rec.status = "REASSIGNMENT_REQUESTED";
       rec.accessRevokedAt = now();
       rec.endReason = reason.trim();
-      matter.assignmentStatus = "REASSIGNMENT_REQUESTED";
+      matter.assignmentStatus = activeAssignments(matter).length ? "ASSIGNED" : "REASSIGNMENT_REQUESTED";
       logOfficerAction(db, a, o, "mediation.reassignment_requested", { assignmentId: rec.assignmentId, mediatorId: rec.mediatorId, reason: rec.endReason, accessRevoked: true });
       mediatorAudit(db, rec.mediatorId, o, "mediator.removed_from_case", { applicationId: a.applicationId, caseId: a.caseId, reason: rec.endReason });
       const m = db.mediators.find((x) => x.mediatorId === rec.mediatorId);
@@ -464,17 +466,19 @@ export const MediatorAssignmentService = {
     if (note.trim().length < 10) throw new Error("Describe how the mediation concluded (at least 10 characters)");
     return withOfficerApp(applicationId, (db, a, o) => {
       const matter = matterOf(db, a, o);
-      const rec = currentAssignment(matter);
-      if (!rec) throw new Error("No mediator is assigned");
-      rec.status = "COMPLETED";
-      rec.endedAt = now();
-      rec.endReason = note.trim();
-      rec.endedBy = o.officerId;
-      rec.accessRevokedAt = now();
+      const active = activeAssignments(matter);
+      if (!active.length) throw new Error("No mediator is assigned");
+      for (const rec of active) {
+        rec.status = "COMPLETED";
+        rec.endedAt = now();
+        rec.endReason = note.trim();
+        rec.endedBy = o.officerId;
+        rec.accessRevokedAt = now();
+        mediatorAudit(db, rec.mediatorId, o, "mediator.case_completed", { applicationId: a.applicationId, caseId: a.caseId });
+      }
       matter.assignmentStatus = "COMPLETED";
-      logOfficerAction(db, a, o, "mediation.assignment_completed", { assignmentId: rec.assignmentId, mediatorId: rec.mediatorId, note: rec.endReason });
-      mediatorAudit(db, rec.mediatorId, o, "mediator.case_completed", { applicationId: a.applicationId, caseId: a.caseId });
-      return rec;
+      logOfficerAction(db, a, o, "mediation.assignment_completed", { assignmentIds: active.map((x) => x.assignmentId), mediatorIds: active.map((x) => x.mediatorId), note: note.trim() });
+      return active;
     });
   },
 };

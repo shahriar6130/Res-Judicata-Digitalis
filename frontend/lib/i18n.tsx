@@ -86,6 +86,7 @@ export type MessageKey =
   | "navAllHearings"
   | "navOverview"
   | "navUsers"
+  | "navMediatorTraining"
   | "navRules"
   | "navMetrics"
   | "navApplications"
@@ -208,6 +209,8 @@ export type MessageKey =
   | "actingFamilySub"
   | "actingNeighborTitle"
   | "actingNeighborSub"
+  | "actingAllegedTitle"
+  | "actingAllegedSub"
   | "dispute1Title"
   | "dispute1Sub"
   | "dispute1Eyebrow"
@@ -1289,6 +1292,7 @@ export const messages: Messages = {
     navAllHearings: "সব শুনানি",
     navOverview: "সংক্ষেপ",
     navUsers: "ব্যবহারকারী",
+    navMediatorTraining: "মধ্যস্থতাকারী প্রশিক্ষণ",
     navRules: "নিয়ম ও থ্রেশহোল্ড",
     navMetrics: "মেট্রিক্স",
     navApplications: "আবেদন",
@@ -1429,6 +1433,8 @@ export const messages: Messages = {
     actingFamilySub: "বোন, মা, ভাই বা আত্মীয়র পক্ষে",
     actingNeighborTitle: "প্রতিবেশী/বন্ধু",
     actingNeighborSub: "জরুরি সহায়তাকারী হিসেবে",
+    actingAllegedTitle: "অভিযুক্ত ব্যক্তির পক্ষে",
+    actingAllegedSub: "অভিযোগের বিরুদ্ধে আইনি প্রতিরক্ষার জন্য",
     dispute1Title: "পারিবারিক সহিংসতা",
     dispute1Sub: "শারীরিক বা মানসিক নির্যাতন",
     dispute1Eyebrow: "জরুরি অগ্রাধিকার",
@@ -2582,6 +2588,7 @@ export const messages: Messages = {
     navAllHearings: "All hearings",
     navOverview: "Overview",
     navUsers: "Users",
+    navMediatorTraining: "Mediator training",
     navRules: "Rules & Thresholds",
     navMetrics: "Metrics",
     navApplications: "Applications",
@@ -2721,6 +2728,8 @@ export const messages: Messages = {
     actingFamilySub: "Sister, mother, brother or relative",
     actingNeighborTitle: "For a neighbour or friend",
     actingNeighborSub: "As an emergency helper",
+    actingAllegedTitle: "For an alleged person",
+    actingAllegedSub: "To seek legal aid for their defence",
     dispute1Title: "Family violence",
     dispute1Sub: "Physical or mental abuse",
     dispute1Eyebrow: "Urgent priority",

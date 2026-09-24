@@ -401,6 +401,7 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
     { href: "/dashboard/admin#users", label: "navUsers", key: "users", Icon: Users },
+    { href: "/dashboard/admin#training", label: "navMediatorTraining", key: "training", Icon: Check },
     { href: "/dashboard/admin#cases", label: "navApplications", key: "cases", Icon: Briefcase },
     { href: "/dashboard/admin#rules", label: "navRules", key: "rules", Icon: Shield },
     { href: "/dashboard/admin#mediation", label: "navMediationOversight", key: "mediation", Icon: Scale },

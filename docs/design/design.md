@@ -98,6 +98,10 @@ For a lawyer-path case, the DLO workspace ends with a visible three-step sequenc
 representation, approve and send the clearly labelled simulated lawyer payment, then close the
 case with a required note. The Close case control remains disabled until every recorded lawyer
 payment is marked paid. A closed case shows its outcome, officer, closing note, and timestamp.
+It also shows the generated testimonial reference and confirms delivery to the citizen case page.
+On that owned citizen page, a bilingual simulated-document card presents the testimonial ID,
+case and application references, parties, matter, participating lawyers, hearing count, recorded
+outcome and reasons, issuing officer, office, and issue time. The notification opens that case page.
 Each application and follow-up record also has a labelled, outlined **Open application** control,
 so the application ID is not the only way to enter the review.
 
@@ -218,6 +222,10 @@ The `/device`, `/device/ivr`, and `/device/ussd` views use a compact introductor
 ## Admin mediator and UDC directory
 
 The `/dashboard/admin#users` account directory includes Mediators and UDC operators as peer role tabs. Mediator rows show name, mediator ID, phone, district, and status. The add/edit dialog records the mediator's account details, registry role, status, qualification, mediation tracks, and case types. UDC operator rows and forms continue to show the linked centre and district, and saving an operator synchronizes its registered UDC centre record. The overview count includes both groups.
+The adjacent `/dashboard/admin#training` section remains a first-class admin destination. Each
+mediator row shows training/certification state, provider, validity, and verification state. Its
+token-styled bilingual dialog edits the canonical training fields and required history note, clearly
+warning that the change resets verification rather than silently qualifying the mediator.
 
 Every account row includes Edit and Delete controls. Delete requires confirmation, returns an inline error when an active mediator or lawyer assignment blocks removal, and keeps historical application and audit records. Deleting a UDC operator also removes only that operator's linked registered centre entry.
 
@@ -235,3 +243,13 @@ Under the image theme, the same admin variables resolve to its saved courthouse 
 ### Blue White visual refresh
 
 The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+
+## Multi-party service actions
+
+The mediation assignment surface renders every active mediator as its own bordered assignment
+record and leaves the case-specific eligibility picker available for adding a co-mediator. Citizen
+intake presents alleged-person defence as a fourth acting-for choice using the same token-driven
+pill treatment. On owned lawyer cases, the lawyer-change control is a calm action card with three
+plain states: request available, waiting for DLAO, and approved/update soon. DLAO review uses the
+existing warning/task and action patterns. Completion notices say only that mediation is complete
+and the testimonial is ready. Requested-document notices disappear after upload.

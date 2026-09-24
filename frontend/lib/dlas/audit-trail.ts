@@ -130,7 +130,7 @@ export const ROLE_LABEL: Record<AuditEntry["role"], Bi> = {
 };
 
 /** Actions the system generates while a person triggered them: shown as "System", with who ran it. */
-const SYSTEM_ACTIONS = new Set(["duplicate.flagged_for_review", "settlement.testimonial_sent_to_citizen", "settlement.appeal_window_lapsed", "incident.red_flagged", "incident.classified", "mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
+const SYSTEM_ACTIONS = new Set(["duplicate.flagged_for_review", "settlement.testimonial_sent_to_citizen", "lawyer.closure_testimonial_sent_to_citizen", "settlement.appeal_window_lapsed", "incident.red_flagged", "incident.classified", "mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
 
 export type AuditCategory = "INTAKE" | "VERIFICATION" | "PATHWAY" | "MEDIATION" | "SETTLEMENT" | "FAILURE" | "LAWYER" | "NOTICE" | "ACCESS" | "OTHER";
 
@@ -257,6 +257,9 @@ const PHRASES: Record<string, Phrase> = {
   "lawyer.representation_completed": P("LAWYER", (d) => B(`আইনজীবীর প্রতিনিধিত্ব সম্পন্ন — ${words(d.outcome)}`, `Lawyer representation completed — ${words(d.outcome)}`)),
   "lawyer.payment_approved": P("LAWYER", (d) => B(`আইনজীবীর পেমেন্ট অনুমোদিত — ${str(d.payableHearings)}টি শুনানি`, `Lawyer payment approved — ${str(d.payableHearings)} hearing(s)`)),
   "lawyer.payment_disbursed": P("LAWYER", (d) => B(`পেমেন্ট পাঠানো হয়েছে (সিমুলেটেড) — ${str(d.ref)}`, `Payment sent (simulated) — ${str(d.ref)}`)),
+  "lawyer.closure_testimonial_issued": P("LAWYER", (d) => B(`কেস বন্ধের প্রত্যয়নপত্র ${str(d.testimonialId)} ইস্যু করেছেন`, `Issued case-closure testimonial ${str(d.testimonialId)}`)),
+  "lawyer.closure_testimonial_sent_to_citizen": P("NOTICE", (d) => B(`কেস বন্ধের প্রত্যয়নপত্র ${str(d.testimonialId)} নাগরিককে পাঠানো হয়েছে`, `Case-closure testimonial ${str(d.testimonialId)} sent to the citizen`)),
+  "mediator.training_updated": P("MEDIATION", () => B("প্রশাসক মধ্যস্থতাকারীর প্রশিক্ষণ রেকর্ড হালনাগাদ করেছেন — যাচাই পুনরায় প্রয়োজন", "Administrator updated the mediator training record — verification is required again")),
   "hearing.admin_added": P("LAWYER", (d) => B(`প্রশাসক শুনানি যোগ করেছেন — ${str(d.court)}`, `Administrator added a hearing — ${str(d.court)}`)),
   "hearing.admin_updated": P("LAWYER", () => B("প্রশাসক শুনানির সময়সূচি সংশোধন করেছেন", "Administrator corrected the hearing schedule")),
   // notices & tasks

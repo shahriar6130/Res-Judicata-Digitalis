@@ -42,10 +42,11 @@
 .danger:hover { background: var(--admin-danger); color: var(--admin-panel-bg); }
 .roleTabs b { margin-left: var(--s-2); }
 .toolbar > input { min-width: min(100%, 260px); }
-.toolbar input, .form input, .form select { border: 1px solid var(--admin-line); border-radius: var(--control-radius); padding: var(--control-pad-y) var(--control-pad-x); font: inherit; color: var(--admin-ink); background: var(--admin-panel-bg); }
+.toolbar input, .form input, .form select, .form textarea { border: 1px solid var(--admin-line); border-radius: var(--control-radius); padding: var(--control-pad-y) var(--control-pad-x); font: inherit; color: var(--admin-ink); background: var(--admin-panel-bg); }
+.form textarea { min-height: 96px; resize: vertical; }
 .primary { background: var(--admin-accent); border: 1px solid var(--admin-accent); color: var(--admin-panel-bg); padding: var(--s-3) var(--s-4); font: inherit; cursor: pointer; }
 .primary:hover { background: var(--admin-accent-hover); border-color: var(--admin-accent-hover); }
-.primary:focus-visible, .secondary:focus-visible, .danger:focus-visible, .roleTabs button:focus-visible, .lineButton:focus-visible, .toolbar input:focus-visible, .form input:focus-visible, .form select:focus-visible { outline: var(--focus-width) solid var(--admin-accent); outline-offset: 2px; }
+.primary:focus-visible, .secondary:focus-visible, .danger:focus-visible, .roleTabs button:focus-visible, .lineButton:focus-visible, .toolbar input:focus-visible, .form input:focus-visible, .form select:focus-visible, .form textarea:focus-visible { outline: var(--focus-width) solid var(--admin-accent); outline-offset: 2px; }
 .notice { border-left: 3px solid var(--admin-accent); padding: var(--s-3); background: var(--admin-soft-bg); }
 .backdrop { position: fixed; z-index: 100; inset: 0; background: var(--overlay); display: grid; place-items: center; padding: var(--s-4); }
 .dialog { background: var(--admin-panel-bg); color: var(--admin-ink); padding: var(--s-6); width: min(100%, 620px); max-height: 90vh; overflow: auto; }

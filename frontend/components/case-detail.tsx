@@ -31,8 +31,10 @@ import {
 } from "@/components/icons";
 import type { CaseRecord, CaseStatus } from "@/lib/case-demo";
 import { useCitizenCase } from "@/lib/dlas/citizen-view";
+import { LawyerChangeService, useDlasDb } from "@/lib/dlas";
 import { CitizenDocuments } from "@/components/dlas/citizen-documents";
 import { CitizenSettlementCard } from "@/components/dlas/citizen-settlement";
+import { LawyerClosureTestimonialCard } from "@/components/dlas/lawyer-closure-testimonial";
 import { CitizenGroupCard } from "@/components/dlas/citizen-group";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import styles from "./case-detail.module.css";
@@ -85,6 +87,8 @@ export function CaseDetail({ caseId, onBack }: Props) {
           <CurrentStatus caseRecord={caseRecord} t={t} />
         </div>
         <CitizenSettlementCard applicationId={caseRecord.id} />
+        <LawyerClosureTestimonialCard applicationId={caseRecord.id} />
+        <LawyerChangeRequestCard applicationId={caseRecord.id} />
         <CitizenGroupCard applicationId={caseRecord.id} />
         <CitizenDocuments applicationId={caseRecord.id} />
         <NextActionCard caseRecord={caseRecord} t={t} onConfirmSafeTime={() => {}} />
@@ -98,6 +102,45 @@ export function CaseDetail({ caseId, onBack }: Props) {
         <SafetyNotice t={t} />
       </div>
     </section>
+  );
+}
+
+function LawyerChangeRequestCard({ applicationId }: { applicationId: string }) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const db = useDlasDb();
+  const [message, setMessage] = useState<string | null>(null);
+  const application = db.applications.find((a) => a.applicationId === applicationId);
+  const matter = application?.lawyer;
+  const latest = [...(matter?.changeRequests ?? [])].reverse()[0];
+  const hasLawyer = matter?.assignments.some((a) => a.status === "ACCEPTED");
+  if ((!hasLawyer && !latest) || matter?.closure) return null;
+  const request = () => {
+    try {
+      LawyerChangeService.request(applicationId);
+      setMessage(tx("অনুরোধটি জেলা লিগ্যাল এইড অফিসারের কাছে পাঠানো হয়েছে।", "Your request was sent to the DLAO."));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : tx("অনুরোধ পাঠানো যায়নি।", "The request could not be sent."));
+    }
+  };
+  return (
+    <article className={styles.nextActionCard} aria-label={tx("আইনজীবী পরিবর্তনের অনুরোধ", "Lawyer-change request")}>
+      <div className={styles.nextActionIcon}><Shield size={22} /></div>
+      <div className={styles.nextActionBody}>
+        <p className={styles.nextActionEyebrow}>{tx("আইনজীবী নিয়ে উদ্বেগ", "Concern about your lawyer")}</p>
+        <h2 className={styles.nextActionTitle}>{tx("বেআইনি কাজের অভিযোগে আইনজীবী পরিবর্তনের অনুরোধ", "Request a lawyer change for alleged illegal conduct")}</h2>
+        {latest?.status === "APPROVED" ? (
+          <p>{tx("আপনার আবেদন অনুমোদিত হয়েছে। পরবর্তী আপডেট শিগগিরই জানানো হবে।", "Your application is approved. You will be notified soon with an update.")}</p>
+        ) : latest?.status === "PENDING" ? (
+          <p>{tx("অনুরোধটি DLAO-এর অনুমোদনের অপেক্ষায় আছে।", "Your request is waiting for DLAO approval.")}</p>
+        ) : (
+          <div className={styles.nextActionActions}>
+            <Button type="button" variant="secondary" onClick={request}>{tx("আইনজীবী পরিবর্তনের অনুরোধ করুন", "Request lawyer change")}</Button>
+          </div>
+        )}
+        {message ? <p className={styles.nextActionHint} role="status">{message}</p> : null}
+      </div>
+    </article>
   );
 }
 

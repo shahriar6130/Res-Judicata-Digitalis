@@ -66,7 +66,7 @@ function liveRanking(db: DlasDb, a: ApplicationRecord, matter: MediationMatter, 
 }
 
 /** Mediators this case has already been offered to (declined / expired / withdrawn) — never re-offered automatically. */
-const tried = (matter: MediationMatter) => new Set(matter.assignments.filter((x) => ["DECLINED", "EXPIRED", "OFFERED", "REASSIGNMENT_REQUESTED"].includes(x.status)).map((x) => x.mediatorId));
+const tried = (matter: MediationMatter) => new Set(matter.assignments.filter((x) => ["DECLINED", "EXPIRED", "OFFERED", "ASSIGNED", "REASSIGNMENT_REQUESTED"].includes(x.status)).map((x) => x.mediatorId));
 export const openOffer = (matter: MediationMatter | null | undefined) => matter?.assignments.find((x) => x.status === "OFFERED") ?? null;
 
 /* ------------------------------ helpers ------------------------------ */
@@ -129,7 +129,7 @@ function offerNextOrReturn(db: DlasDb, a: ApplicationRecord, matter: MediationMa
     officeNotice(db, a, "MEDIATOR_DECLINED", { bn: `${after.mediatorName} ${why === "declined" ? "প্রত্যাখ্যান করেছেন" : "সময়মতো উত্তর দেননি"} — স্বয়ংক্রিয়ভাবে ${rec.mediatorName}-কে পাঠানো হয়েছে`, en: `${after.mediatorName} ${why} — offered automatically to ${rec.mediatorName} (#${rec.offer!.rank})` }, after.offer?.declineReason ?? null);
     return rec;
   }
-  matter.assignmentStatus = "RECOMMENDED";
+  matter.assignmentStatus = matter.assignments.some((x) => x.status === "ASSIGNED") ? "ASSIGNED" : "RECOMMENDED";
   const t: Task = { taskId: rid("TSK"), type: "MEDIATOR_ASSIGNMENT", applicationId: a.applicationId, sessionId: a.channel.sessionId, assignedRole: "DLAO", office: a.routing.office, status: "OPEN", priority: "HIGH", reason: `No eligible mediator left to offer ${a.caseId} to — re-check eligibility, widen the panel or choose another pathway`, dueAt: new Date(Date.now() + 24 * 3_600_000).toISOString(), createdAt: now() };
   db.tasks.push(t);
   audit(db, a.audit, { actor: "system", role: "system", caseId: a.caseId ?? a.applicationId, action: "mediation.offers_exhausted", detail: { after: after.assignmentId, taskId: t.taskId } });
@@ -145,7 +145,6 @@ export const MediatorOfferService = {
     return withOfficerApp(applicationId, (db, a, o) => {
       const matter = a.mediation;
       if (!matter) throw new Error("Open the mediation first");
-      if (matter.assignments.some((x) => x.status === "ASSIGNED")) throw new Error("A mediator is already assigned — request reassignment first");
       if (openOffer(matter)) throw new Error("An offer is already waiting for a mediator's answer");
       if (!matter.runs.length) throw new Error("Check eligible mediators first");
       const ranked = liveRanking(db, a, matter, new Set());
@@ -171,7 +170,7 @@ export const MediatorOfferService = {
       rec.endedAt = now();
       rec.endReason = reason.trim();
       rec.endedBy = o.officerId;
-      a.mediation!.assignmentStatus = "RECOMMENDED";
+      a.mediation!.assignmentStatus = a.mediation!.assignments.some((x) => x.status === "ASSIGNED") ? "ASSIGNED" : "RECOMMENDED";
       for (const t of db.tasks) if (t.type === "MEDIATOR_CASE_OFFER" && t.context?.assignmentId === rec.assignmentId && t.status !== "DONE") t.status = "DONE";
       audit(db, a.audit, { actor: o.officerId, role: "dlao", caseId: a.caseId ?? a.applicationId, action: "mediation.offer_withdrawn", detail: { officer: o.name, assignmentId: rec.assignmentId, mediatorId: rec.mediatorId, reason: rec.endReason } });
       return rec;

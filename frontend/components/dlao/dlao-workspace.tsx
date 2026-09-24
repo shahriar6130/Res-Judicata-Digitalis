@@ -32,6 +32,7 @@ import {
   useOfficeQueue,
   useStoredFile,
   DlaoLawyerService,
+  LawyerChangeService,
   activeAssignment,
   formatDateTime,
   hearingMissed,
@@ -1534,6 +1535,7 @@ function LawyerCaseClosure({ a, run }: StepProps) {
       <div className={ui.section}>
         <Banner tone="ok" icon="✓">
           <strong>{tx("কেস বন্ধ", "Case closed")}</strong> — {pretty(comp.outcome)} · {m.closure.reason} · {m.closure.byName}, {formatDateTime(m.closure.at, lang)}
+          {m.closureTestimonial ? <><br />{tx("প্রত্যয়নপত্র", "Testimonial")}: <code>{m.closureTestimonial.testimonialId}</code> · {tx("নাগরিকের কেস পাতায় পাঠানো হয়েছে", "sent to the citizen's case page")}</> : null}
         </Banner>
       </div>
     );
@@ -1557,7 +1559,7 @@ function LawyerCaseClosure({ a, run }: StepProps) {
         <Button disabled={!!unpaid.length || reason.trim().length < 10} onClick={() => run(() => DlaoLawyerService.closeCase(a.applicationId, reason))}>
           {tx("কেস বন্ধ করুন", "Close case")}
         </Button>
-        <span className={styles.hint}>{tx("নাগরিককে জানানো হবে; কেস ‘নিষ্পন্ন’ হবে ও অডিটে থাকবে।", "The citizen is notified; the case becomes Resolved and is audited.")}</span>
+        <span className={styles.hint}>{tx("কেস ‘নিষ্পন্ন’ হবে, প্রত্যয়নপত্র তৈরি করে নাগরিকের কেস পাতায় পাঠানো হবে এবং অডিটে থাকবে।", "The case becomes Resolved; a testimonial is generated, sent to the citizen's case page, and audited.")}</span>
       </div>
     </div>
   );
@@ -1581,7 +1583,8 @@ function LawyerAssignPanel({ a, run }: StepProps) {
   const [outcome, setOutcome] = useState<(typeof COMPLETION_OUTCOMES)[number]>("WON");
   const [doneReason, setDoneReason] = useState("");
   const hearings = [...(m?.hearings ?? [])].sort((x, y) => x.at.localeCompare(y.at));
-  const alerts = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE" && (t.type === "LAWYER_UPDATE_OVERDUE" || t.type === "LAWYER_REASSIGN_REVIEW" || t.type === "LAWYER_INACTIVITY_REVIEW" || t.type === "LAWYER_ASSIGNMENT"));
+  const alerts = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE" && (t.type === "LAWYER_UPDATE_OVERDUE" || t.type === "LAWYER_REASSIGN_REVIEW" || t.type === "LAWYER_INACTIVITY_REVIEW" || t.type === "LAWYER_ASSIGNMENT" || t.type === "LAWYER_CHANGE_REQUEST"));
+  const pendingChangeRequests = m?.changeRequests?.filter((request) => request.status === "PENDING") ?? [];
   const reassignAlert = alerts.find((t) => t.type === "LAWYER_REASSIGN_REVIEW");
   const pending = sl?.candidates.filter((c) => c.outcome === "PENDING") ?? [];
   const chosen = lawyerId && pending.some((c) => c.lawyerId === lawyerId) ? lawyerId : (pending[0]?.lawyerId ?? "");
@@ -1592,6 +1595,8 @@ function LawyerAssignPanel({ a, run }: StepProps) {
       ? tx("শুনানি মিস — অন্য আইনজীবী দিন", "Missed hearings — assign another lawyer")
       : type === "LAWYER_INACTIVITY_REVIEW"
         ? tx("একাধিক মামলায় শুনানি মিস — পর্যালোচনা", "Missed hearings across cases — review")
+        : type === "LAWYER_CHANGE_REQUEST"
+          ? tx("নাগরিক আইনজীবী পরিবর্তন চান", "Citizen requests a lawyer change")
         : type === "LAWYER_ASSIGNMENT"
           ? tx("আইনজীবী নিয়োগ দিন", "Assign a panel lawyer")
           : tx("আইনজীবীর প্রতিবেদন দেরি", "Lawyer report overdue");
@@ -1604,6 +1609,14 @@ function LawyerAssignPanel({ a, run }: StepProps) {
         <Banner key={t.taskId} tone={t.type === "LAWYER_ASSIGNMENT" ? "warn" : "err"} icon="!">
           <strong>{alertTitle(t.type)}</strong> — {t.reason}
         </Banner>
+      ))}
+
+      {pendingChangeRequests.map((request) => (
+        <div key={request.requestId} className={ui.contactBox} style={{ marginBottom: "var(--s-3)" }}>
+          <strong>{tx("বেআইনি কাজের অভিযোগে আইনজীবী পরিবর্তনের আবেদন", "Lawyer-change application for alleged illegal conduct")}</strong>
+          <p className={styles.hint}>{tx("অনুমোদন করলে নাগরিককে জানানো হবে যে আবেদনটি অনুমোদিত এবং পরবর্তী আপডেট শিগগিরই দেওয়া হবে।", "Approval sends the citizen a message that the application is approved and an update will follow soon.")}</p>
+          <Button onClick={() => run(() => LawyerChangeService.approve(a.applicationId, request.requestId))}>{tx("আবেদন অনুমোদন করুন", "Approve application")}</Button>
+        </div>
       ))}
 
       {m?.completion ? (

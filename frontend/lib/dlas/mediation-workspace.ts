@@ -1044,7 +1044,7 @@ export const SettlementVerificationService = {
       const to = normalizePhone(a.data.safeContact.phone) ?? normalizePhone(a.data.applicant.phone);
       if (to) {
         const allowed = a.data.safeContact.smsAllowed;
-        db.outbox.push({ msgId: rid("SMS"), kind: "SMS_CONFIRMATION", to, body: a.data.safeContact.neutralWordingRequired ? `Update on your reference ${t.caseRef}. Please check your DLAS page or the office will contact you at your safe time.` : `DLAS legal aid (${t.caseRef}): your mediated settlement is verified — testimonial ${t.testimonialId} is on your DLAS page. If you disagree you can appeal within ${APPEAL_WINDOW_DAYS} days; otherwise the case is closed as resolved.`, sessionId: a.channel.sessionId, applicationId: a.applicationId, simulated: true, status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE", at: now() });
+        db.outbox.push({ msgId: rid("SMS"), kind: "SMS_CONFIRMATION", to, body: a.data.safeContact.neutralWordingRequired ? `Update on your reference ${t.caseRef}. Please check your DLAS page or the office will contact you at your safe time.` : `DLAS legal aid (${t.caseRef}): your mediation is complete and testimonial ${t.testimonialId} is available on your DLAS page.`, sessionId: a.channel.sessionId, applicationId: a.applicationId, simulated: true, status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE", at: now() });
         audit(db, a.audit, { actor: "system", role: "system", caseId: t.caseRef, action: allowed ? "notice.sms_sent" : "notice.sms_suppressed", detail: { to, neutral: a.data.safeContact.neutralWordingRequired } });
       }
       return t;

@@ -1,6 +1,6 @@
 import { mutate } from "./store";
 import { DISTRICTS, MATTERS, normalizePhone } from "./reference";
-import type { AuditEntry, DistrictCode, DlasDb, Hearing, MatterCategory, MediationCaseType, MediationTrack, MediatorRecord, MediatorRole, MediatorStatus, OfficeType } from "./schema";
+import type { AuditEntry, DistrictCode, DlasDb, Hearing, MatterCategory, MediationCaseType, MediationTrack, MediatorCertificationStatus, MediatorRecord, MediatorRole, MediatorStatus, OfficeType } from "./schema";
 
 export type ManagedRole = "citizens" | "lawyers" | "officers" | "mediators" | "udcOperators";
 export type ManagedInput = {
@@ -24,6 +24,15 @@ export type AdminHearingInput = {
   purpose: string;
 };
 
+export type AdminMediatorTrainingInput = {
+  status: MediatorCertificationStatus;
+  body: string;
+  certificateNo: string;
+  issuedOn: string;
+  validUntil: string;
+  note: string;
+};
+
 const idField = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", mediators: "mediatorId", udcOperators: "operatorId" } as const;
 const prefix = { citizens: "CIT", lawyers: "LAW", officers: "OFC", mediators: "MED", udcOperators: "UDC" } as const;
 const id = (p: string) => `${p}-${Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0")}`;
@@ -35,6 +44,43 @@ function log(db: DlasDb, action: string, detail: Record<string, unknown>, accoun
 }
 
 export const AdminService = {
+  saveMediatorTraining(mediatorId: string, input: AdminMediatorTrainingInput) {
+    const body = input.body.trim();
+    const certificateNo = input.certificateNo.trim();
+    const note = input.note.trim();
+    const completed = input.status === "CERTIFIED" || input.status === "TRAINING_COMPLETED";
+    if (completed && body.length < 2) throw new Error("Enter the training or certifying body.");
+    if (input.issuedOn && Number.isNaN(Date.parse(input.issuedOn))) throw new Error("Enter a valid issue date.");
+    if (input.validUntil && Number.isNaN(Date.parse(input.validUntil))) throw new Error("Enter a valid expiry date.");
+    if (input.issuedOn && input.validUntil && input.validUntil < input.issuedOn) throw new Error("The expiry date cannot be before the issue date.");
+    if (note.length < 3) throw new Error("Enter a short training note.");
+    return mutate((db) => {
+      const mediator = db.mediators.find((m) => m.mediatorId === mediatorId);
+      if (!mediator) throw new Error("Mediator no longer exists.");
+      const before = { ...mediator.certification };
+      mediator.certification = {
+        status: input.status,
+        body: body || null,
+        certificateNo: certificateNo || null,
+        issuedOn: input.issuedOn || null,
+        validUntil: input.validUntil || null,
+        verifiedBy: null,
+        verifiedByName: null,
+        verifiedAt: null,
+      };
+      const at = new Date().toISOString();
+      if (mediator.status === "ACTIVE") {
+        mediator.status = "PENDING_VERIFICATION";
+        mediator.statusChangedAt = at;
+        mediator.statusReason = "Training or certification changed by DBLA / Admin — verification required";
+      }
+      mediator.updatedAt = at;
+      mediator.adminRecord.push({ entryId: id("MAR"), kind: "TRAINING", at, by: "admin:prototype", byName: "DBLA / Admin", text: note });
+      log(db, "mediator.training_updated", { mediatorId, before, after: mediator.certification, note, verificationReset: true }, mediator.audit);
+      return mediator.certification;
+    });
+  },
+
   saveHearing(applicationId: string, hearingId: string | null, input: AdminHearingInput) {
     const hearingAt = new Date(input.at);
     const court = input.court.trim();

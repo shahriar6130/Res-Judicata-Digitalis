@@ -53,12 +53,25 @@ The prototype administrator entry at `/admin` requires no credentials and redire
 Upstash; the dashboard confirms whether the online save succeeded or only the browser copy exists.
 Admin JSON export reconciles before downloading, and JSON import flushes the restored snapshot to
 the same online store before reporting completion.
+The Admin dashboard also retains a dedicated Mediator training section for editing training and
+certificate records without bypassing verification.
 
 ## Step 1 — Access & Application (shared record)
 
 Every intake door writes the same JSON record to the local offline cache and optional Upstash JSON mirror, and mints one Application ID:
 `/dashboard/citizen#intake` (citizen), `/dashboard/udc/intake/new` (UDC), `/device/ivr` and `/device/ussd` (simulated phones).
 Open `/debug` to inspect any session or application at any step. Contract: `docs/architecture/DATA-CONTRACTS.md`.
+
+When the DLO closes a completed and paid lawyer-path case, the shared record also receives a
+simulated closure testimonial. The citizen is notified and can view that testimony on their own
+case-detail page.
+
+Current shared-case workflows also support case-specific co-mediator assignments, legal-aid
+applications made to defend an alleged person, and a citizen lawyer-change request for alleged
+illegal conduct. Lawyer-change requests create a DLAO task; approval sends the citizen an
+“approved—update soon” message. Mediation-completion notifications use completion/testimonial
+wording without advertising a seven-day appeal period, and document-request notifications are
+removed once the requested file is submitted.
 
 ## Shared contract
 

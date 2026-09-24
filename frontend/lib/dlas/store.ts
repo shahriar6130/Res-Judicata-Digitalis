@@ -1,10 +1,11 @@
 /* ------------------------------------------------------------------ *
- *  DLAS store — one localStorage key, one JSON document.
+ *  DLAS store — one JSON document, local-first with an Upstash mirror.
  *
  *    localStorage["dlas.db.v1"] = DlasDb (see schema.ts)
  *
- *  - Writes are SYNCHRONOUS so state survives an immediate reload or
- *    navigation (a juror can refresh and see the change).
+ *  - Writes are SYNCHRONOUS locally so state survives an immediate reload or
+ *    navigation; the newest snapshot is mirrored asynchronously through
+ *    /api/dlas-store when Upstash is configured.
  *  - Every mutation re-reads the latest JSON first, so two open tabs
  *    (e.g. USSD simulator + /debug) never overwrite each other.
  *  - Other tabs are notified through the native `storage` event;
@@ -20,6 +21,13 @@ import { auditFingerprint, sealAuditHistory } from "./audit-trail";
 
 export const DLAS_KEY = "dlas.db.v1";
 const EVENT = "dlas:db-changed";
+const REMOTE_ENDPOINT = "/api/dlas-store";
+
+type RemotePhase = "idle" | "loading" | "ready" | "syncing" | "error" | "disabled";
+let remotePhase: RemotePhase = "idle";
+let remoteHydration: Promise<void> | null = null;
+let pendingRemoteRaw: string | null = null;
+let remoteTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function emptyDb(): DlasDb {
   return {
@@ -156,7 +164,7 @@ export function readDb(): DlasDb {
 
 export class StorageWriteError extends Error {}
 
-function persist(next: DlasDb) {
+function persistLocal(next: DlasDb, syncRemote: boolean) {
   const raw = JSON.stringify(next);
   try {
     window.localStorage.setItem(DLAS_KEY, raw);
@@ -169,6 +177,108 @@ function persist(next: DlasDb) {
   snapshotRaw = raw;
   snapshot = next;
   window.dispatchEvent(new CustomEvent(EVENT));
+  if (syncRemote) queueRemoteWrite(raw);
+}
+
+function persist(next: DlasDb) {
+  persistLocal(next, true);
+}
+
+function modifiedAt(db: DlasDb): number {
+  return Date.parse(db.updatedAt ?? "") || 0;
+}
+
+function scheduleRemoteFlush(delay = 300) {
+  if (!isBrowser() || remotePhase === "disabled" || remotePhase === "loading") return;
+  if (remoteTimer) clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(() => {
+    remoteTimer = null;
+    void flushRemoteDb();
+  }, delay);
+}
+
+function queueRemoteWrite(raw: string) {
+  pendingRemoteRaw = raw;
+  if (remotePhase === "ready" || remotePhase === "error") scheduleRemoteFlush();
+}
+
+/**
+ * Pushes the newest local snapshot to the server-only Upstash route.
+ * Writes stay queued after network errors and retry when the browser reconnects.
+ */
+export async function flushRemoteDb(): Promise<void> {
+  if (!isBrowser() || !pendingRemoteRaw || remotePhase === "disabled" || remotePhase === "loading" || remotePhase === "syncing") return;
+  const raw = pendingRemoteRaw;
+  pendingRemoteRaw = null;
+  remotePhase = "syncing";
+  try {
+    const response = await fetch(REMOTE_ENDPOINT, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: raw,
+      cache: "no-store",
+    });
+    const payload = await response.json() as { configured?: boolean; conflict?: boolean; data?: DlasDb; error?: string };
+    if (response.status === 503 && payload.configured === false) {
+      remotePhase = "disabled";
+      return;
+    }
+    if (response.status === 409 && payload.conflict && payload.data) {
+      // If nothing newer was typed while this request was running, accept the
+      // newer remote snapshot. Otherwise the newest local write gets another try.
+      if (!pendingRemoteRaw) persistLocal(parse(JSON.stringify(payload.data)), false);
+      remotePhase = "ready";
+      if (pendingRemoteRaw) scheduleRemoteFlush(0);
+      return;
+    }
+    if (!response.ok) throw new Error(payload.error ?? `Remote save failed (${response.status})`);
+    remotePhase = "ready";
+    if (pendingRemoteRaw) scheduleRemoteFlush(0);
+  } catch {
+    // Preserve a newer queued write if one exists; otherwise retry this snapshot.
+    pendingRemoteRaw = pendingRemoteRaw ?? raw;
+    remotePhase = "error";
+  }
+}
+
+/**
+ * Loads the shared JSON once. The newest `updatedAt` wins; local writes made
+ * during hydration are never overwritten and are flushed after hydration.
+ */
+export function hydrateRemoteDb(): Promise<void> {
+  if (!isBrowser()) return Promise.resolve();
+  if (remoteHydration) return remoteHydration;
+  remotePhase = "loading";
+  remoteHydration = (async () => {
+    try {
+      const response = await fetch(REMOTE_ENDPOINT, { method: "GET", cache: "no-store" });
+      const payload = await response.json() as { configured?: boolean; data?: DlasDb | null; error?: string };
+      if (response.status === 503 && payload.configured === false) {
+        remotePhase = "disabled";
+        pendingRemoteRaw = null;
+        return;
+      }
+      if (!response.ok) throw new Error(payload.error ?? `Remote load failed (${response.status})`);
+
+      const local = readDb();
+      const remote = payload.data ? parse(JSON.stringify(payload.data)) : null;
+      if (remote && !pendingRemoteRaw && modifiedAt(remote) > modifiedAt(local)) {
+        persistLocal(remote, false);
+      } else if (local.updatedAt) {
+        pendingRemoteRaw = JSON.stringify(local);
+      }
+      remotePhase = "ready";
+      if (pendingRemoteRaw) scheduleRemoteFlush(0);
+    } catch {
+      const local = readDb();
+      if (local.updatedAt) pendingRemoteRaw = JSON.stringify(local);
+      remotePhase = "error";
+    }
+  })().finally(() => {
+    // A failed first load may be retried by the browser's next online event.
+    if (remotePhase === "error") remoteHydration = null;
+  });
+  return remoteHydration;
 }
 
 /**
@@ -189,7 +299,7 @@ export function mutate<T>(fn: (db: DlasDb) => T): T {
 
 export function resetDb(): void {
   if (!isBrowser()) return;
-  persist(emptyDb());
+  persist({ ...emptyDb(), updatedAt: new Date().toISOString() });
 }
 
 export function exportDb(): string {
@@ -201,7 +311,7 @@ export function importDb(json: string): void {
   if (parsed.schemaVersion !== SCHEMA_VERSION) {
     throw new Error("Not a " + SCHEMA_VERSION + " export");
   }
-  persist(parsed);
+  persist({ ...parsed, updatedAt: new Date().toISOString() });
 }
 
 function subscribe(onChange: () => void) {

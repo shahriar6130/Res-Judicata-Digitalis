@@ -919,6 +919,14 @@ Day-1 measurements establish the versioned prototype budget; a later build that 
 
 ### 15.1 Local storage boundary
 
+The implemented migration-era Next.js frontend uses `localStorage["dlas.db.v1"]` as its immediate
+offline cache and mirrors that canonical JSON through the server-only `/api/dlas-store` Route
+Handler to Upstash Redis. The handler issues REST `GET`/`SET` commands, validates the DLAS schema,
+limits payload size, and reads credentials only from non-public runtime environment variables.
+The Redis key is separated by `VERCEL_ENV` unless `DLAS_KV_KEY` explicitly overrides it. This is a
+prototype persistence adapter, not a replacement for the row-scoped PostgreSQL production design
+in section 5.2; the whole-document model remains unsuitable for high-contention production writes.
+
 Cache:
 
 - application shell and static assets;

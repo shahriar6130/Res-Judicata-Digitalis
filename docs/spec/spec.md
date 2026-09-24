@@ -117,7 +117,7 @@ previous keys where possible.
 - One validator for all doors (`lib/dlas/validate.ts`); every field carries provenance; every session and record carries `audit[]`. Application ID `APP-YYYY-NNNNN` is minted only by the gateway (helpline agent submit and UDC offline sync reuse it).
 - Submit opens human tasks (eligibility review, urgent safety review, document follow-up, missing info, representative call-back). Routing priority is advisory; `humanDecision` stays null.
 - `/debug` shows every session/application, its intake step and backbone stage, JSON, provenance, audit, tasks, messages and transcript; export/import/reset.
-- Storage is `localStorage["dlas.db.v1"]` (per browser). Full contract: `docs/architecture/DATA-CONTRACTS.md`.
+- The browser keeps `localStorage["dlas.db.v1"]` as the synchronous offline cache. `RemoteStoreBootstrap` hydrates the newest snapshot from `GET /api/dlas-store` and debounced local writes mirror through `PUT /api/dlas-store` to one environment-scoped Upstash Redis JSON key. The Route Handler validates `v` and `schemaVersion`, rejects payloads above 4 MiB, prevents a clearly older snapshot from replacing a newer one, and keeps all REST tokens server-only. If Upstash is absent or temporarily unavailable, the existing local workflow continues and the newest queued snapshot retries on reconnect. Full record contract: `docs/architecture/DATA-CONTRACTS.md`.
 
 
 ## Step 2 — Verification & Eligibility (DLAO / SCLAC / LLAC)

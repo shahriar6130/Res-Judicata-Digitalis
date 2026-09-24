@@ -46,11 +46,11 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` for the Citizen portal: **Sign up** with name + mobile number, then **Log in** with the mobile number only (no password in the prototype). Accounts are stored in `localStorage["dlas.db.v1"].citizens`.
+Visit `http://localhost:3000` for the Citizen portal: **Sign up** with name + mobile number, then **Log in** with the mobile number only (no password in the prototype). Accounts are cached in `localStorage["dlas.db.v1"].citizens`; when the server-only Upstash REST variables are configured, the complete shared JSON is also hydrated and mirrored through `/api/dlas-store` (see `frontend/README.md`).
 
 ## Step 1 — Access & Application (shared record)
 
-Every intake door writes the same JSON record to `localStorage["dlas.db.v1"]` and mints one Application ID:
+Every intake door writes the same JSON record to the local offline cache and optional Upstash JSON mirror, and mints one Application ID:
 `/dashboard/citizen#intake` (citizen), `/dashboard/udc/intake/new` (UDC), `/device/ivr` and `/device/ussd` (simulated phones).
 Open `/debug` to inspect any session or application at any step. Contract: `docs/architecture/DATA-CONTRACTS.md`.
 

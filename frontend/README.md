@@ -14,6 +14,8 @@ changes are audited. The DLO review screen offers a reasoned correction form dur
 verification for applicant, filer, matter, urgency, and safe-contact information.
 Changing verified fields reopens the related check; a district change reroutes open work.
 Legal decisions remain officer actions. Prototype data lives in browser `dlas.db.v1`.
+That browser record is also used as an offline cache for the optional Upstash JSON mirror described
+below.
 
 The administrator Applications section shows each application's hearing schedule. Administrators
 can add hearings or edit the date/time, court, and purpose; lawyer-reported attendance and outcomes
@@ -36,6 +38,32 @@ first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/das
 - Next.js 16 (App Router, static-server-rendered pages)
 - TypeScript, CSS Modules
 - `next/font`: Playfair Display (Latin) + Noto Serif Bengali, wired into one serif stack
+
+## Upstash JSON persistence on Vercel
+
+The app now hydrates `dlas.db.v1` from `/api/dlas-store` and mirrors debounced writes back through
+that server-only Route Handler. The browser never receives an Upstash credential. When storage is
+not configured or the network is down, the existing local record remains usable and the newest
+write retries after reconnecting.
+
+In Vercel, add these Environment Variables for Development, Preview, and Production as needed:
+
+```text
+KV_REST_API_URL
+KV_REST_API_TOKEN
+KV_REST_API_READ_ONLY_TOKEN
+```
+
+`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are supported aliases. `KV_URL` and
+`REDIS_URL` are not used because Vercel serverless functions connect through HTTPS REST. Never use
+`NEXT_PUBLIC_` for any token. See `.env.example` for local placeholders; put real local values in
+the ignored `.env.local` file or run `vercel env pull .env.local`.
+
+By default the JSON key is `rjd:dlas:db:v1:<environment>`, where the suffix comes from
+`VERCEL_ENV` (or `NODE_ENV` locally). Set `DLAS_KV_KEY` only when a different namespace is needed.
+The Route Handler accepts only the current DLAS schema and a maximum 4 MiB JSON document. This
+whole-document adapter is suitable for the prototype; a production multi-user system should use
+the repository's row-scoped database architecture.
 
 ## Structure
 

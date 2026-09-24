@@ -37,6 +37,10 @@ the text toggle changes the entire visible interface to English and persists the
   whitespace.
 - Every interactive element has a visible keyboard focus state and citizen/lawyer controls meet the
   44px tap-target requirement.
+- Remote JSON persistence does not add a blocking loading screen: dashboards render immediately
+  from the local offline cache, then update through the existing reactive record store when a newer
+  Upstash snapshot arrives. Loss of the remote connection leaves the current interface usable and
+  queues the newest snapshot for a foreground reconnect retry.
 
 ## Role views
 

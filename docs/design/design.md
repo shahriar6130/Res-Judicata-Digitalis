@@ -9,10 +9,9 @@ S24 and S33 stay thin, while only S23 export—not its B7 report/search—is opt
 
 The interface combines an editorial legal publication with a restrained operational tool. It uses
 an off-white canvas, black navigation, hairline divisions, large serif headings, and clear reasons
-before actions. It does not use gradients, shadows, decorative cards, unexplained scores, or colour
-as the sole signal.
+before actions. The saved Blue White theme permits subtle gradients on featured panels and restrained hover shadows. It does not use unexplained scores or colour as the sole signal.
 
-All colours, type sizes, spacing, radii, and motion values come from `frontend/app/tokens.css`.
+All colours, type sizes, spacing, radii, and motion values come from frontend/app/tokens.css and the selected theme. The active theme is frontend/app/themes/black_theme.css, restoring the original black navigation, off-white surfaces, role accents, and red administrator palette. The saved red_white.css and blue_white.css alternatives can be selected through the theme import in globals.css; there is no product theme switch.
 Playfair Display and Noto Serif Bengali form the one permitted font stack. Bangla is the default;
 the text toggle changes the entire visible interface to English and persists the choice.
 
@@ -100,9 +99,10 @@ Administrators cannot make legal or case-consequential decisions from this view.
 
 The admin workspace replaces sample figures with counts and recent activity from
 `dlas.db.v1`. Its dark heading, compact metric row, focused hash sections, and searchable
-role directory use the existing tokens and Bangla/English toggle. Administrators can add
-and edit citizen, panel-lawyer, DLO officer, and UDC operator accounts; each change writes
-an audit entry. The application section monitors all offices and channels. It does not
+role directory use the existing tokens and Bangla/English toggle. Administrators can add,
+edit, and delete citizen, panel-lawyer, DLO officer, mediator, and UDC operator accounts;
+each change writes an audit entry. Delete is a red outlined row action that opens a focused
+confirmation dialog naming the account and explaining retained history. The application section monitors all offices and channels. It does not
 offer legal decisions. During an open DLO verification, a disclosure form lets the
 officer correct applicant, filer, matter, urgency, and safe-contact details with a
 required reason. Changed values retain provenance and old values in the audit; changes
@@ -139,8 +139,69 @@ stack, and wide content never causes horizontal page scrolling.
 
 ## /device (IVR, USSD) and /debug
 
+## Failed mediation and referral review
+
+Choosing **Mediation failed** opens a structured outcome form in the mediator workspace. It shows
+mediation date, applicant and respondent attendance, issues discussed, outcome, optional
+reason/status, follow-up requirement, and proposed referral pathway. A warning above the fields
+states that confidential caucus content must not be included.
+
+The resulting **Mediation failure / referral record** is a bordered procedural record rather than
+a failure-status badge. Its system suggestion is presented in a separate advisory block labelled
+`SYSTEM SUGGESTION`. The officer screen at
+`/dashboard/dlo/mediation-outcomes/[applicationId]` follows with a `LEGAL AID OFFICER REVIEW`
+section and three explicit actions: Confirm referral, Change pathway, and Request more information.
+When lawyer assignment is confirmed, a labelled sequence shows Mediation → Failure → Referral
+record → Legal Aid Officer → Lawyer assignment. Layout, type, colours, focus and responsive stacking
+reuse the existing shared tokens and DLO work-surface patterns.
+
+## /device (IVR, USSD) and /debug
+
+## Successful mediation and CLO certification
+
+After **Settlement reached**, the mediator workspace presents one numbered progress strip for
+terms, party execution, mediator confirmation, CLO certification, and the recorded legal outcome.
+The settlement form uses six labelled fields: issue, proposed resolution, agreed resolution,
+conditions, deadline, and additional terms. Copy beside the form states that the mediator enters
+the terms manually and that the system does not generate them.
+
+Party rows show applicant, respondent, and mediator separately. Prototype signature controls and
+every resulting signature state carry the bilingual `DEMO / SIMULATED` label. The CLO route
+`/dashboard/dlo/settlements/[applicationId]` uses the same hairline sections and token-based DLO
+work surface. It shows the agreement, case context, execution, and mediator confirmation before
+the three decisions: Certify, Return for correction, and Request clarification. Certification is
+visibly unavailable until both parties have executed and the mediator has confirmed. A certified
+record shows `RESOLVED`, agreement ID, officer, time, outcome, and follow-up work.
+
+## /device (IVR, USSD) and /debug
+
 - Styles: `frontend/components/dlas/dlas.module.css`, tokens only. New token `--font-mono` (JSON and ids).
-- /device pages show a step trail, the handset, and a right-hand **Live record** panel with the JSON being written. The citizen wizard and UDC screens keep their own design; UDC workspace gains a "Shared record" section.
+- `/device` pages show one centered handset without a separate conversation, message, or live-record pane. Developer JSON remains available through the separate `/debug` route and is not displayed in the caller interface. The citizen wizard and UDC screens keep their own design; the UDC workspace retains its own shared-record tools.
 - Simulated external services (SMS gateway, telephone network, speech-to-text, USSD gateway) always carry a dashed "Simulated" tag.
 - IVR and USSD are rendered as a dark handset; prompts, keypad and transcript are bilingual (Bangla default).
-- The `/device/ivr` and `/device/ussd` pages now share an editorial introduction with a three-step getting-started guide, a labelled two-mode switch, and a clear active-workspace heading. The dark handset is the primary surface, with a flatter bezel, readable screen, larger keypad targets, and distinct call/end actions. Conversation and live-record panels sit alongside the handset on wide screens and stack below it on narrower screens; empty conversation copy explains what appears after starting. Mode switching uses a labelled current-page state, and the simulated network or gateway tag remains visible.
+- The `/device/ivr` and `/device/ussd` pages share a short introduction and labelled two-mode switch. The dark handset is the only interaction surface, with a flat bezel, readable screen, large keypad targets, distinct call/end actions, and voice text controls embedded in the display when needed. Mode switching uses a labelled current-page state, and the simulated network or gateway tag remains visible.
+## Court-referred mediation and access boundaries (Features 8–9)
+
+The legal-pathway screen records a visible **Mediation origin**: Pre-Litigation, Mandatory Pre-Case, Court-Referred, or Appellate Referral. Court-origin cases display the court name and level, case number, referral date and order/reference, referring authority, litigation stage, and referral deadline in the officer assignment view and the same mediator workspace. A court case therefore remains visually distinct while using the existing mediation workflow.
+
+After certified settlement or officer-confirmed failure return, the officer UI shows a separate referring-authority dispatch card. External delivery is labelled **DEMO / SIMULATED** and requires a human-entered dispatch reference.
+
+The mediator workspace labels its general sections **PUBLIC CASE RECORD** and the caucus section **MEDIATOR CONFIDENTIAL NOTES**. Confidential caucus content is visually contained, uses design tokens, and never appears in citizen, officer, CLO, lawyer, or administrator projections. The mediator sees only the current assigned case and its need-to-know party, document, communication, and accessibility fields. The CLO settlement link and certification screen are available only to a Chief Legal Aid Officer account.
+## Device simulator simplification
+
+The `/device`, `/device/ivr`, and `/device/ussd` views use a compact introductory heading followed by a two-option IVR/USSD switch and one centered handset. The handset uses a fixed compact display with internal scrolling for longer prompts, reduced bezel spacing, and 44px keypad and call targets. Each visit starts with a clean phone session. Conversation history is neither displayed nor written by the device UI. Duplicate onboarding instructions, secondary workspace content, progress strips, messages, and live JSON/debug panels are omitted so the current prompt and response remain visually dominant. The global device header does not expose the developer debug console.
+## Admin mediator and UDC directory
+
+The `/dashboard/admin#users` account directory includes Mediators and UDC operators as peer role tabs. Mediator rows show name, mediator ID, phone, district, and status. The add/edit dialog records the mediator's account details, registry role, status, qualification, mediation tracks, and case types. UDC operator rows and forms continue to show the linked centre and district, and saving an operator synchronizes its registered UDC centre record. The overview count includes both groups.
+
+Every account row includes Edit and Delete controls. Delete requires confirmation, returns an inline error when an active mediator or lawyer assignment blocks removal, and keeps historical application and audit records. Deleting a UDC operator also removes only that operator's linked registered centre entry.
+## Admin sidebar
+
+The admin dashboard uses the selected theme's dedicated admin palette across the complete workspace. In Blue White, the sidebar uses `#333366`, the hero uses `#10448a`, active controls use `#5d65b0`, and white or lightly blue-tinted surfaces support panels, metrics, forms, dialogs, notices, and tables. The sidebar contains Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Its compact workspace heading reads System administration.
+
+Under the image theme, the same admin variables resolve to black navigation, paper panels, gray rules, and red actions so administration participates in the global courthouse treatment. Restoring the archived black theme also restores the previous red administrator palette and original role colors.
+
+
+### Blue White visual refresh
+
+The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.

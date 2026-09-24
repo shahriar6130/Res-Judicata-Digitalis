@@ -1,4 +1,6 @@
 @import "./tokens.css";
+/* Active theme: swap this path with another file in app/themes to change themes. */
+@import "./themes/black_theme.css";
 
 * {
   box-sizing: border-box;
@@ -35,13 +37,13 @@ input {
 }
 
 :focus-visible {
-  outline: var(--focus-width) solid var(--black);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--black);
-  color: var(--white);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 @media (prefers-reduced-motion: reduce) {

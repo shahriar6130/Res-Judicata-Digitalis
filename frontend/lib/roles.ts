@@ -55,12 +55,12 @@ export const ROLES: readonly Role[] = [
   },
   {
     id: "mediator",
-    name: { bn: "আইনি সহায়তা কর্মকর্তা / মধ্যস্থতাকারী", en: "Legal Aid Officer / Mediator" },
+    name: { bn: "মধ্যস্থতাকারী", en: "Mediator" },
     description: {
-      bn: "নিরাপত্তা যাচাই, অংশগ্রহণ, নথি এবং মধ্যস্থতার ফলাফল পরিচালনা করুন।",
-      en: "Manage safety screening, participation, documents, and mediation outcomes.",
+      bn: "নিয়োগকৃত মামলায় মধ্যস্থতা পরিচালনা করুন — সেশন, উপস্থিতি, আলোচনা ও ফলাফল।",
+      en: "Conduct mediation on your assigned cases — sessions, attendance, discussion and outcome.",
     },
-    path: "/portal/mediator",
+    path: "/mediator",
     home: "/dashboard/mediator",
     provider: true,
   },

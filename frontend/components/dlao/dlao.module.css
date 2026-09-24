@@ -802,3 +802,210 @@
 .correctionChecks { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-6); margin: var(--s-6) 0; }
 .correctionChecks label { display: flex; align-items: center; gap: var(--s-2); }
 @media (max-width: 640px) { .correctionGrid { grid-template-columns: 1fr; } }
+
+/* ---------- legal pathway (Feature 2) ---------- */
+
+.flow {
+  display: grid;
+  gap: 0;
+}
+
+.flowStep {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: var(--s-4);
+  background: var(--white);
+}
+
+.flowLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: var(--s-3);
+}
+
+.flowNum {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.flowArrow {
+  text-align: center;
+  color: var(--gray);
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 0;
+}
+
+/* System suggestion: dashed, neutral — never looks final. */
+.suggest {
+  border: 2px dashed #9ca3af;
+  background: repeating-linear-gradient(135deg, #f9fafb, #f9fafb 10px, #f3f4f6 10px, #f3f4f6 20px);
+}
+
+.suggestBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px dashed #6b7280;
+  color: #374151;
+  background: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Officer confirmed: solid green — the only final state. */
+.confirmed {
+  border: 2px solid var(--green);
+  background: #f0fdf4;
+}
+
+.confirmedBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.bigPathway {
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 6px 0 4px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+@media (max-width: 760px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modeBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--s-3);
+}
+
+/* ---------- mediation workspace (Feature 4) ---------- */
+
+.wsHeader {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: var(--s-4) var(--s-5);
+  background: var(--white);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.wsEyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gray);
+  margin-bottom: var(--s-3);
+}
+
+.wsHeadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--s-4);
+  align-items: start;
+}
+
+.wsKey {
+  font-size: 12px;
+  color: var(--gray);
+  margin-bottom: 4px;
+}
+
+.wsVal {
+  font-weight: 600;
+}
+
+.wsCaseId {
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.sessionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-3);
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid var(--line);
+}
+
+.confidential {
+  border: 2px solid #c2410c;
+  background: #fff7ed;
+}
+
+.confidentialBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #7c2d12;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.settleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s-3);
+}
+
+/* ---------- multi-channel mediation (Feature 5) ---------- */
+
+.channelSet { border: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.channelSet legend { width: 100%; margin-bottom: var(--s-2); }
+.channelOpt { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); cursor: pointer; font-weight: 600; }
+.channelOpt[data-on="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.timer { font-variant-numeric: tabular-nums; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--ink); color: var(--white); font-size: 13px; }
+.simBadge { margin-left: 8px; padding: 1px 8px; border-radius: 999px; border: 1px dashed #6b7280; color: #374151; font-size: 11px; letter-spacing: 0.04em; }
+.limitedBar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); border-radius: 10px; border: 2px solid #d97706; background: #fffbeb; color: #78350f; }
+.limitedPill { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; border: 1px solid #d97706; color: #78350f; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.callRow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--line); }
+.roomGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); }
+.roomTile { border: 1px solid var(--line); border-radius: 12px; padding: var(--s-3); background: #111827; color: #f9fafb; display: grid; gap: 4px; justify-items: start; }
+.roomTile [class*="hint"] { color: #d1d5db; }
+.roomTile[data-state="NOT_JOINED"] { opacity: 0.6; }
+.roomAvatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #374151; font-weight: 700; }
+.connDot { font-size: 12px; font-weight: 600; }
+.connDot::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #9ca3af; }
+.connDot[data-state="CONNECTED"]::before { background: #22c55e; }
+.connDot[data-state="WEAK"]::before { background: #f59e0b; }
+.connDot[data-state="DISCONNECTED"]::before { background: #ef4444; }
+.simRow { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.simRow button { font-size: 11px; padding: 2px 8px; }

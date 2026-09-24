@@ -67,6 +67,14 @@ export type MessageKey =
   | "dlaoNavDecided"
   | "dlaoNavTasks"
   | "dlaoNavLawyers"
+  | "dlaoNavMediators"
+  | "dlaoNavSettlements"
+  | "dlaoNavMediationMonitor"
+  | "dlaoNavDistrictCases"
+  | "dlaoNavUrgent"
+  | "dlaoNavTransfers"
+  | "dlaoNavMediationOutcomes"
+  | "navMyMediations"
   | "navAssignedCases"
   | "navCaseIntake"
   | "navAttendance"
@@ -79,6 +87,7 @@ export type MessageKey =
   | "navApplications"
   | "navBackup"
   | "navAudit"
+  | "navMediationOversight"
   | "navFileComplaint"
   | "complaintTitle"
   | "complaintIntro"
@@ -500,6 +509,7 @@ export type MessageKey =
   | "helplineNavContinueIntake"
   | "helplineNavSearchRecord"
   | "helplineNavHandoffs"
+  | "helplineNavIvrEscalations"
   | "helplineNavDlaoTasks"
   | "helplineNavHistory"
   | "helplineNavAccessibility"
@@ -1250,6 +1260,14 @@ export const messages: Messages = {
     dlaoNavDecided: "সিদ্ধান্ত হয়েছে",
     dlaoNavTasks: "ফলো-আপ কাজ",
     dlaoNavLawyers: "প্যানেল আইনজীবী",
+    dlaoNavMediators: "মধ্যস্থতাকারী",
+    dlaoNavSettlements: "নিষ্পত্তি যাচাই",
+    dlaoNavMediationMonitor: "মধ্যস্থতা পর্যবেক্ষণ",
+    dlaoNavDistrictCases: "জেলার সব কেস",
+    dlaoNavUrgent: "জরুরি কেস",
+    dlaoNavTransfers: "কেস স্থানান্তর",
+    dlaoNavMediationOutcomes: "ব্যর্থ মধ্যস্থতা",
+    navMyMediations: "আমার মধ্যস্থতা",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
     navCaseIntake: "মামলা গ্রহণ",
     navAttendance: "উপস্থিতি",
@@ -1261,6 +1279,7 @@ export const messages: Messages = {
     navMetrics: "মেট্রিক্স",
     navApplications: "আবেদন",
     navBackup: "ব্যাকআপ",
+    navMediationOversight: "মধ্যস্থতা তত্ত্বাবধান",
     navAudit: "নিবন্ধন",
     navFileComplaint: "অভিযোগ জানান",
     complaintTitle: "একটি অভিযোগ নথিভুক্ত করুন",
@@ -1731,6 +1750,7 @@ export const messages: Messages = {
     helplineNavNewCall: "নতুন কল শুরু করুন",
     helplineNavContinueIntake: "আগের আবেদন চালিয়ে নিন",
     helplineNavSearchRecord: "রেকর্ড অনুসন্ধান",
+    helplineNavIvrEscalations: "IVR থেকে আসা কল",
     helplineNavHandoffs: "হস্তান্তর তালিকা",
     helplineNavDlaoTasks: "ডিএলএও যোগাযোগ",
     helplineNavHistory: "যোগাযোগের ইতিহাস",
@@ -2523,6 +2543,14 @@ export const messages: Messages = {
     dlaoNavDecided: "Decided",
     dlaoNavTasks: "Follow-up tasks",
     dlaoNavLawyers: "Panel lawyers",
+    dlaoNavMediators: "Mediators",
+    dlaoNavSettlements: "Settlement verification",
+    dlaoNavMediationMonitor: "Mediation monitor",
+    dlaoNavDistrictCases: "All district cases",
+    dlaoNavUrgent: "Urgent cases",
+    dlaoNavTransfers: "Case transfers",
+    dlaoNavMediationOutcomes: "Failed mediation reviews",
+    navMyMediations: "My mediations",
     navAssignedCases: "Assigned Cases",
     navCaseIntake: "Case intake",
     navAttendance: "Attendance",
@@ -2534,6 +2562,7 @@ export const messages: Messages = {
     navMetrics: "Metrics",
     navApplications: "Applications",
     navBackup: "Backup",
+    navMediationOversight: "Mediation oversight",
     navAudit: "Audit Log",
     navFileComplaint: "File a complaint",
     complaintTitle: "File a complaint",
@@ -3006,6 +3035,7 @@ export const messages: Messages = {
     helplineNavNewCall: "Start new call",
     helplineNavContinueIntake: "Continue intake",
     helplineNavSearchRecord: "Search record",
+    helplineNavIvrEscalations: "IVR escalations",
     helplineNavHandoffs: "Handoff queue",
     helplineNavDlaoTasks: "DLAO contact",
     helplineNavHistory: "History",

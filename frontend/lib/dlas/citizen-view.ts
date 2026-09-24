@@ -73,6 +73,8 @@ function statusOf(a: ApplicationRecord): CaseStatus {
       return "under_review";
     case "ACCEPTED":
       return "approved";
+    case "RESOLVED":
+      return "resolved";
     case "REJECTED":
     case "WITHDRAWN":
     case "CLOSED":
@@ -128,8 +130,15 @@ function auditAt(a: ApplicationRecord, action: string): string | null {
 const PATHWAY_TEXT: Record<PathwayType, { bn: string; en: string }> = {
   GRAM_ADALAT: { bn: "গ্রাম আদালতে প্রেরিত", en: "Referred to the Gram Adalat (village court)" },
   MEDIATION: { bn: "মধ্যস্থতায় প্রেরিত — মধ্যস্থতাকারী যোগাযোগ করবেন", en: "Referred to mediation — a mediator will contact you" },
+  REFERRAL: { bn: "অন্য সেবায় রেফার করা হয়েছে — অফিস বিস্তারিত জানাবে", en: "Referred to another service — the office will tell you the details" },
   LAWYER: { bn: "প্যানেল আইনজীবী নিয়োগ করা হবে", en: "A panel lawyer will be assigned" },
 };
+const FAILURE_PATHWAY_TEXT = {
+  COURT_LEGAL_PATHWAY: { bn: "আদালত / আইনি পথ", en: "Court / legal pathway" },
+  LAWYER_ASSIGNMENT: { bn: "আইনজীবী নিয়োগ", en: "Lawyer assignment" },
+  FURTHER_LEGAL_AID_REVIEW: { bn: "আরও লিগ্যাল এইড পর্যালোচনা", en: "Further legal aid review" },
+  OTHER_REFERRAL: { bn: "অন্য রেফারেল", en: "Other referral" },
+} as const;
 
 function timeline(a: ApplicationRecord): TimelineEvent[] {
   // Rejected: the record is closed after verification — show exactly that.
@@ -144,7 +153,7 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
   }
   // Step 1 is done at submit; the next backbone stage is "current" (waiting on a human).
   const doneUpTo = PIPELINE.indexOf(a.stage);
-  return PIPELINE.map((stage, i) => {
+  const base = PIPELINE.map((stage, i) => {
     const s = STAGE_TEXT[stage];
     const state: TimelineEvent["state"] = i <= doneUpTo ? "completed" : i === doneUpTo + 1 ? "current" : "upcoming";
     return {
@@ -158,6 +167,21 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
       state,
     };
   });
+  const tst = a.mediation?.workspace?.settlementWorkflow?.testimonial;
+  if (tst) {
+    const c = base.find((x) => x.id === "CLOSURE");
+    if (c) Object.assign(c, { descriptionBn: `মধ্যস্থতায় নিষ্পত্তি যাচাই হয়েছে — প্রত্যয়নপত্র ${tst.testimonialId} (${tst.office} অফিস থেকে সংগ্রহ করুন) · কেস বন্ধ`, descriptionEn: `Mediated settlement verified — testimonial ${tst.testimonialId} (collect it from the ${tst.office} office) · case closed`, dateBn: fmt(tst.issuedAt, "bn"), dateEn: fmt(tst.issuedAt, "en"), state: "completed" as const });
+  }
+  const failure = a.mediation?.workspace?.failureRecord;
+  if (!failure) return base;
+  const officerDone = failure.status === "REFERRAL_CONFIRMED";
+  const lawyerAccepted = a.lawyer?.assignments.some((x) => x.status === "ACCEPTED") ?? false;
+  const handoff: TimelineEvent[] = [
+    { id: `mediation-failure-${failure.recordId}`, titleBn: "মধ্যস্থতায় সমঝোতা হয়নি", titleEn: "Mediation did not settle", descriptionBn: "আনুষ্ঠানিক ফলাফল ও রেফারেল রেকর্ড তৈরি হয়েছে", descriptionEn: "A formal outcome and referral record was created", dateBn: fmt(failure.createdAt, "bn"), dateEn: fmt(failure.createdAt, "en"), state: "completed" },
+    { id: `officer-review-${failure.recordId}`, titleBn: "লিগ্যাল এইড অফিসার পর্যালোচনা", titleEn: "Legal Aid Officer review", descriptionBn: officerDone && failure.confirmedPathway ? `পরবর্তী পথ: ${FAILURE_PATHWAY_TEXT[failure.confirmedPathway].bn}` : failure.status === "MORE_INFORMATION_REQUESTED" ? "আরও প্রক্রিয়াগত তথ্য চাওয়া হয়েছে" : "পরবর্তী আইনি পথ নিশ্চিত করা বাকি", descriptionEn: officerDone && failure.confirmedPathway ? `Next pathway: ${FAILURE_PATHWAY_TEXT[failure.confirmedPathway].en}` : failure.status === "MORE_INFORMATION_REQUESTED" ? "More procedural information was requested" : "The next legal pathway is awaiting confirmation", dateBn: failure.officerReview.at ? fmt(failure.officerReview.at, "bn") : "", dateEn: failure.officerReview.at ? fmt(failure.officerReview.at, "en") : "", state: officerDone ? "completed" : "current" },
+  ];
+  if (failure.confirmedPathway === "LAWYER_ASSIGNMENT") handoff.push({ id: `lawyer-handoff-${failure.recordId}`, titleBn: "প্যানেল আইনজীবী নিয়োগ", titleEn: "Panel-lawyer assignment", descriptionBn: lawyerAccepted ? "আইনজীবী নিয়োগ গ্রহণ করেছেন" : "মধ্যস্থতা থেকে আইনজীবী নিয়োগ কার্যপ্রবাহে হস্তান্তর হয়েছে", descriptionEn: lawyerAccepted ? "A panel lawyer accepted the assignment" : "The case was handed from mediation to the lawyer-assignment workflow", dateBn: failure.officerReview.at ? fmt(failure.officerReview.at, "bn") : "", dateEn: failure.officerReview.at ? fmt(failure.officerReview.at, "en") : "", state: lawyerAccepted ? "completed" : "current" });
+  return [...base, ...handoff];
 }
 
 /** " · Panel lawyer: X" once a lawyer has accepted the case. */

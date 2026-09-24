@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { Wordmark } from "@/components/wordmark";
 import { useI18n } from "@/lib/i18n";
@@ -32,7 +32,6 @@ export function ApplyHeader() {
         <Link href="/dashboard/udc/intake/new">{tx("ইউডিসি", "UDC")}</Link>
         <Link href="/device/ivr">IVR</Link>
         <Link href="/device/ussd">USSD</Link>
-        <Link href="/debug">{tx("ডিবাগ", "Debug")}</Link>
         <LanguageToggle />
       </nav>
     </header>
@@ -95,7 +94,6 @@ export function LiveRecordPanel({ sessionId }: { sessionId: string | null }) {
       : view === "provenance"
         ? app?.provenance ?? session.provenance
         : app?.audit ?? session.audit;
-  const debugId = app?.applicationId ?? session.sessionId;
   return (
     <aside className={`${styles.card} ${styles.cardTight}`} aria-label={tx("লাইভ রেকর্ড", "Live record")}>
       <p className={styles.eyebrow}>{tx("লাইভ রেকর্ড · localStorage", "Live record · localStorage")}</p>
@@ -115,9 +113,6 @@ export function LiveRecordPanel({ sessionId }: { sessionId: string | null }) {
         ))}
       </div>
       <pre className={styles.json}>{JSON.stringify(body, null, 2)}</pre>
-      <Link className={styles.crumb} href={`/debug?id=${encodeURIComponent(debugId)}`}>
-        {tx("ডিবাগ কনসোলে খুলুন →", "Open in debug console →")}
-      </Link>
     </aside>
   );
 }
@@ -150,29 +145,23 @@ export function SimSmsInbox({ phone }: { phone: string | null }) {
   );
 }
 
-/** Remember one in-progress session per door so a reload resumes it (save/resume). */
+/** Device sessions are deliberately page-scoped: every visit starts with a clean phone. */
 export function useDoorSession(channel: ChannelCode) {
   const key = `dlas.active.${channel}`;
   const db = useDlasDb();
-  const [sessionId, setSessionIdState] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [sessionId, setSessionIdState] = useState<string | null>(null);
+  useEffect(() => {
     try {
-      return window.localStorage.getItem(key);
+      window.localStorage.removeItem(key);
     } catch {
-      return null;
+      /* storage unavailable */
     }
-  });
+  }, [key]);
   const setSessionId = useCallback(
     (id: string | null) => {
-      try {
-        if (id) window.localStorage.setItem(key, id);
-        else window.localStorage.removeItem(key);
-      } catch {
-        /* storage unavailable — session still works in memory */
-      }
       setSessionIdState(id);
     },
-    [key],
+    [],
   );
   const session = sessionId ? db.sessions.find((s) => s.sessionId === sessionId) : undefined;
   return { sessionId: session ? sessionId : null, session, setSessionId };

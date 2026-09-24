@@ -51,6 +51,7 @@ export type ProvenanceSource =
   | "OFFICER_VERIFIED" // checked/corrected by an authorised DLAO officer
   | "OFFICER_CORRECTED" // edited during verification; still requires review confirmation
   | "LAWYER_REPORTED" // self-reported by the assigned panel lawyer (hearing updates)
+  | "OFFICER_ENTERED" // structured fact entered by the officer that intake did not capture (e.g. court status)
   | "SYSTEM_DERIVED"; // computed by the platform (office, timestamps…)
 
 export type Confidence = "CONFIRMED" | "STATED" | "INFERRED";
@@ -216,9 +217,12 @@ export interface AuditEntry {
   seq: number;
   at: string;
   actor: string;
-  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "panel_lawyer" | "admin" | "debug";
+  role: "applicant" | "representative" | "udc_operator" | "helpline_agent" | "system" | "dlao" | "clo" | "panel_lawyer" | "mediator" | "dlo_staff" | "admin" | "debug";
+  caseId?: string; // explicit on sensitive case actions; older audit rows remain valid
   action: string; // e.g. "session.started", "field.captured", "application.submitted"
   detail?: Record<string, unknown>;
+  /** Feature 11 — case status right after the action; stamped by the store on application audit rows (lib/dlas/audit-trail.ts). */
+  status?: { application: ApplicationStatus; stage: PipelineStage; pathway: string | null; mediation: string | null };
 }
 
 /* ---------- Intake session (pre-submission, per door) ---------- */
@@ -276,6 +280,8 @@ export interface IntakeSession {
   transcript: TranscriptLine[]; // IVR prompts / USSD screens / chat
   applicationId: string | null; // set once submitted
   lastValidation: ValidationResult | null;
+  aiTriage?: AiTriage[]; // IVR story triage (SIMULATED AI, advisory) — lib/dlas/ivr-triage.ts
+  agentHandoff?: AgentHandoff | null; // routed to a 16699 call-centre agent (AI escalation or emergency button)
   audit: AuditEntry[];
   createdAt: string;
   updatedAt: string;
@@ -290,6 +296,7 @@ export type ApplicationStatus =
   | "ACCEPTED"
   | "REJECTED"
   | "WITHDRAWN"
+  | "RESOLVED"
   | "CLOSED";
 
 /** The backbone from the case document, in order. */
@@ -354,6 +361,12 @@ export interface ApplicationRecord {
   audit: AuditEntry[];
   review: DlaoReview | null; // Step 2 — set once an office receives the application
   lawyer: LawyerMatter | null; // Step 3 (LAWYER pathway) — assignment, hearings, updates
+  staffCheck: StaffStoryCheck | null; // DLO office staff pre-check of the story (advisory for the officer)
+  aiTriage?: AiTriage[]; // carried from the intake session (IVR)
+  agentHandoff?: AgentHandoff | null; // carried from the intake session (IVR → call-centre agent)
+  transfers?: CaseTransfer[]; // DLAO → DLAO transfer requests; the latest ACCEPTED one decides the handling office (lib/dlas/case-transfer.ts)
+  mediation: MediationMatter | null; // Feature 3 — mediator assignment (separate from lawyer); later: sessions, outcome
+  pathwayClassification: PathwayClassification | null; // Feature 2 — rule-based system assessment + officer decisions (lib/dlas/pathway.ts)
   closedAt: string | null;
   version: number;
   createdAt: string;
@@ -435,7 +448,7 @@ export interface DlaoReview {
   } | null;
 }
 
-export type PathwayType = "GRAM_ADALAT" | "MEDIATION" | "LAWYER";
+export type PathwayType = "GRAM_ADALAT" | "MEDIATION" | "LAWYER" | "REFERRAL"; // REFERRAL = other external referral (police, OCC, labour, social services…)
 
 export interface EligibilityRuleset {
   version: string;
@@ -470,12 +483,38 @@ export interface DlaoOfficerAccount {
   phone: string; // login id (no password in the prototype)
   officeType: OfficeType;
   district: DistrictCode | null; // null for SCLAC (national, Supreme Court)
+  authorityRole?: "LEGAL_AID_OFFICER" | "CHIEF_LEGAL_AID_OFFICER"; // optional for stored v1 records
   createdAt: string;
   lastLoginAt: string | null;
   audit: AuditEntry[];
 }
 
 /* ---------- Panel lawyers (sign-up: name + phone + district + bar enrolment) ---------- */
+
+/* ---------- DLO office staff (/dlo-stuff): see incoming cases, check the story only ---------- */
+
+export interface OfficeStaffAccount {
+  staffId: string; // STF-XXXXXX
+  name: string;
+  phone: string; // login id (no password in the prototype)
+  district: DistrictCode; // the DLO office they work in
+  createdAt: string;
+  lastLoginAt: string | null;
+  audit: AuditEntry[];
+}
+
+export type StoryCheckKey = "STORY_CLEAR" | "CATEGORY_MATCHES" | "OTHER_PARTY" | "URGENCY_CONSISTENT";
+
+/** Staff read the applicant's story and check it hangs together. Advisory — the officer still verifies and decides. */
+export interface StaffStoryCheck {
+  outcome: "STORY_VERIFIED" | "NEEDS_CLARIFICATION";
+  items: { key: StoryCheckKey; answer: "YES" | "NO" | "UNSURE" }[];
+  note: string | null;
+  by: string; // staffId
+  byName: string;
+  at: string;
+  history: { outcome: StaffStoryCheck["outcome"]; note: string | null; by: string; byName: string; at: string }[];
+}
 
 export interface PanelLawyerAccount {
   lawyerId: string; // LAW-XXXXXX
@@ -489,7 +528,22 @@ export interface PanelLawyerAccount {
   attendance: LawyerDayAttendance[]; // daily present/absent the lawyer registers (one entry per date)
   notificationsReadAt: string | null;
   contacts: LawyerContact[]; // DLAO calls, summons and reminders to this lawyer
+  redFlags: LawyerRedFlag[]; // raised by the rule after too many declined offers; cleared only by a DLAO
   audit: AuditEntry[];
+}
+
+/** Red flag: the lawyer declined `threshold` case offers since the last flag was cleared. Advisory — a DLAO reviews and clears it. */
+export interface LawyerRedFlag {
+  flagId: string; // RFL-XXXXXX
+  reason: "DECLINED_OFFERS";
+  raisedAt: string;
+  threshold: number; // rule value when raised
+  declines: { applicationId: string; caseId: string | null; assignmentId: string; at: string; reason: string | null }[];
+  status: "ACTIVE" | "CLEARED";
+  clearedAt: string | null;
+  clearedBy: string | null; // officerId
+  clearedByName: string | null;
+  clearNote: string | null;
 }
 
 /** DLAO → lawyer contact log. Calls are made by phone outside the system and logged here; summons/reminders are sent (SMS simulated). */
@@ -514,6 +568,8 @@ export interface LawyerDayAttendance {
   date: string; // YYYY-MM-DD (lawyer's local date)
   status: "PRESENT" | "ABSENT";
   at: string; // when it was registered (last change)
+  method?: "SELF_DECLARED" | "BIOMETRIC_SIMULATED"; // how PRESENT was registered (biometric = simulated fingerprint scanner)
+  deviceId?: string | null;
 }
 
 export interface ShortlistCandidate {
@@ -533,6 +589,8 @@ export interface ShortlistCandidate {
     attendancePct: number | null; // null = no days registered in the window
     absentToday: boolean;
     matchesMatter: boolean;
+    declines?: number; // declined offers counting towards the red flag
+    redFlagged?: boolean; // active red flag — ranked after unflagged lawyers
   };
   outcome: "PENDING" | "OFFERED" | "ACCEPTED" | "DECLINED" | "NO_RESPONSE";
   reason: string | null; // decline reason
@@ -598,6 +656,7 @@ export interface LawyerRuleset {
   shortlistSize: number; // engine picks this many lawyers
   attendanceWindowDays: number; // daily attendance considered for the score
   weights: { workload: number; winRate: number; attendance: number; specialisation: number }; // points, sum 100
+  declinesBeforeRedFlag: number; // declined offers (since the last cleared flag) → lawyer is red-flagged
 }
 
 export interface LawyerAssignment {
@@ -674,7 +733,22 @@ export type TaskType =
   | "HEARING_UPDATE_DUE" // panel lawyer: report on a hearing
   | "LAWYER_UPDATE_OVERDUE" // DLAO: a required lawyer update is late (no chase call needed)
   | "LAWYER_REASSIGN_REVIEW" // DLAO: lawyer missed the threshold number of hearings on this case
-  | "LAWYER_INACTIVITY_REVIEW"; // DLAO: repeated overdue updates across cases (T1 pattern alert)
+  | "MEDIATOR_ASSIGNMENT" // DLAO: confirm a mediator for a case in the mediation pathway
+  | "MEDIATION_OUTCOME_REVIEW" // DLAO: mediator recorded an outcome (settlement → signatures + certification; failed → failure record + pathway)
+  | "MEDIATION_FAILURE_REVIEW" // DLAO: confirm/change the advisory next pathway after a formal failure record
+  | "POST_MEDIATION_REFERRAL" // DLAO: carry out a confirmed court, further-review or other-referral handoff
+  | "COURT_AUTHORITY_NOTIFICATION" // DLAO: record dispatch of a court-referred mediation outcome
+  | "MEDIATION_FOLLOW_UP" // mediator: follow-up action after a session
+  | "SETTLEMENT_FOLLOW_UP" // DLAO/CLO: compliance, party contact, deadline or enforcement monitoring after certification
+  | "MEDIATOR_REASSIGNMENT" // DLAO: a mediator assignment needs replacing (conflict / unavailability / request)
+  | "EXTERNAL_REFERRAL" // DLAO: refer to another service (police, OCC, labour, social services) and track acknowledgement
+  | "LAWYER_RED_FLAG" // DLAO: lawyer declined too many case offers — review and clear
+  | "LAWYER_INACTIVITY_REVIEW" // DLAO: repeated overdue updates across cases (T1 pattern alert)
+  | "CASE_TRANSFER_REVIEW" // receiving DLAO: accept or reject a case transferred from another DLAO
+  | "CASE_TRANSFER_REJECTED" // sending DLAO: see below
+  | "MEDIATOR_CASE_OFFER" // mediator: a mediation case is offered to you — accept or decline
+  | "AGENT_LIVE_TRANSFER" // 16699 agent: the IVR assistant found the story critical or too complex — take the call
+  | "EMERGENCY_CALL"; // 16699 agent: the caller pressed the IVR emergency button — sending DLAO: the receiving office rejected the transfer (with its message)
 
 export interface Task {
   taskId: string; // TSK-XXXXXX
@@ -750,6 +824,9 @@ export interface DlasDb {
   officers: DlaoOfficerAccount[];
   lawyers: PanelLawyerAccount[];
   lawyerRules: LawyerRuleset | null;
+  officeStaff: OfficeStaffAccount[];
+  pathwayRules: PathwayRuleset | null; // legal pathway rule table (null → DEFAULT_PATHWAY_RULES in lib/dlas/pathway-rules.ts)
+  mediators: MediatorRecord[]; // mediator registry — separate from panel lawyers (lib/dlas/mediators.ts)
   udcCentres: UdcCentre[];
   eligibilityRulesets: EligibilityRuleset[];
   sessions: IntakeSession[];
@@ -758,6 +835,8 @@ export interface DlasDb {
   outbox: SimMessage[];
   otp: OtpChallenge[];
   adminAudit: AuditEntry[];
+  helplineAgents?: HelplineAgentAccount[]; // 16699 call-centre agents (created on first sign-up)
+  officeNotices?: OfficeNotice[]; // office-wide notifications (DLAO case transfers) — lib/dlas/case-transfer.ts
   updatedAt: string | null;
 }
 
@@ -819,3 +898,641 @@ export type DeepPartial<T> = {
       ? DeepPartial<NonNullable<T[K]>> | null
       : T[K];
 };
+
+
+/* ------------------------------------------------------------------ *
+ *  Mediator registry (Feature 1). Mediators are NOT panel lawyers:
+ *  they conduct human-led mediation; the Legal Aid Officer verifies them,
+ *  sets their status and (later) confirms any assignment.
+ * ------------------------------------------------------------------ */
+
+export type MediatorStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION";
+export type MediatorRole = "LEGAL_AID_OFFICER" | "PANEL_MEDIATOR" | "COMMUNITY_MEDIATOR";
+export type MediationTrack = "PRE_LITIGATION" | "COURT_REFERRED";
+export type MediationOrigin = "PRE_LITIGATION" | "MANDATORY_PRE_CASE" | "COURT_REFERRED" | "APPELLATE_REFERRAL";
+export type CourtLevel = "SUPREME_COURT" | "DISTRICT_JUDGE" | "ADDITIONAL_DISTRICT_JUDGE" | "JOINT_DISTRICT_JUDGE" | "SENIOR_ASSISTANT_JUDGE" | "ASSISTANT_JUDGE" | "MAGISTRATE" | "TRIBUNAL" | "OTHER";
+export type LitigationStage = "PLEADINGS" | "PRE_TRIAL" | "TRIAL" | "ARGUMENT" | "JUDGMENT_PENDING" | "APPEAL" | "OTHER";
+export type MediationCaseType =
+  | "FAMILY_MARITAL"
+  | "DOWER"
+  | "SPOUSAL_MAINTENANCE"
+  | "CHILD_CUSTODY"
+  | "CONJUGAL_RIGHTS"
+  | "PARENTS_MAINTENANCE"
+  | "PROPERTY_PARTITION"
+  | "NEIGHBOURHOOD_BOUNDARY"
+  | "CIVIL_SUIT"
+  | "TITLE_DISPUTE"
+  | "MONEY_SUIT"
+  | "EVICTION"
+  | "APPELLATE_REFERRAL";
+export type MediatorCertificationStatus = "CERTIFIED" | "TRAINING_COMPLETED" | "IN_TRAINING" | "NOT_TRAINED";
+export type MediationChannel = "PHYSICAL" | "VOICE" | "ONLINE";
+export type Weekday = "SAT" | "SUN" | "MON" | "TUE" | "WED" | "THU" | "FRI";
+
+export interface MediatorConflict {
+  conflictId: string; // COI-XXXXXX
+  kind: "RELATIVE_OR_CLOSE_ASSOCIATE" | "PRIOR_REPRESENTATION" | "FINANCIAL_INTEREST" | "EMPLOYMENT_RELATIONSHIP" | "OTHER";
+  source: "MEDIATOR_DECLARED" | "OFFICER_RECORDED";
+  partyName: string | null; // person / organisation the mediator must not mediate for or against
+  applicationId: string | null; // a specific case, if the declaration is case-specific
+  area: string | null; // locality, if the conflict is local (e.g. same union)
+  detail: string;
+  declaredAt: string;
+  recordedBy: string; // officerId
+  recordedByName: string;
+  status: "ACTIVE" | "WITHDRAWN";
+  withdrawnAt: string | null;
+  withdrawnReason: string | null;
+}
+
+export interface MediatorAdminEntry {
+  entryId: string; // MAR-XXXXXX
+  kind: "NOTE" | "TRAINING" | "COMPLAINT" | "COMMENDATION" | "STATUS_CHANGE" | "VERIFICATION" | "AVAILABILITY" | "PROFILE";
+  at: string;
+  by: string;
+  byName: string;
+  text: string;
+}
+
+export interface MediatorRecord {
+  mediatorId: string; // MED-XXXXXX
+  name: string;
+  role: MediatorRole;
+  status: MediatorStatus;
+  statusReason: string | null;
+  statusChangedAt: string;
+  qualification: { kind: "ADVOCATE" | "LAW_GRADUATE" | "RETIRED_JUDICIAL_OFFICER" | "SOCIAL_WORK" | "OTHER"; detail: string };
+  certification: {
+    status: MediatorCertificationStatus;
+    body: string | null; // training / certifying body
+    certificateNo: string | null;
+    issuedOn: string | null; // YYYY-MM-DD
+    validUntil: string | null; // YYYY-MM-DD; past = expired
+    verifiedBy: string | null; // officer who checked the certificate
+    verifiedByName: string | null;
+    verifiedAt: string | null;
+  };
+  experience: { years: number; mediationsConducted: number; settled: number; note: string | null };
+  caseTypes: MediationCaseType[];
+  tracks: MediationTrack[];
+  district: DistrictCode;
+  operationalAreas: string[]; // upazilas / unions / court venues
+  languages: LanguageCode[];
+  availability: {
+    status: "AVAILABLE" | "LIMITED" | "UNAVAILABLE";
+    days: Weekday[];
+    channels: MediationChannel[];
+    maxActiveMatters: number;
+    unavailableUntil: string | null; // YYYY-MM-DD
+    note: string | null;
+    updatedAt: string;
+  };
+  /** Until mediation matters exist, load is recorded (SAMPLE for sample records). Feature 3 computes it from assignments. */
+  workload: { activeMatters: number; basis: "SAMPLE" | "RECORDED" | "RECORDS"; updatedAt: string };
+  conflicts: MediatorConflict[];
+  adminRecord: MediatorAdminEntry[];
+  contact: { phone: string; email: string | null; preferredChannel: "PHONE" | "SMS" | "EMAIL"; office: string | null };
+  sample: boolean; // illustrative sample record — not a real person
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  audit: AuditEntry[];
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Legal pathway classification (Feature 2). A deterministic, configurable
+ *  rule table suggests a pathway; the Legal Aid Officer confirms, changes
+ *  or asks for more information. The system never finalises the pathway.
+ * ------------------------------------------------------------------ */
+
+export type PathwayStatus =
+  | "MANDATORY_PRE_CASE_MEDIATION"
+  | "MEDIATION_AVAILABLE"
+  | "COURT_REFERRED_MEDIATION"
+  | "LAWYER_ASSISTANCE"
+  | "URGENT_ESCALATION"
+  | "OTHER_REFERRAL"
+  | "REQUIRES_OFFICER_REVIEW";
+
+export type CourtStatus = "UNKNOWN" | "NONE" | "FILED_PENDING" | "REFERRED_FOR_MEDIATION" | "DECIDED" | "APPEAL";
+export type ReferralTarget = "GRAM_ADALAT" | "POLICE" | "ONE_STOP_CRISIS_CENTRE" | "LABOUR_AUTHORITY" | "SOCIAL_SERVICES" | "OTHER";
+
+/** Structured facts the rules read that intake does not capture — entered by the officer (STAFF_ENTERED). */
+export interface PathwayInputs {
+  subcategory: string | null; // code from the ruleset's subcategory list for the matter category
+  courtStatus: CourtStatus;
+  mediationOrigin: MediationOrigin | null;
+  courtName: string | null;
+  courtLevel: CourtLevel | null;
+  courtCaseNo: string | null;
+  referralDate: string | null; // court referral date, for court-referred mediation
+  referralOrderReference: string | null;
+  referringAuthority: string | null;
+  currentLitigationStage: LitigationStage | null;
+  referralDeadline: string | null;
+  setBy: string | null;
+  setByName: string | null;
+  setAt: string | null;
+}
+
+export interface PathwayRuleCondition {
+  categories?: MatterCategory[];
+  subcategories?: string[];
+  subcategoryMissing?: boolean;
+  urgencyAny?: UrgencyFlag[];
+  courtStatus?: CourtStatus[];
+  mandatoryDistrictOnly?: boolean; // only where mandatory pre-case mediation is notified (ruleset.mandatoryPreCaseDistricts)
+}
+
+export interface PathwayRule {
+  ruleId: string;
+  enabled: boolean;
+  when: PathwayRuleCondition; // all keys must match; within a list any value matches
+  result: PathwayStatus;
+  title: { bn: string; en: string };
+  basis: { bn: string; en: string }; // plain-language explanation shown to the officer
+  law: string | null; // statutory reference, for the officer to verify — not legal advice
+  track: MediationTrack | null;
+  referralTarget: ReferralTarget | null;
+  expectedDocs: DocType[];
+}
+
+export interface PathwayRuleset {
+  version: string;
+  source: "PROTOTYPE_RULE";
+  updatedAt: string;
+  mandatoryPreCaseDistricts: DistrictCode[] | "ALL";
+  mandatoryNote: { bn: string; en: string };
+  subcategories: Record<MatterCategory, { code: string; label: { bn: string; en: string } }[]>;
+  rules: PathwayRule[]; // evaluated in order; the first match wins
+}
+
+export interface PathwayAssessment {
+  assessmentId: string; // PAS-XXXXXX
+  at: string;
+  rulesVersion: string;
+  result: PathwayStatus;
+  ruleId: string | null; // null = no rule matched
+  matched: string[]; // conditions that matched, in plain words
+  warnings: { bn: string; en: string }[];
+  evidence: { docType: DocType; present: boolean }[];
+  inputs: {
+    category: MatterCategory | null;
+    subcategory: string | null;
+    courtStatus: CourtStatus;
+    district: DistrictCode | null;
+    urgencyFlags: UrgencyFlag[];
+    otherPartyIdentified: boolean;
+    documents: DocType[];
+  };
+}
+
+export interface PathwayOfficerDecision {
+  decisionId: string; // PDC-XXXXXX
+  action: "CONFIRMED" | "CHANGED" | "INFO_REQUESTED";
+  assessmentId: string;
+  systemClassification: PathwayStatus;
+  previousSystemClassification: PathwayStatus | null; // the assessment before this one, if the inputs changed
+  previousFinal: PathwayStatus | null;
+  finalPathway: PathwayStatus | null; // null for INFO_REQUESTED
+  referralTarget: ReferralTarget | null;
+  reason: string;
+  by: string;
+  byName: string;
+  at: string;
+}
+
+export interface PathwayClassification {
+  inputs: PathwayInputs;
+  assessments: PathwayAssessment[];
+  decisions: PathwayOfficerDecision[];
+  final: { status: PathwayStatus; referralTarget: ReferralTarget | null; decisionId: string; by: string; byName: string; at: string } | null;
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Mediator assignment (Feature 3) — completely separate from panel
+ *  lawyer assignment. Hard filters decide eligibility; suitability facts
+ *  are shown side by side (no single score, no "best mediator"); the
+ *  Legal Aid Officer recommends and then confirms. lib/dlas/mediator-assignment.ts
+ * ------------------------------------------------------------------ */
+
+/** Assignment status of the case (the matter) and of each assignment record. */
+export type MediatorAssignmentStatus = "PENDING" | "RECOMMENDED" | "AWAITING_OFFICER_CONFIRMATION" | "AWAITING_MEDIATOR_ACCEPTANCE" | "ASSIGNED" | "REASSIGNMENT_REQUESTED" | "COMPLETED";
+
+export type MediatorFilterKey = "STATUS" | "CERTIFICATION" | "JURISDICTION" | "AVAILABILITY" | "CONFLICT" | "CASE_TYPE";
+
+export interface MediatorCandidateCheck {
+  key: MediatorFilterKey;
+  ok: boolean;
+  detail: string;
+}
+
+export interface MediatorCandidate {
+  mediatorId: string;
+  name: string;
+  sample: boolean;
+  eligible: boolean; // passed every hard filter
+  checks: MediatorCandidateCheck[];
+  conflictIds: string[]; // declarations that matched this case
+  considerations: {
+    relevantExperience: "HIGH" | "MEDIUM" | "LOW";
+    experienceNote: string;
+    currentLoad: number;
+    capacity: number;
+    availability: "AVAILABLE" | "LIMITED" | "UNAVAILABLE";
+    days: Weekday[];
+    channels: MediationChannel[];
+    areas: string[];
+    areaMatch: boolean; // an operational area mentions the applicant's address / district
+    record: "CONCERN" | "COMMENDED" | "NO_ENTRIES" | "NOTES_ONLY";
+    recordNote: string;
+  };
+}
+
+/** One run of the hard filters — a snapshot the officer decides from. */
+export interface MediatorEligibilityRun {
+  runId: string; // MER-XXXXXX
+  at: string;
+  by: string;
+  byName: string;
+  caseType: MediationCaseType | null;
+  track: MediationTrack;
+  district: DistrictCode | null;
+  candidates: MediatorCandidate[]; // every mediator in the district, eligible or not
+}
+
+export interface MediatorAssignmentRecord {
+  assignmentId: string; // MAS-XXXXXX
+  mediatorId: string;
+  mediatorName: string;
+  runId: string;
+  status: "AWAITING_OFFICER_CONFIRMATION" | "OFFERED" | "DECLINED" | "EXPIRED" | "ASSIGNED" | "WITHDRAWN" | "REASSIGNMENT_REQUESTED" | "COMPLETED";
+  recommendedAt: string;
+  recommendedBy: string;
+  recommendedByName: string;
+  recommendationNote: string | null;
+  conflictCheck: { at: string; clear: boolean; conflictIds: string[] }; // re-run at confirmation
+  assignedAt: string | null;
+  assignedBy: string | null;
+  assignedByName: string | null;
+  reason: string | null; // assignment reason
+  accessGrantedAt: string | null; // case-based access for the mediator (need-to-know view)
+  accessRevokedAt: string | null;
+  endedAt: string | null;
+  endReason: string | null;
+  endedBy: string | null;
+  /** Offer to the mediator (best-pick flow, lib/dlas/mediator-offers.ts): the mediator accepts or declines; a decline or expiry auto-offers the next-ranked mediator. */
+  offer?: { offeredAt: string; respondBy: string; via: "OFFICER_PICK" | "AUTO_NEXT"; rank: number; score: number; respondedAt: string | null; declineReason: string | null };
+}
+
+export interface MediationMatter {
+  openedAt: string;
+  pathwayStatus: PathwayStatus; // MANDATORY_PRE_CASE / MEDIATION_AVAILABLE / COURT_REFERRED
+  track: MediationTrack;
+  origin?: MediationOrigin; // explicit in Feature 8; derived for records created before it
+  caseType: MediationCaseType | null; // from the pathway subcategory; the officer can correct it
+  caseTypeSource: "MAPPED" | "OFFICER_SET";
+  assignmentStatus: MediatorAssignmentStatus;
+  runs: MediatorEligibilityRun[];
+  assignments: MediatorAssignmentRecord[];
+  workspace?: MediationWorkspace | null; // Feature 4 — sessions, caucus, settlement discussion, outcome (mediator-owned)
+  authorityNotifications?: CourtAuthorityNotification[];
+}
+
+export interface CourtAuthorityNotification {
+  notificationId: string;
+  kind: "SETTLEMENT_OUTCOME" | "FAILURE_RETURN";
+  authority: string;
+  status: "PENDING_DISPATCH" | "DEMO_RECORDED";
+  simulated: true;
+  outcomeReference: string;
+  createdAt: string;
+  recordedSentAt: string | null;
+  recordedSentBy: string | null;
+  recordedSentByName: string | null;
+  dispatchReference: string | null;
+  note: string | null;
+  taskId: string;
+}
+
+
+/* ------------------------------------------------------------------ *
+ *  Mediation workspace (Feature 4) — written only by the assigned
+ *  mediator. Private caucus notes are confidential: never shown to the
+ *  other party, the applicant, or the officer's screens.
+ * ------------------------------------------------------------------ */
+
+export type MediationSessionStatus = "SCHEDULED" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
+export type PartySide = "APPLICANT" | "RESPONDENT";
+
+export interface AttendanceMark {
+  status: "UNRECORDED" | "PRESENT" | "ABSENT" | "REPRESENTED";
+  mode: MediationChannel | null;
+  at: string | null;
+}
+
+export interface MediationSession {
+  sessionId: string; // MSS-XXXXXX
+  number: number;
+  channel: MediationChannel;
+  scheduledFor: string | null;
+  place: string | null; // physical: location / venue; voice & online: instructions
+  room?: string | null; // physical: room
+  status: MediationSessionStatus;
+  startedAt: string | null;
+  endedAt: string | null;
+  pauses: { from: string; to: string | null; reason: string | null }[];
+  attendance: Record<PartySide, AttendanceMark>;
+  transport?: SessionTransport; // Feature 5 — the channel is only transport; the mediator owns the process
+}
+
+/* ------------------------------------------------------------------ *
+ *  Multi-channel transport (Feature 5). All SIMULATED in the prototype —
+ *  no telephony or video service is connected. Channel changes never stop
+ *  the mediation: a fallback is logged and the session continues.
+ * ------------------------------------------------------------------ */
+
+export type VoiceCallState = "IDLE" | "INITIATED" | "CONNECTED" | "NO_ANSWER" | "ENDED";
+export type OnlineParticipantKey = "APPLICANT" | "RESPONDENT" | "MEDIATOR";
+export type OnlineConnectionState = "NOT_JOINED" | "CONNECTED" | "WEAK" | "DISCONNECTED";
+
+export interface SessionTransport {
+  voice: Record<PartySide, { state: VoiceCallState; initiatedAt: string | null; connectedAt: string | null; endedAt: string | null; attempts: number }>;
+  online: { roomId: string; participants: Record<OnlineParticipantKey, { state: OnlineConnectionState; at: string | null }> };
+  checkIn: Record<PartySide, string | null>; // physical: time each party checked in at the venue
+  fallbacks: { at: string; from: MediationChannel; to: MediationChannel; reason: string }[];
+  log: { at: string; kind: "VOICE" | "ONLINE" | "PHYSICAL" | "FALLBACK"; who: PartySide | OnlineParticipantKey | "SESSION"; state: string }[];
+}
+
+export interface CaucusNote {
+  noteId: string; // CAU-XXXXXX
+  side: PartySide;
+  sessionId: string | null;
+  text: string;
+  at: string;
+  by: string;
+  byName: string;
+}
+
+export type SettlementList = "ISSUES" | "DISCUSSION" | "PROPOSED" | "AGREED" | "OUTSTANDING";
+
+export interface SettlementItem {
+  itemId: string; // STI-XXXXXX
+  list: SettlementList;
+  text: string;
+  status: "ACTIVE" | "WITHDRAWN";
+  at: string;
+  updatedAt: string;
+  by: string;
+  history: { list: SettlementList; text: string; at: string }[]; // every edit / move is kept
+}
+
+export interface MediationOutcome {
+  outcomeId: string; // MOC-XXXXXX
+  kind: "SETTLEMENT_REACHED" | "MEDIATION_FAILED" | "NEEDS_FOLLOW_UP" | "ADJOURNED";
+  note: string;
+  at: string;
+  by: string;
+  byName: string;
+  sessionId: string | null;
+  agreedTerms: string[]; // snapshot at the time of the outcome
+  outstanding: string[];
+  failure: { reason: string; recommendedNext: "LAWYER_ASSISTANCE" | "COURT_PROCESS" | "OTHER_REFERRAL" | "OFFICER_TO_DECIDE" } | null;
+  followUpBy: string | null;
+  nextSession: { at: string; channel: MediationChannel; place: string | null } | null;
+  /** Never "legally final" here: a settlement still needs party signatures and the Legal Aid Officer's (DLO) verification. */
+  legalStatus: "AWAITING_SIGNATURES_AND_CERTIFICATION" | "FAILURE_RECORD_FOR_OFFICER" | "FOLLOW_UP_PENDING" | "ADJOURNED";
+}
+
+/** Feature 6: the human-controlled settlement path after mediation succeeds. */
+export type SettlementWorkflowStatus =
+  | "TERMS_RECORDED"
+  | "PARTY_EXECUTION"
+  | "AWAITING_MEDIATOR_CONFIRMATION"
+  | "AWAITING_CLO_CERTIFICATION" // legacy name — now: awaiting the Legal Aid Officer's (DLO) verification
+  | "RETURNED_FOR_CORRECTION"
+  | "CLARIFICATION_REQUESTED"
+  | "RESOLVED";
+
+export type SettlementFollowUpKind = "CHECK_COMPLIANCE" | "CONTACT_PARTY" | "REVIEW_DEADLINE" | "ENFORCEMENT_MONITORING";
+
+export interface SettlementWorkflow {
+  agreementId: string;
+  outcomeId: string;
+  status: SettlementWorkflowStatus;
+  terms: {
+    issue: string;
+    proposedResolution: string;
+    agreedResolution: string;
+    conditions: string;
+    deadline: string | null;
+    additionalTerms: string | null;
+    recordedAt: string;
+    recordedBy: string;
+    recordedByName: string;
+    revision: number;
+  };
+  execution: Record<PartySide, { status: "PENDING_SIGNATURE" | "SIGNED"; signedAt: string | null; simulated: true }>;
+  mediatorConfirmation: { status: "PENDING_CONFIRMATION" | "CONFIRMED"; mediatorId: string | null; mediatorName: string | null; confirmedAt: string | null };
+  cloReview: {
+    status: "PENDING" | "CERTIFIED" | "RETURNED_FOR_CORRECTION" | "CLARIFICATION_REQUESTED";
+    note: string | null;
+    reviewedAt: string | null;
+    reviewedBy: string | null;
+    reviewedByName: string | null;
+    history: { action: "CERTIFIED" | "RETURNED_FOR_CORRECTION" | "CLARIFICATION_REQUESTED"; note: string | null; at: string; by: string; byName: string }[];
+  };
+  resolution: {
+    status: "RESOLVED";
+    certificationTimestamp: string;
+    certifyingOfficer: string;
+    certifyingOfficerId: string;
+    outcome: string;
+    followUpRequirements: { kind: SettlementFollowUpKind; dueAt: string; note: string | null; taskId: string }[];
+  } | null;
+  /** Issued by the Legal Aid Officer (DLO) after verifying the settlement; issuing it CLOSES the case. Snapshot of what it certifies. */
+  testimonial?: SettlementTestimonial | null;
+}
+
+export interface SettlementTestimonial {
+  testimonialId: string; // TST-…
+  issuedAt: string;
+  issuedBy: string; // officerId
+  issuedByName: string;
+  office: string; // DLAO-<DISTRICT>
+  caseRef: string;
+  agreementId: string;
+  applicantName: string;
+  respondentName: string | null;
+  mediatorName: string | null;
+  matter: string;
+  agreedResolution: string;
+  conditions: string;
+  deadline: string | null;
+  outcome: string;
+  partiesSignedAt: { APPLICANT: string | null; RESPONDENT: string | null };
+  mediatorConfirmedAt: string | null;
+  verifiedAt: string;
+  simulated: true; // no official seal / e-signature is connected in the prototype
+}
+
+export type FailureReferralPathway = "COURT_LEGAL_PATHWAY" | "LAWYER_ASSIGNMENT" | "FURTHER_LEGAL_AID_REVIEW" | "OTHER_REFERRAL";
+export type MediationFailureStatus = "AWAITING_OFFICER_REVIEW" | "MORE_INFORMATION_REQUESTED" | "REFERRAL_CONFIRMED";
+
+/** Feature 7: formal procedural record created when mediation does not settle. */
+export interface MediationFailureRecord {
+  recordId: string; // MFR-XXXXXX
+  outcomeId: string;
+  status: MediationFailureStatus;
+  caseId: string;
+  mediationType: MediationTrack;
+  mediator: { mediatorId: string; name: string };
+  mediationDate: string;
+  attendance: Record<PartySide, AttendanceMark["status"]>;
+  issuesDiscussed: string;
+  outcome: string;
+  reasonStatus: string | null;
+  followUpRequirement: string | null;
+  mediatorProposedPathway: FailureReferralPathway;
+  systemSuggestion: { pathway: FailureReferralPathway; reasons: string[]; advisoryOnly: true };
+  relevantProceduralInformation: {
+    sessionId: string | null;
+    sessionNumber: number | null;
+    channel: MediationChannel | null;
+    completedAt: string | null;
+    confidentialCaucusExcluded: true;
+  };
+  additionalInformation: { text: string; at: string; by: string; byName: string }[];
+  officerReview: {
+    action: "CONFIRMED" | "PATHWAY_CHANGED" | "MORE_INFORMATION_REQUESTED" | null;
+    selectedPathway: FailureReferralPathway | null;
+    note: string | null;
+    by: string | null;
+    byName: string | null;
+    at: string | null;
+    history: { action: "CONFIRMED" | "PATHWAY_CHANGED" | "MORE_INFORMATION_REQUESTED"; selectedPathway: FailureReferralPathway | null; note: string; by: string; byName: string; at: string }[];
+  };
+  confirmedPathway: FailureReferralPathway | null;
+  lawyerHandoff: { status: "NOT_APPLICABLE" | "AWAITING_ASSIGNMENT"; taskId: string | null };
+  createdAt: string;
+}
+
+export interface MediationWorkspace {
+  openedAt: string;
+  access: {
+    channel: MediationChannel | null;
+    connectivity: "GOOD" | "LIMITED" | "UNKNOWN";
+    language: LanguageCode | null;
+    interpreter: boolean;
+    accessibilityNotes: string | null;
+    updatedAt: string | null;
+  };
+  respondent: {
+    contactPreference: ContactMethod | null;
+    representation: "UNKNOWN" | "UNREPRESENTED" | "REPRESENTED";
+    representativeName: string | null;
+    verification: "NAMED_BY_APPLICANT" | "IDENTITY_SEEN_BY_MEDIATOR";
+    updatedAt: string | null;
+  };
+  sessions: MediationSession[];
+  /** @deprecated v1 migration source. New writes use mediatorConfidential. */
+  caucus?: CaucusNote[];
+  mediatorConfidential?: { caucusNotes: CaucusNote[] };
+  settlement: SettlementItem[];
+  outcomes: MediationOutcome[];
+  settlementWorkflow?: SettlementWorkflow | null;
+  failureRecord?: MediationFailureRecord | null;
+}
+
+/* ---------- Case transfer between DLAO offices ---------- */
+
+export type CaseTransferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED";
+
+export interface CaseTransfer {
+  transferId: string; // TRF-XXXXXX
+  fromOffice: string; // DLAO-<DISTRICT>
+  fromDistrict: DistrictCode;
+  toOffice: string;
+  toDistrict: DistrictCode;
+  reason: string;
+  status: CaseTransferStatus;
+  requestedAt: string;
+  requestedBy: string; // officerId
+  requestedByName: string;
+  respondedAt: string | null;
+  respondedBy: string | null;
+  respondedByName: string | null;
+  responseMessage: string | null; // required when rejecting
+  taskId: string | null; // the receiving office's CASE_TRANSFER_REVIEW task
+}
+
+/* ---------- IVR: simulated AI triage + hand-off to a 16699 call-centre agent ---------- */
+
+export type TriageSeverity = "ROUTINE" | "SENSITIVE" | "CRITICAL";
+export type TriageFindingCode =
+  | "IMMEDIATE_DANGER"
+  | "SELF_HARM"
+  | "SEXUAL_VIOLENCE"
+  | "PHYSICAL_VIOLENCE"
+  | "CHILD_AT_RISK"
+  | "DETENTION"
+  | "TRAFFICKING"
+  | "EVICTION_NOW"
+  | "COMPLEX_LEGAL"
+  | "DISTRESS"
+  | "UNCLEAR";
+
+export interface AiTriage {
+  triageId: string; // TRG-XXXXXX
+  at: string;
+  engine: "SIMULATED_TRIAGE_V1"; // rule-based stand-in for an AI model — labelled as simulated everywhere
+  simulated: true;
+  advisoryOnly: true;
+  language: "bn" | "en";
+  inputChars: number; // the story itself stays in draft.matter.summary
+  findings: { code: TriageFindingCode; severity: TriageSeverity; evidence: string }[];
+  severity: TriageSeverity;
+  decision: "CONTINUE_AUTOMATED" | "ROUTE_TO_AGENT";
+  confidence: number; // 0..1, how sure the simulated model is
+  reasons: string[];
+}
+
+export interface AgentHandoff {
+  kind: "AI_ESCALATION" | "EMERGENCY";
+  status: "WAITING" | "CONNECTED" | "COMPLETED" | "CLOSED";
+  taskId: string;
+  triageId: string | null;
+  requestedAt: string;
+  connectedAt: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  closedAt: string | null;
+  outcome: string | null; // e.g. "APPLICATION_SUBMITTED", "REFERRED_TO_999", free text
+}
+
+export interface HelplineAgentAccount {
+  agentId: string; // AGT-XXXXXX
+  name: string;
+  phone: string; // login id (no password in the prototype)
+  createdAt: string;
+  lastLoginAt: string | null;
+  audit: AuditEntry[];
+}
+
+/* ---------- Office notifications (DLAO) ---------- */
+
+export interface OfficeNotice {
+  noticeId: string; // NTC-XXXXXX
+  office: string; // DLAO-<DISTRICT> — every officer of the office sees it
+  kind: "TRANSFER_RECEIVED" | "TRANSFER_ACCEPTED" | "TRANSFER_REJECTED" | "TRANSFER_CANCELLED" | "MEDIATOR_ACCEPTED" | "MEDIATOR_DECLINED" | "MEDIATOR_NONE_LEFT";
+  applicationId: string;
+  caseRef: string;
+  transferId: string | null;
+  title: { bn: string; en: string };
+  body: string | null; // the reason / the other office's message
+  at: string;
+  readBy: string[]; // officerIds who marked it read
+}

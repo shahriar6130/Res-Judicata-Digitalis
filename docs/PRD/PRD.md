@@ -515,6 +515,38 @@ Bangla OCR is a Day-1 technical risk gate. Test representative Bangla scans and 
 
 Keep all three working Bangla scenarios: maintenance, property and labour. Mark AI-inferred text and expose at least one inconsistency. Deterministic checks compare numbers/words, dates, party names and monthly/total amounts. Template provenance is visible, parties receive audio read-back where required, human legal review and consent are mandatory, and review locks the version; edits require review/signing again.
 
+### Feature 6 — mediation success and certification
+
+A successful mediation does not resolve a case at the moment parties say they agree or complete
+the prototype signatures. The mediator records the six settlement fields manually, both parties
+execute, and the mediator confirms that the record reflects the outcome. The signed-in CLO then
+reviews the settlement agreement, execution status, mediator confirmation, and relevant case
+information. The CLO may certify, return for correction, or request clarification; the system never
+certifies automatically.
+
+Only CLO certification creates the recorded `RESOLVED` legal outcome. That outcome includes the
+agreement ID, certification time, certifying officer, outcome text, and applicable follow-up work.
+Follow-up types cover compliance checking, party contact, deadline review, and enforcement
+monitoring. Any revision after a CLO return requires both prototype signatures and mediator
+confirmation again.
+
+### Feature 7 — failed mediation and referral
+
+Failed mediation produces an auditable procedural outcome and referral record instead of reducing
+the case to a Failed label. The mediator records the date, attendance, issues discussed, outcome,
+appropriate reason/status, follow-up need, and proposed next pathway. Confidential caucus content
+is neither required nor copied into the record.
+
+The product distinguishes the advisory system suggestion from the Legal Aid Officer's decision.
+The officer can confirm the referral, change the pathway with a reason, or request more procedural
+information. Available pathways are court/legal process, lawyer assignment, further legal aid
+review, and another referral. No suggestion automatically determines the final path.
+
+For a confirmed lawyer pathway, the handoff is Mediation → Failure → Referral record → Legal Aid
+Officer → Lawyer assignment. Confirmation opens the existing panel-lawyer assignment work item;
+lawyer ranking, selection, offer and acceptance remain in that established officer-controlled
+workflow. The case timeline displays the handoff and its current stage.
+
 ### T8 — Multi-component triage
 
 Run at least eight cases through at least three fixed-schema components: category, urgency and jurisdiction/process compliance, coordinated by an orchestrator. Include one disagreement, one safety case and one wrong-jurisdiction case. Output visibly feeds the DLAO queue and reports agreement rate. Display concise reasons/evidence, not hidden chain-of-thought.
@@ -1117,3 +1149,30 @@ The links below were found on official-government or UNDP domains during researc
 - [Candidate source: Legal Aid Services amendment text — Laws of Bangladesh](https://bdlaws.minlaw.gov.bd/act-print-1674.html)
 - [Candidate source: pre-case mediation provision/notification — Laws of Bangladesh](https://bdlaws.minlaw.gov.bd/act-print-834/section-print-54928.html)
 - [Candidate source: legal advice and mediation rules — Directorate of Legal Aid](https://nlaso.gov.bd/pages/legislative-informations/%E0%A6%86%E0%A6%87%E0%A6%A8%E0%A6%97%E0%A6%A4-%E0%A6%B8%E0%A6%B9%E0%A6%BE%E0%A7%9F%E0%A6%A4%E0%A6%BE-%E0%A6%AA%E0%A6%B0%E0%A6%BE%E0%A6%AE%E0%A6%B0%E0%A7%8D%E0%A6%B6-%E0%A6%93-%E0%A6%AE%E0%A6%A7%E0%A7%8D%E0%A6%AF%E0%A6%B8%E0%A7%8D%E0%A6%A5%E0%A6%A4%E0%A6%BE-%E0%A6%AC%E0%A6%BF%E0%A6%A7%E0%A6%BF%E0%A6%AE%E0%A6%BE%E0%A6%B2%E0%A6%BE-%E0%A7%A8%E0%A7%A6%E0%A7%A8%E0%A7%AB-8179aa-6922da35933eb65569e031b5)
+## Feature 8 — Court-referred mediation
+
+The product shall identify every mediation by origin and retain complete court referral metadata without creating a second mediation application. Officer review, mediator assignment, workspace sessions, settlement, and failure use the shared engine. Certified success produces a recorded legal outcome and a separate referring-authority notification task. Confirmed failure returns the formal failure record to the court/legal pathway. No external notification is inferred or silently sent.
+
+## Feature 9 — Mediator privacy and role-based access
+
+Access shall combine role permission with ownership, office, or active assignment. Mediators may access assigned cases and the verified information required to conduct mediation, but cannot access unrelated cases, other mediators’ matters, internal officer or administrative notes, unrelated personal or risk information, or confidential data outside the assignment. Caucus notes form a separate mediator-confidential record.
+
+Legal Aid Officers may review case verification, pathway, assignment, required mediation records, outcome, and audit history within their office. Chief Legal Aid Officers additionally review and certify settlement agreements and monitor the available district/national settlement worklist. Panel lawyers receive case access only after the lawyer handoff and access grant. Citizens remain limited to their own public case record. DBLA/Admin monitoring excludes mediator-confidential notes. Sensitive actions must record user, role, case, action, and timestamp.
+## Device simulator usability refinement
+
+The IVR and USSD prototype shall present a single simulated handset with the current prompt and response controls. The handset display shall remain compact and scroll longer prompt content within the display while preserving usable keypad targets. Every visit shall start with a fresh device session, and the device shall neither persist nor display a conversation transcript. Repeated instructions, message panes, and developer-facing record inspection shall not compete with the caller flow. The device header shall omit the Debug control. Required application fields, provenance, audit events, handoff, emergency, and submission behavior remain part of the workflow.
+## Admin role directory expansion
+
+DBLA/Admin shall be able to find, add, edit, and delete accounts from the People directory, including the existing mediator and UDC operator records. Deletion requires a named confirmation and an audit entry. Historical application and audit records remain. Active mediator and lawyer assignments block deletion until resolved; deleting a UDC operator removes the linked registered centre. Mediators remain in the shared mediator registry used by assignment and mediator sign-in. UDC operators remain linked to the shared UDC centre directory. Admin creation does not bypass the established mediator certification and assignment checks, and all changes are audited.
+## Admin navigation
+
+The admin sidebar shall provide working navigation to every implemented admin workspace, including mediation oversight. Navigation shall preserve the single-page hash workspace, allow a return to Overview, and communicate one active destination at a time. The complete admin workspace uses the selected theme across navigation, content surfaces, forms, dialogs, tables, and interaction states while retaining the shared accessible structure.
+
+## Visual theme
+
+The product uses the CSS-only black_theme.css theme, restoring the original black and off-white interface with the red administrator palette. Blue White and Red White remain saved alternatives. No theme switch is shown in the product interface.
+
+
+### Blue White visual refresh
+
+The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.

@@ -1,0 +1,1159 @@
+"use client";
+
+/* ------------------------------------------------------------------ *
+ *  /dashboard/dlo#mediators · #mediators/new · #mediator/<MED-ID>[/<tab>]
+ *  Mediator Management — the mediator registry (Feature 1).
+ *  Separate from the panel-lawyer screens: mediators conduct human-led
+ *  mediation; the officer registers, verifies, activates / suspends them
+ *  and keeps availability, conflict declarations and the admin record.
+ *  No assignment happens here. Data: localStorage["dlas.db.v1"].mediators
+ *  (lib/dlas/mediators.ts).
+ * ------------------------------------------------------------------ */
+
+import { useState, type ReactNode } from "react";
+import { Button } from "@/components/button";
+import { useI18n } from "@/lib/i18n";
+import {
+  CERTIFICATION_STATUSES,
+  CONFLICT_KINDS,
+  DISTRICTS,
+  EMPTY_MEDIATOR_FILTERS,
+  LANGUAGES,
+  MEDIATION_CASE_TYPES,
+  MEDIATION_CHANNELS,
+  MEDIATION_TRACKS,
+  MEDIATOR_ROLES,
+  MEDIATOR_STATUSES,
+  MediatorRegistry,
+  QUALIFICATIONS,
+  WEEKDAYS,
+  assignmentReadiness,
+  availabilityNow,
+  certificationState,
+  formatDateTime,
+  label,
+  lbl,
+  mediatorLoad,
+  useClock,
+  useDlasDb,
+  useMediator,
+  useMediatorRegistry,
+  type CertificationState,
+  type DistrictCode,
+  type LanguageCode,
+  type MediationCaseType,
+  type MediationChannel,
+  type MediationTrack,
+  type MediatorConflict,
+  type MediatorFilters,
+  type MediatorProfileInput,
+  type MediatorRecord,
+  type MediatorStatus,
+  type Weekday,
+} from "@/lib/dlas";
+import styles from "@/components/dlas/dlas.module.css";
+import ui from "./dlao.module.css";
+
+type Tone = "ok" | "err" | "warn" | "ink" | "neutral";
+type Lang = "bn" | "en";
+
+function Tag({ tone = "neutral", title, children }: { tone?: Tone; title?: string; children: ReactNode }) {
+  return (
+    <span className={`${ui.tag} ${tone !== "neutral" ? ui[tone] : ""}`} title={title}>
+      {children}
+    </span>
+  );
+}
+
+function Banner({ tone, icon, children }: { tone: "ok" | "warn" | "err"; icon: string; children: ReactNode }) {
+  const cls = tone === "ok" ? ui.bannerOk : tone === "err" ? ui.bannerErr : ui.bannerWarn;
+  return (
+    <div className={`${ui.banner} ${cls}`} role={tone === "err" ? "alert" : undefined}>
+      <span className={ui.bannerIcon} aria-hidden>
+        {icon}
+      </span>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function Row({ label: l, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={ui.row}>
+      <div className={ui.rowLabel}>{l}</div>
+      <div className={ui.rowValue}>{children}</div>
+    </div>
+  );
+}
+
+function useTx() {
+  const { lang } = useI18n();
+  return { lang: lang as Lang, tx: (bn: string, en: string) => (lang === "bn" ? bn : en) };
+}
+
+const STATUS_TONE: Record<MediatorStatus, Tone> = { ACTIVE: "ok", PENDING_VERIFICATION: "warn", INACTIVE: "neutral", SUSPENDED: "err" };
+
+function StatusTag({ s }: { s: MediatorStatus }) {
+  const { lang } = useTx();
+  return <Tag tone={STATUS_TONE[s]}>{lbl(MEDIATOR_STATUSES, s, lang)}</Tag>;
+}
+
+function SampleTag() {
+  const { tx } = useTx();
+  return (
+    <Tag tone="ink" title={tx("উদাহরণমূলক নমুনা রেকর্ড — বাস্তব ব্যক্তি নন", "Illustrative sample record — not a real person")}>
+      {tx("নমুনা", "SAMPLE")}
+    </Tag>
+  );
+}
+
+const CERT_LABEL: Record<CertificationState, { bn: string; en: string; tone: Tone }> = {
+  VALID: { bn: "বৈধ", en: "Valid", tone: "ok" },
+  EXPIRED: { bn: "মেয়াদোত্তীর্ণ", en: "Expired", tone: "err" },
+  UNVERIFIED: { bn: "যাচাই হয়নি", en: "Not verified", tone: "warn" },
+  NOT_QUALIFYING: { bn: "প্রশিক্ষণ অসম্পূর্ণ", en: "Not qualifying", tone: "warn" },
+};
+
+function CertTag({ m, now }: { m: MediatorRecord; now: number }) {
+  const { lang } = useTx();
+  const s = certificationState(m, now);
+  return (
+    <Tag tone={CERT_LABEL[s].tone} title={lbl(CERTIFICATION_STATUSES, m.certification.status, lang)}>
+      {CERT_LABEL[s][lang]}
+    </Tag>
+  );
+}
+
+function AvailTag({ m, now }: { m: MediatorRecord; now: number }) {
+  const { tx } = useTx();
+  const a = availabilityNow(m, now);
+  return a === "AVAILABLE" ? <Tag tone="ok">{tx("উপলব্ধ", "Available")}</Tag> : a === "LIMITED" ? <Tag tone="warn">{tx("সীমিত", "Limited")}</Tag> : <Tag tone="err">{tx("অনুপলব্ধ", "Unavailable")}</Tag>;
+}
+
+function Chips<T extends string>({ options, value, onChange, lang }: { options: { code: T; label: { bn: string; en: string } }[]; value: T[]; onChange: (v: T[]) => void; lang: Lang }) {
+  return (
+    <div className={styles.chips} role="group">
+      {options.map((o) => {
+        const on = value.includes(o.code);
+        return (
+          <button key={o.code} type="button" className={styles.chip} aria-pressed={on} onClick={() => onChange(on ? value.filter((x) => x !== o.code) : [...value, o.code])}>
+            {o.label[lang]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Registry list                                                      */
+/* ================================================================== */
+
+export function MediatorsRegistry() {
+  const { lang, tx } = useTx();
+  const [f, setF] = useState<MediatorFilters>(EMPTY_MEDIATOR_FILTERS);
+  const reg = useMediatorRegistry(f);
+  const db = useDlasDb();
+  const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const now = useClock();
+  const set = <K extends keyof MediatorFilters>(k: K, v: MediatorFilters[K]) => setF((x) => ({ ...x, [k]: v }));
+  const district = DISTRICTS.find((d) => d.code === reg.officer?.district);
+  const filtered = Object.values(f).some(Boolean);
+  const run = (fn: () => unknown, ok: string) => {
+    try {
+      fn();
+      setMsg({ tone: "ok", text: ok });
+    } catch (e) {
+      setMsg({ tone: "err", text: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  return (
+    <>
+      <h1 className={styles.title}>{tx("মধ্যস্থতাকারী", "Mediators")}</h1>
+      <p className={styles.lead}>
+        {tx(
+          `মধ্যস্থতাকারী রেজিস্ট্রি — ${district?.label.bn ?? ""}। প্যানেল আইনজীবী থেকে আলাদা: মধ্যস্থতাকারী মধ্যস্থতা পরিচালনা করেন, কে আইনত সঠিক তা ঠিক করেন না। এখানে কোনো নিয়োগ হয় না।`,
+          `Mediator registry — ${district?.label.en ?? ""}. Separate from panel lawyers: mediators conduct mediation; they do not decide who is legally right. No assignment happens here.`,
+        )}
+      </p>
+
+      <div className={styles.stats}>
+        {(
+          [
+            [reg.counts.total, tx("মোট", "Registered"), "neutral"],
+            [reg.counts.active, tx("সক্রিয়", "Active"), "ok"],
+            [reg.counts.pending, tx("যাচাই বাকি", "Pending verification"), reg.counts.pending ? "warn" : "neutral"],
+            [reg.counts.suspended, tx("স্থগিত", "Suspended"), reg.counts.suspended ? "err" : "neutral"],
+            [reg.counts.ready, tx("নিয়োগযোগ্য", "Assignment-ready"), "ok"],
+            [reg.counts.certIssues, tx("সক্রিয় কিন্তু সনদ সমস্যা", "Active, certificate issue"), reg.counts.certIssues ? "err" : "neutral"],
+          ] as [number, string, Tone][]
+        ).map(([n, l, tone]) => (
+          <div key={l} className={styles.stat} style={tone === "err" ? { borderColor: "var(--red)" } : tone === "warn" ? { borderColor: "var(--status-pending)" } : undefined}>
+            <div className={styles.statNum} style={tone === "err" ? { color: "var(--red)" } : tone === "ok" ? { color: "var(--green)" } : undefined}>
+              {n}
+            </div>
+            <div className={styles.statLabel}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {msg ? (
+        <Banner tone={msg.tone} icon={msg.tone === "ok" ? "✓" : "!"}>
+          {msg.text}
+        </Banner>
+      ) : null}
+
+      <div className={styles.actions} style={{ marginBottom: "var(--s-4)" }}>
+        <Button onClick={() => (window.location.hash = "mediators/new")}>+ {tx("মধ্যস্থতাকারী যোগ করুন", "Add mediator")}</Button>
+        {reg.samples === 0 ? (
+          <Button variant="secondary" onClick={() => run(() => MediatorRegistry.loadSamples(), tx("নমুনা মধ্যস্থতাকারী যোগ হয়েছে (উদাহরণমূলক, বাস্তব ব্যক্তি নন)।", "Sample mediators loaded (illustrative — not real people)."))}>
+            {tx("নমুনা মধ্যস্থতাকারী লোড করুন", "Load sample mediators")}
+          </Button>
+        ) : (
+          <Button variant="secondary" onClick={() => run(() => MediatorRegistry.removeSamples(), tx("নমুনা রেকর্ড সরানো হয়েছে।", "Sample records removed."))}>
+            {tx(`নমুনা রেকর্ড সরান (${reg.samples})`, `Remove sample records (${reg.samples})`)}
+          </Button>
+        )}
+      </div>
+
+      {reg.samples > 0 ? (
+        <Banner tone="warn" icon="i">
+          {tx(
+            `${reg.samples}টি নমুনা রেকর্ড দেখানো হচ্ছে (“নমুনা” চিহ্নিত)। এগুলো উদাহরণমূলক — বাস্তব ব্যক্তি নন; নাম, ফোন ও সনদ নম্বর কাল্পনিক।`,
+            `${reg.samples} sample record(s) shown (marked “SAMPLE”). They are illustrative — not real people; names, phones and certificate numbers are fictitious.`,
+          )}
+        </Banner>
+      ) : null}
+
+      <section className={ui.panel} style={{ marginBottom: "var(--s-4)" }} aria-label={tx("খুঁজুন ও ফিল্টার", "Search and filter")}>
+        <div className={styles.grid} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "var(--s-3)" }}>
+          <label className={styles.field} style={{ gridColumn: "1 / -1" }}>
+            <span className={styles.label}>{tx("খুঁজুন", "Search")}</span>
+            <input className={styles.input} value={f.q} onChange={(e) => set("q", e.target.value)} placeholder={tx("নাম, আইডি, ফোন, এলাকা", "Name, ID, phone, area")} />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("অবস্থা", "Status")}</span>
+            <select className={styles.select} value={f.status} onChange={(e) => set("status", e.target.value as MediatorFilters["status"])}>
+              <option value="">{tx("সব", "All")}</option>
+              {MEDIATOR_STATUSES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("জেলা", "District")}</span>
+            <select className={styles.select} value={f.district} onChange={(e) => set("district", e.target.value as MediatorFilters["district"])}>
+              <option value="">{tx("সব", "All")}</option>
+              {DISTRICTS.filter((d) => reg.officer?.officeType === "SCLAC" || d.code === reg.officer?.district).map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("মামলার ধরন", "Case type")}</span>
+            <select className={styles.select} value={f.caseType} onChange={(e) => set("caseType", e.target.value as MediatorFilters["caseType"])}>
+              <option value="">{tx("সব", "All")}</option>
+              {MEDIATION_CASE_TYPES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("সময়", "Availability")}</span>
+            <select className={styles.select} value={f.availability} onChange={(e) => set("availability", e.target.value as MediatorFilters["availability"])}>
+              <option value="">{tx("সব", "All")}</option>
+              <option value="AVAILABLE">{tx("উপলব্ধ", "Available")}</option>
+              <option value="LIMITED">{tx("সীমিত", "Limited")}</option>
+              <option value="UNAVAILABLE">{tx("অনুপলব্ধ", "Unavailable")}</option>
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("সনদ", "Certification")}</span>
+            <select className={styles.select} value={f.certification} onChange={(e) => set("certification", e.target.value as MediatorFilters["certification"])}>
+              <option value="">{tx("সব", "All")}</option>
+              {(Object.keys(CERT_LABEL) as CertificationState[]).map((k) => (
+                <option key={k} value={k}>
+                  {CERT_LABEL[k][lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {filtered ? (
+          <p className={styles.hint} style={{ marginBottom: 0 }}>
+            {tx(`${reg.list.length}/${reg.all.length} দেখানো হচ্ছে`, `Showing ${reg.list.length} of ${reg.all.length}`)} ·{" "}
+            <button type="button" className={ui.textBtn} onClick={() => setF(EMPTY_MEDIATOR_FILTERS)}>
+              {tx("ফিল্টার মুছুন", "Clear filters")}
+            </button>
+          </p>
+        ) : null}
+      </section>
+
+      {reg.all.length === 0 ? (
+        <Banner tone="warn" icon="i">
+          {tx("এই জেলার রেজিস্ট্রিতে এখনো কোনো মধ্যস্থতাকারী নেই। “মধ্যস্থতাকারী যোগ করুন” বা নমুনা রেকর্ড লোড করুন।", "No mediators in this district's registry yet. Use “Add mediator”, or load sample records.")}
+        </Banner>
+      ) : reg.list.length === 0 ? (
+        <p className={styles.hint}>{tx("এই ফিল্টারে কেউ নেই।", "No mediators match these filters.")}</p>
+      ) : (
+        <div className={styles.tableWrap} style={{ maxHeight: "none" }}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{tx("মধ্যস্থতাকারী", "Mediator")}</th>
+                <th>{tx("অবস্থা", "Status")}</th>
+                <th>{tx("যোগ্যতা", "Qualification")}</th>
+                <th>{tx("অভিজ্ঞতা", "Experience")}</th>
+                <th>{tx("জেলা", "District")}</th>
+                <th>{tx("সময়", "Availability")}</th>
+                <th>{tx("বর্তমান চাপ", "Current load")}</th>
+                <th>{tx("কাজ", "Actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reg.list.map((m) => {
+                const load = mediatorLoad(m, db);
+                const conflicts = m.conflicts.filter((c) => c.status === "ACTIVE").length;
+                return (
+                  <tr key={m.mediatorId}>
+                    <td>
+                      <a href={`#mediator/${m.mediatorId}`}>
+                        <strong>{m.name}</strong>
+                      </a>{" "}
+                      {m.sample ? <SampleTag /> : null}
+                      <div className={styles.hint}>
+                        {m.mediatorId} · {lbl(MEDIATOR_ROLES, m.role, lang)}
+                      </div>
+                      <div className={styles.hint}>{m.tracks.map((t) => lbl(MEDIATION_TRACKS, t, lang)).join(" · ")}</div>
+                    </td>
+                    <td>
+                      <StatusTag s={m.status} />
+                    </td>
+                    <td>
+                      {lbl(QUALIFICATIONS, m.qualification.kind, lang)}
+                      <div style={{ marginTop: 4 }}>
+                        <CertTag m={m} now={now} />
+                      </div>
+                    </td>
+                    <td>
+                      {tx(`${m.experience.years} বছর`, `${m.experience.years} yrs`)}
+                      <div className={styles.hint}>{tx(`${m.experience.mediationsConducted}টি মধ্যস্থতা · ${m.experience.settled}টি নিষ্পত্তি`, `${m.experience.mediationsConducted} mediations · ${m.experience.settled} settled`)}</div>
+                    </td>
+                    <td>
+                      {label(DISTRICTS, m.district, lang)}
+                      <div className={styles.hint}>{m.operationalAreas.slice(0, 2).join(", ")}</div>
+                    </td>
+                    <td>
+                      <AvailTag m={m} now={now} />
+                      <div className={styles.hint}>{m.availability.channels.map((c) => lbl(MEDIATION_CHANNELS, c, lang)).join(", ")}</div>
+                    </td>
+                    <td>
+                      <Tag tone={load.full ? "err" : load.active / load.max >= 0.8 ? "warn" : "neutral"}>
+                        {load.active}/{load.max}
+                      </Tag>
+                      {load.here ? <div className={styles.hint}>{tx(`এখানে ${load.here}টি নিয়োগ`, `${load.here} assigned here`)}</div> : null}
+                      {m.workload.basis === "SAMPLE" ? <div className={styles.hint}>{tx("নমুনা", "sample")}</div> : null}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--t-small)" }}>
+                        <a href={`#mediator/${m.mediatorId}`}>{tx("দেখুন", "View")}</a>
+                        <a href={`#mediator/${m.mediatorId}/edit`}>{tx("সম্পাদনা", "Edit")}</a>
+                        <a href={`#mediator/${m.mediatorId}/availability`}>{tx("সময়সূচি", "Availability")}</a>
+                        <a href={`#mediator/${m.mediatorId}/conflicts`}>
+                          {tx("স্বার্থের সংঘাত", "Conflict declaration")}
+                          {conflicts ? ` (${conflicts})` : ""}
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ================================================================== */
+/*  Detail                                                             */
+/* ================================================================== */
+
+type DetailTab = "overview" | "edit" | "availability" | "conflicts" | "record";
+const TABS: { key: DetailTab; bn: string; en: string }[] = [
+  { key: "overview", bn: "প্রোফাইল", en: "Profile" },
+  { key: "edit", bn: "সম্পাদনা", en: "Edit" },
+  { key: "availability", bn: "সময়সূচি", en: "Availability" },
+  { key: "conflicts", bn: "স্বার্থের সংঘাত", en: "Conflict declarations" },
+  { key: "record", bn: "প্রশাসনিক রেকর্ড ও অডিট", en: "Admin record & audit" },
+];
+
+export function MediatorDetail({ id, tab }: { id: string; tab: string }) {
+  const { lang, tx } = useTx();
+  const { m } = useMediator(id);
+  const now = useClock();
+  const active: DetailTab = (TABS.some((t) => t.key === tab) ? tab : "overview") as DetailTab;
+  if (!m) {
+    return (
+      <>
+        <a className={styles.crumb} href="#mediators">
+          ← {tx("মধ্যস্থতাকারী", "Mediators")}
+        </a>
+        <Banner tone="err" icon="!">
+          {tx("এই মধ্যস্থতাকারী আপনার জেলার রেজিস্ট্রিতে নেই।", "This mediator is not in your district's registry.")}
+        </Banner>
+      </>
+    );
+  }
+  const conflicts = m.conflicts.filter((c) => c.status === "ACTIVE").length;
+  return (
+    <>
+      <a className={styles.crumb} href="#mediators">
+        ← {tx("মধ্যস্থতাকারী", "Mediators")}
+      </a>
+      <header>
+        <div className={ui.head}>
+          <span className={ui.headId} style={{ fontFamily: "inherit" }}>
+            {m.name}
+          </span>
+          <StatusTag s={m.status} />
+          <CertTag m={m} now={now} />
+          <AvailTag m={m} now={now} />
+          {m.sample ? <SampleTag /> : null}
+        </div>
+        <div className={ui.meta}>
+          <span>{m.mediatorId}</span>
+          <span>{lbl(MEDIATOR_ROLES, m.role, lang)}</span>
+          <span>{label(DISTRICTS, m.district, lang)}</span>
+          <span>
+            {tx("হালনাগাদ", "Updated")} {formatDateTime(m.updatedAt, lang)}
+          </span>
+        </div>
+      </header>
+
+      {m.sample ? (
+        <Banner tone="warn" icon="i">
+          {tx("উদাহরণমূলক নমুনা রেকর্ড — বাস্তব ব্যক্তি নন। নাম, ফোন ও সনদ নম্বর কাল্পনিক।", "Illustrative sample record — not a real person. Name, phone and certificate number are fictitious.")}
+        </Banner>
+      ) : null}
+
+      <div className={styles.tabs} role="tablist" aria-label={tx("মধ্যস্থতাকারীর তথ্য", "Mediator sections")}>
+        {TABS.map((t) => (
+          <button key={t.key} type="button" role="tab" aria-selected={active === t.key} className={styles.tab} onClick={() => (window.location.hash = `mediator/${m.mediatorId}${t.key === "overview" ? "" : `/${t.key}`}`)}>
+            {lang === "bn" ? t.bn : t.en}
+            {t.key === "conflicts" && conflicts ? ` (${conflicts})` : ""}
+          </button>
+        ))}
+      </div>
+
+      {active === "overview" ? <Overview key={m.updatedAt} m={m} now={now} /> : null}
+      {active === "edit" ? <MediatorForm key={m.updatedAt} existing={m} /> : null}
+      {active === "availability" ? <AvailabilityForm key={m.availability.updatedAt} m={m} /> : null}
+      {active === "conflicts" ? <Conflicts m={m} /> : null}
+      {active === "record" ? <RecordPanel m={m} /> : null}
+    </>
+  );
+}
+
+function useRun() {
+  const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const run = (fn: () => unknown, ok: string) => {
+    try {
+      fn();
+      setMsg({ tone: "ok", text: ok });
+      return true;
+    } catch (e) {
+      setMsg({ tone: "err", text: e instanceof Error ? e.message : String(e) });
+      return false;
+    }
+  };
+  const node = msg ? (
+    <Banner tone={msg.tone} icon={msg.tone === "ok" ? "✓" : "!"}>
+      {msg.text}
+    </Banner>
+  ) : null;
+  return { run, node };
+}
+
+function Overview({ m, now }: { m: MediatorRecord; now: number }) {
+  const { lang, tx } = useTx();
+  const db = useDlasDb();
+  const load = mediatorLoad(m, db);
+  const { run, node } = useRun();
+  const [verifyNote, setVerifyNote] = useState("");
+  const [status, setStatus] = useState<MediatorStatus>(m.status);
+  const [reason, setReason] = useState("");
+  const r = assignmentReadiness(m, now, db);
+  const cert = certificationState(m, now);
+  const c = m.certification;
+  return (
+    <div className={ui.layout}>
+      <section className={ui.main}>
+        {node}
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("প্রোফাইল", "Profile")}</div>
+          <div className={ui.rows}>
+            <Row label={tx("ভূমিকা", "Role")}>{lbl(MEDIATOR_ROLES, m.role, lang)}</Row>
+            <Row label={tx("যোগ্যতা", "Qualification")}>
+              {lbl(QUALIFICATIONS, m.qualification.kind, lang)} — {m.qualification.detail}
+            </Row>
+            <Row label={tx("অভিজ্ঞতা", "Experience")}>
+              {tx(`${m.experience.years} বছর · ${m.experience.mediationsConducted}টি মধ্যস্থতা · ${m.experience.settled}টি নিষ্পত্তি`, `${m.experience.years} years · ${m.experience.mediationsConducted} mediations · ${m.experience.settled} settled`)}
+              {m.experience.note ? <div className={styles.hint}>{m.experience.note}</div> : null}
+            </Row>
+            <Row label={tx("ধারা", "Tracks")}>{m.tracks.map((t) => lbl(MEDIATION_TRACKS, t, lang)).join(" · ")}</Row>
+            <Row label={tx("মামলার ধরন", "Case types")}>
+              <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
+                {m.caseTypes.map((ct) => (
+                  <Tag key={ct}>{lbl(MEDIATION_CASE_TYPES, ct, lang)}</Tag>
+                ))}
+              </span>
+            </Row>
+            <Row label={tx("জেলা / এলাকা", "District / area")}>
+              {label(DISTRICTS, m.district, lang)}
+              {m.operationalAreas.length ? ` — ${m.operationalAreas.join(", ")}` : ""}
+            </Row>
+            <Row label={tx("ভাষা", "Languages")}>{m.languages.map((l) => label(LANGUAGES, l, lang)).join(", ")}</Row>
+            <Row label={tx("যোগাযোগ", "Contact")}>
+              {m.contact.phone}
+              {m.contact.email ? ` · ${m.contact.email}` : ""} · {tx("পছন্দ", "prefers")} {m.contact.preferredChannel}
+              {m.contact.office ? <div className={styles.hint}>{m.contact.office}</div> : null}
+            </Row>
+            <Row label={tx("বর্তমান চাপ", "Current load")}>
+              {load.active}/{load.max}{" "}
+              <span className={styles.hint}>
+                {tx(`(নথিভুক্ত ${load.baseline}${m.workload.basis === "SAMPLE" ? " — নমুনা" : ""} + এখানে নিয়োগকৃত ${load.here})`, `(recorded ${load.baseline}${m.workload.basis === "SAMPLE" ? " — sample" : ""} + ${load.here} assigned here)`)}
+              </span>
+            </Row>
+            <Row label={tx("নিবন্ধন", "Registered")}>{formatDateTime(m.createdAt, lang)}</Row>
+          </div>
+        </div>
+
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("সনদ / প্রশিক্ষণ", "Certification / training")}</div>
+          <div className={ui.rows}>
+            <Row label={tx("অবস্থা", "Status")}>
+              {lbl(CERTIFICATION_STATUSES, c.status, lang)} <Tag tone={CERT_LABEL[cert].tone}>{CERT_LABEL[cert][lang]}</Tag>
+            </Row>
+            <Row label={tx("প্রতিষ্ঠান", "Body")}>{c.body ?? "—"}</Row>
+            <Row label={tx("সনদ নম্বর", "Certificate no.")}>{c.certificateNo ?? "—"}</Row>
+            <Row label={tx("মেয়াদ", "Issued / valid until")}>
+              {c.issuedOn ?? "—"} → {c.validUntil ?? tx("মেয়াদ নেই", "no expiry")}
+            </Row>
+            <Row label={tx("যাচাই", "Verified")}>{c.verifiedAt ? `${c.verifiedByName} · ${formatDateTime(c.verifiedAt, lang)}` : tx("যাচাই হয়নি", "Not verified")}</Row>
+          </div>
+          {!c.verifiedAt && (c.status === "CERTIFIED" || c.status === "TRAINING_COMPLETED") && cert !== "EXPIRED" ? (
+            <div style={{ marginTop: "var(--s-3)" }}>
+              <label className={styles.field}>
+                <span className={styles.label}>{tx("যাচাইয়ের নোট (ঐচ্ছিক)", "Verification note (optional)")}</span>
+                <input className={styles.input} value={verifyNote} onChange={(e) => setVerifyNote(e.target.value)} placeholder={tx("যেমন: মূল সনদ দেখা হয়েছে", "e.g. Original certificate seen at the office")} />
+              </label>
+              <div className={styles.actions} style={{ marginTop: 8 }}>
+                <Button variant="secondary" onClick={() => run(() => MediatorRegistry.verifyCertification(m.mediatorId, verifyNote), tx("সনদ যাচাই নথিভুক্ত হয়েছে।", "Certificate verification recorded."))}>
+                  ✓ {tx("সনদ যাচাই করেছি", "I have verified the certificate")}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <aside className={ui.aside}>
+        <div className={ui.panel}>
+          <div className={ui.panelTitle}>
+            <span>{tx("ভবিষ্যৎ নিয়োগের প্রস্তুতি", "Assignment readiness (preview)")}</span>
+            <Tag tone={r.ready ? "ok" : "err"}>{r.ready ? tx("প্রস্তুত", "Ready") : tx("প্রস্তুত নয়", "Not ready")}</Tag>
+          </div>
+          <p className={styles.hint} style={{ marginTop: 0 }}>
+            {tx("নিয়োগের শক্ত শর্ত (মামলা ছাড়া)। নিয়োগ এখানে হয় না — পরে সিস্টেম সুপারিশ করবে, কর্মকর্তা নিশ্চিত করবেন।", "Case-independent hard filters. No assignment happens here — later the system recommends and an officer confirms.")}
+          </p>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+            {r.checks.map((ch) => (
+              <li key={ch.key} style={{ display: "flex", gap: 8 }}>
+                <span aria-hidden style={{ color: ch.ok ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
+                  {ch.ok ? "✓" : "✗"}
+                </span>
+                <span>
+                  {ch.label[lang]}
+                  <span className={styles.hint} style={{ display: "block" }}>
+                    {ch.detail[lang]}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className={ui.panel}>
+          <div className={ui.panelTitle}>
+            <span>{tx("অবস্থা পরিবর্তন", "Change status")}</span>
+          </div>
+          <p className={styles.hint} style={{ marginTop: 0 }}>
+            {tx("বর্তমান:", "Current:")} <StatusTag s={m.status} /> {m.statusReason ? `— ${m.statusReason}` : ""}
+          </p>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("নতুন অবস্থা", "New status")}</span>
+            <select className={styles.select} value={status} onChange={(e) => setStatus(e.target.value as MediatorStatus)}>
+              {MEDIATOR_STATUSES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("কারণ (কমপক্ষে ১০ অক্ষর)", "Reason (at least 10 characters)")}</span>
+            <textarea className={styles.textarea} style={{ minHeight: 60 }} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </label>
+          {status === "ACTIVE" && cert !== "VALID" ? (
+            <p className={styles.hint} style={{ color: "var(--red)" }}>
+              {tx("সক্রিয় করতে বৈধ ও যাচাইকৃত সনদ লাগবে।", "Activation needs a valid, verified certification.")}
+            </p>
+          ) : null}
+          <div className={styles.actions} style={{ marginTop: 8 }}>
+            <Button
+              variant={status === "SUSPENDED" ? "destructive" : "secondary"}
+              disabled={status === m.status || reason.trim().length < 10}
+              onClick={() => {
+                if (run(() => MediatorRegistry.setStatus(m.mediatorId, status, reason), tx("অবস্থা পরিবর্তন নথিভুক্ত হয়েছে।", "Status change recorded."))) setReason("");
+              }}
+            >
+              {tx("অবস্থা সংরক্ষণ", "Save status")}
+            </Button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+/* ------------------------------ create / edit ------------------------------ */
+
+export function MediatorNew() {
+  const { tx } = useTx();
+  return (
+    <>
+      <a className={styles.crumb} href="#mediators">
+        ← {tx("মধ্যস্থতাকারী", "Mediators")}
+      </a>
+      <h1 className={styles.title}>{tx("নতুন মধ্যস্থতাকারী", "Register a mediator")}</h1>
+      <p className={styles.lead}>{tx("নতুন নিবন্ধন “যাচাই বাকি” অবস্থায় শুরু হয়। সনদ যাচাইয়ের পর সক্রিয় করুন।", "New registrations start as “Pending verification”. Verify the certificate, then activate.")}</p>
+      <MediatorForm />
+    </>
+  );
+}
+
+function MediatorForm({ existing }: { existing?: MediatorRecord }) {
+  const { lang, tx } = useTx();
+  const { run, node } = useRun();
+  const reg = useMediatorRegistry();
+  const o = reg.officer;
+  const [v, setV] = useState<MediatorProfileInput>(() =>
+    existing
+      ? {
+          name: existing.name,
+          role: existing.role,
+          qualification: { ...existing.qualification },
+          certification: { status: existing.certification.status, body: existing.certification.body, certificateNo: existing.certification.certificateNo, issuedOn: existing.certification.issuedOn, validUntil: existing.certification.validUntil },
+          experience: { ...existing.experience },
+          caseTypes: [...existing.caseTypes],
+          tracks: [...existing.tracks],
+          district: existing.district,
+          operationalAreas: [...existing.operationalAreas],
+          languages: [...existing.languages],
+          contact: { ...existing.contact },
+          activeMatters: existing.workload.activeMatters,
+        }
+      : {
+          name: "",
+          role: "PANEL_MEDIATOR",
+          qualification: { kind: "ADVOCATE", detail: "" },
+          certification: { status: "CERTIFIED", body: "", certificateNo: "", issuedOn: "", validUntil: "" },
+          experience: { years: 0, mediationsConducted: 0, settled: 0, note: "" },
+          caseTypes: [],
+          tracks: ["PRE_LITIGATION"],
+          district: (o?.district ?? "DHAKA") as DistrictCode,
+          operationalAreas: [],
+          languages: ["bn"],
+          contact: { phone: "", email: "", preferredChannel: "PHONE", office: "" },
+          activeMatters: 0,
+        },
+  );
+  const [areas, setAreas] = useState(v.operationalAreas.join(", "));
+  const up = (patch: Partial<MediatorProfileInput>) => setV((x) => ({ ...x, ...patch }));
+  const num = (s: string) => Math.max(0, Math.floor(Number(s) || 0));
+  const nul = (s: string | null) => (s && s.trim() ? s.trim() : null);
+
+  const submit = () => {
+    const input: MediatorProfileInput = {
+      ...v,
+      operationalAreas: areas.split(",").map((a) => a.trim()).filter(Boolean),
+      certification: { ...v.certification, body: nul(v.certification.body), certificateNo: nul(v.certification.certificateNo), issuedOn: nul(v.certification.issuedOn), validUntil: nul(v.certification.validUntil) },
+    };
+    if (existing) {
+      run(() => MediatorRegistry.update(existing.mediatorId, input), tx("প্রোফাইল সংরক্ষিত হয়েছে।", "Profile saved."));
+    } else {
+      let id = "";
+      if (run(() => (id = MediatorRegistry.create(input).mediatorId), tx("নিবন্ধিত হয়েছে।", "Registered."))) window.location.hash = `mediator/${id}`;
+    }
+  };
+
+  const tracksCaseTypes = MEDIATION_CASE_TYPES.filter((c) => v.tracks.includes(c.track));
+
+  return (
+    <section className={ui.panel} style={{ maxWidth: 880 }}>
+      {node}
+      {existing ? (
+        <p className={styles.hint} style={{ marginTop: 0 }}>
+          {tx("সনদের তথ্য বদলালে আবার যাচাই করতে হবে।", "Changing the certificate details resets its verification.")}
+        </p>
+      ) : null}
+      <div className={styles.grid}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("পূর্ণ নাম", "Full name")}</span>
+          <input className={styles.input} value={v.name} onChange={(e) => up({ name: e.target.value })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("ভূমিকা", "Role")}</span>
+          <select className={styles.select} value={v.role} onChange={(e) => up({ role: e.target.value as MediatorProfileInput["role"] })}>
+            {MEDIATOR_ROLES.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.label[lang]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("যোগ্যতা", "Qualification")}</span>
+          <select className={styles.select} value={v.qualification.kind} onChange={(e) => up({ qualification: { ...v.qualification, kind: e.target.value as MediatorRecord["qualification"]["kind"] } })}>
+            {QUALIFICATIONS.map((q) => (
+              <option key={q.code} value={q.code}>
+                {q.label[lang]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("যোগ্যতার বিবরণ", "Qualification detail")}</span>
+          <input className={styles.input} value={v.qualification.detail} onChange={(e) => up({ qualification: { ...v.qualification, detail: e.target.value } })} placeholder={tx("যেমন: এলএলবি, ঢাকা বিশ্ববিদ্যালয়", "e.g. LLB, University of Dhaka")} />
+        </label>
+      </div>
+
+      <h3 className={ui.sectionHead} style={{ marginTop: "var(--s-5)" }}>
+        {tx("সনদ / প্রশিক্ষণ", "Certification / training")}
+      </h3>
+      <div className={styles.grid}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("অবস্থা", "Status")}</span>
+          <select className={styles.select} value={v.certification.status} onChange={(e) => up({ certification: { ...v.certification, status: e.target.value as MediatorRecord["certification"]["status"] } })}>
+            {CERTIFICATION_STATUSES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label[lang]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("প্রশিক্ষণ / সনদদাতা প্রতিষ্ঠান", "Training / certifying body")}</span>
+          <input className={styles.input} value={v.certification.body ?? ""} onChange={(e) => up({ certification: { ...v.certification, body: e.target.value } })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("সনদ নম্বর", "Certificate no.")}</span>
+          <input className={styles.input} value={v.certification.certificateNo ?? ""} onChange={(e) => up({ certification: { ...v.certification, certificateNo: e.target.value } })} />
+        </label>
+        <div className={styles.grid} style={{ gap: "var(--s-2)" }}>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("প্রদানের তারিখ", "Issued on")}</span>
+            <input type="date" className={styles.input} value={v.certification.issuedOn ?? ""} onChange={(e) => up({ certification: { ...v.certification, issuedOn: e.target.value } })} />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("মেয়াদ", "Valid until")}</span>
+            <input type="date" className={styles.input} value={v.certification.validUntil ?? ""} onChange={(e) => up({ certification: { ...v.certification, validUntil: e.target.value } })} />
+          </label>
+        </div>
+      </div>
+
+      <h3 className={ui.sectionHead} style={{ marginTop: "var(--s-5)" }}>
+        {tx("অভিজ্ঞতা", "Mediation experience")}
+      </h3>
+      <div className={styles.grid} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("বছর", "Years")}</span>
+          <input type="number" min={0} className={styles.input} value={v.experience.years} onChange={(e) => up({ experience: { ...v.experience, years: num(e.target.value) } })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("পরিচালিত মধ্যস্থতা", "Mediations conducted")}</span>
+          <input type="number" min={0} className={styles.input} value={v.experience.mediationsConducted} onChange={(e) => up({ experience: { ...v.experience, mediationsConducted: num(e.target.value) } })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("নিষ্পত্তি", "Settled")}</span>
+          <input type="number" min={0} className={styles.input} value={v.experience.settled} onChange={(e) => up({ experience: { ...v.experience, settled: num(e.target.value) } })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("বর্তমান চলমান মধ্যস্থতা", "Current active matters")}</span>
+          <input type="number" min={0} className={styles.input} value={v.activeMatters} onChange={(e) => up({ activeMatters: num(e.target.value) })} />
+        </label>
+      </div>
+      <label className={styles.field} style={{ marginTop: "var(--s-3)" }}>
+        <span className={styles.label}>{tx("প্রাসঙ্গিক অভিজ্ঞতা", "Relevant experience")}</span>
+        <input className={styles.input} value={v.experience.note ?? ""} onChange={(e) => up({ experience: { ...v.experience, note: e.target.value } })} />
+      </label>
+
+      <h3 className={ui.sectionHead} style={{ marginTop: "var(--s-5)" }}>
+        {tx("কাজের পরিধি", "Scope")}
+      </h3>
+      <div className={styles.field}>
+        <span className={styles.label}>{tx("ধারা", "Tracks")}</span>
+        <Chips<MediationTrack> options={MEDIATION_TRACKS} value={v.tracks} onChange={(tracks) => up({ tracks, caseTypes: v.caseTypes.filter((c) => tracks.includes(MEDIATION_CASE_TYPES.find((x) => x.code === c)!.track)) })} lang={lang} />
+      </div>
+      <div className={styles.field} style={{ marginTop: "var(--s-3)" }}>
+        <span className={styles.label}>{tx("যে ধরনের মামলা দেখেন", "Case types handled")}</span>
+        {tracksCaseTypes.length ? <Chips<MediationCaseType> options={tracksCaseTypes} value={v.caseTypes} onChange={(caseTypes) => up({ caseTypes })} lang={lang} /> : <p className={styles.hint}>{tx("আগে ধারা বেছে নিন।", "Choose a track first.")}</p>}
+      </div>
+      <div className={styles.grid} style={{ marginTop: "var(--s-3)" }}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("জেলা", "District")}</span>
+          <select className={styles.select} value={v.district} disabled={o?.officeType !== "SCLAC"} onChange={(e) => up({ district: e.target.value as DistrictCode })}>
+            {DISTRICTS.map((d) => (
+              <option key={d.code} value={d.code}>
+                {d.label[lang]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("কার্যএলাকা (কমা দিয়ে)", "Operational areas (comma-separated)")}</span>
+          <input className={styles.input} value={areas} onChange={(e) => setAreas(e.target.value)} placeholder={tx("যেমন: সদর উপজেলা, জেলা জজ আদালত", "e.g. Sadar upazila, District Judge Court")} />
+        </label>
+      </div>
+      <div className={styles.field} style={{ marginTop: "var(--s-3)" }}>
+        <span className={styles.label}>{tx("ভাষা", "Languages")}</span>
+        <Chips<LanguageCode> options={LANGUAGES} value={v.languages} onChange={(languages) => up({ languages })} lang={lang} />
+      </div>
+
+      <h3 className={ui.sectionHead} style={{ marginTop: "var(--s-5)" }}>
+        {tx("যোগাযোগ", "Contact")}
+      </h3>
+      <div className={styles.grid}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("মোবাইল", "Mobile")}</span>
+          <input className={styles.input} inputMode="tel" value={v.contact.phone} onChange={(e) => up({ contact: { ...v.contact, phone: e.target.value } })} placeholder="01XXXXXXXXX" />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("ইমেইল (ঐচ্ছিক)", "Email (optional)")}</span>
+          <input className={styles.input} type="email" value={v.contact.email ?? ""} onChange={(e) => up({ contact: { ...v.contact, email: e.target.value } })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("পছন্দের মাধ্যম", "Preferred channel")}</span>
+          <select className={styles.select} value={v.contact.preferredChannel} onChange={(e) => up({ contact: { ...v.contact, preferredChannel: e.target.value as MediatorRecord["contact"]["preferredChannel"] } })}>
+            <option value="PHONE">{tx("ফোন", "Phone")}</option>
+            <option value="SMS">SMS</option>
+            <option value="EMAIL">{tx("ইমেইল", "Email")}</option>
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("অফিস / ঠিকানা", "Office / address")}</span>
+          <input className={styles.input} value={v.contact.office ?? ""} onChange={(e) => up({ contact: { ...v.contact, office: e.target.value } })} />
+        </label>
+      </div>
+
+      <div className={styles.actions} style={{ marginTop: "var(--s-5)" }}>
+        <Button onClick={submit}>{existing ? tx("সংরক্ষণ", "Save changes") : tx("নিবন্ধন করুন", "Register mediator")}</Button>
+        <Button variant="secondary" onClick={() => (window.location.hash = existing ? `mediator/${existing.mediatorId}` : "mediators")}>
+          {tx("বাতিল", "Cancel")}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ availability ------------------------------ */
+
+function AvailabilityForm({ m }: { m: MediatorRecord }) {
+  const { lang, tx } = useTx();
+  const { run, node } = useRun();
+  const [a, setA] = useState({ ...m.availability, unavailableUntil: m.availability.unavailableUntil ?? "", note: m.availability.note ?? "" });
+  return (
+    <section className={ui.panel} style={{ maxWidth: 760 }}>
+      {node}
+      <div className={styles.field}>
+        <span className={styles.label}>{tx("অবস্থা", "Availability")}</span>
+        <div className={styles.chips} role="group">
+          {(["AVAILABLE", "LIMITED", "UNAVAILABLE"] as const).map((s) => (
+            <button key={s} type="button" className={styles.chip} aria-pressed={a.status === s} onClick={() => setA({ ...a, status: s })}>
+              {s === "AVAILABLE" ? tx("উপলব্ধ", "Available") : s === "LIMITED" ? tx("সীমিত", "Limited") : tx("অনুপলব্ধ", "Unavailable")}
+            </button>
+          ))}
+        </div>
+      </div>
+      {a.status === "UNAVAILABLE" ? (
+        <label className={styles.field} style={{ marginTop: "var(--s-3)", maxWidth: 260 }}>
+          <span className={styles.label}>{tx("কবে পর্যন্ত (ঐচ্ছিক)", "Unavailable until (optional)")}</span>
+          <input type="date" className={styles.input} value={a.unavailableUntil} onChange={(e) => setA({ ...a, unavailableUntil: e.target.value })} />
+        </label>
+      ) : null}
+      <div className={styles.field} style={{ marginTop: "var(--s-3)" }}>
+        <span className={styles.label}>{tx("কাজের দিন", "Working days")}</span>
+        <Chips<Weekday> options={WEEKDAYS} value={a.days} onChange={(days) => setA({ ...a, days })} lang={lang} />
+      </div>
+      <div className={styles.field} style={{ marginTop: "var(--s-3)" }}>
+        <span className={styles.label}>{tx("মধ্যস্থতার মাধ্যম", "Mediation channels")}</span>
+        <Chips<MediationChannel> options={MEDIATION_CHANNELS} value={a.channels} onChange={(channels) => setA({ ...a, channels })} lang={lang} />
+      </div>
+      <div className={styles.grid} style={{ marginTop: "var(--s-3)" }}>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("সর্বোচ্চ চলমান মধ্যস্থতা", "Maximum active matters")}</span>
+          <input type="number" min={1} max={50} className={styles.input} value={a.maxActiveMatters} onChange={(e) => setA({ ...a, maxActiveMatters: Math.floor(Number(e.target.value) || 0) })} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>{tx("নোট", "Note")}</span>
+          <input className={styles.input} value={a.note} onChange={(e) => setA({ ...a, note: e.target.value })} placeholder={tx("যেমন: রবি–বৃহস্পতি, সকাল ১০টা–৪টা", "e.g. Sun–Thu, 10:00–16:00")} />
+        </label>
+      </div>
+      <p className={styles.hint}>
+        {tx("শেষ হালনাগাদ", "Last updated")} {formatDateTime(m.availability.updatedAt, lang)}
+      </p>
+      <div className={styles.actions}>
+        <Button onClick={() => run(() => MediatorRegistry.setAvailability(m.mediatorId, { ...a, unavailableUntil: a.unavailableUntil || null, note: a.note || null }), tx("সময়সূচি সংরক্ষিত হয়েছে।", "Availability saved."))}>{tx("সংরক্ষণ", "Save availability")}</Button>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ conflicts ------------------------------ */
+
+function Conflicts({ m }: { m: MediatorRecord }) {
+  const { lang, tx } = useTx();
+  const { run, node } = useRun();
+  const [c, setC] = useState({ kind: "RELATIVE_OR_CLOSE_ASSOCIATE" as MediatorConflict["kind"], source: "MEDIATOR_DECLARED" as MediatorConflict["source"], partyName: "", applicationId: "", area: "", detail: "" });
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [why, setWhy] = useState("");
+  const list = [...m.conflicts].sort((x, y) => (x.status === y.status ? y.declaredAt.localeCompare(x.declaredAt) : x.status === "ACTIVE" ? -1 : 1));
+  return (
+    <div className={ui.layout}>
+      <section className={ui.main}>
+        {node}
+        <p className={styles.hint} style={{ marginTop: 0 }}>
+          {tx("সক্রিয় ঘোষণা ভবিষ্যৎ নিয়োগে প্রতিটি মামলার পক্ষ ও এলাকার সাথে মিলিয়ে দেখা হবে; মিললে সেই মামলায় এই মধ্যস্থতাকারী সুপারিশ হবেন না।", "Active declarations will be matched against each case's parties and locality at assignment; a match removes this mediator from that case's recommendations.")}
+        </p>
+        {list.length === 0 ? (
+          <p className={styles.hint}>{tx("কোনো ঘোষণা নেই।", "No declarations recorded.")}</p>
+        ) : (
+          <div style={{ display: "grid", gap: "var(--s-3)" }}>
+            {list.map((x) => (
+              <article key={x.conflictId} className={ui.panel} style={{ opacity: x.status === "WITHDRAWN" ? 0.65 : 1 }}>
+                <div className={ui.panelTitle}>
+                  <span>
+                    {lbl(CONFLICT_KINDS, x.kind, lang)} {x.status === "ACTIVE" ? <Tag tone="warn">{tx("সক্রিয়", "Active")}</Tag> : <Tag>{tx("প্রত্যাহৃত", "Withdrawn")}</Tag>}
+                  </span>
+                  <span className={styles.hint}>{formatDateTime(x.declaredAt, lang)}</span>
+                </div>
+                <div className={ui.rows}>
+                  {x.partyName ? <Row label={tx("পক্ষ", "Party")}>{x.partyName}</Row> : null}
+                  {x.applicationId ? <Row label={tx("মামলা", "Case")}>{x.applicationId}</Row> : null}
+                  {x.area ? <Row label={tx("এলাকা", "Locality")}>{x.area}</Row> : null}
+                  <Row label={tx("বিবরণ", "Detail")}>{x.detail}</Row>
+                  <Row label={tx("উৎস", "Source")}>
+                    {x.source === "MEDIATOR_DECLARED" ? tx("মধ্যস্থতাকারীর ঘোষণা", "Declared by the mediator") : tx("কর্মকর্তা নথিভুক্ত করেছেন", "Recorded by an officer")} · {x.recordedByName}
+                  </Row>
+                  {x.status === "WITHDRAWN" ? <Row label={tx("প্রত্যাহারের কারণ", "Withdrawn because")}>{x.withdrawnReason}</Row> : null}
+                </div>
+                {x.status === "ACTIVE" ? (
+                  withdrawing === x.conflictId ? (
+                    <div style={{ marginTop: 8 }}>
+                      <input className={styles.input} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={tx("কারণ (কমপক্ষে ১০ অক্ষর)", "Reason (at least 10 characters)")} />
+                      <div className={styles.actions} style={{ marginTop: 6 }}>
+                        <Button
+                          variant="secondary"
+                          disabled={why.trim().length < 10}
+                          onClick={() => {
+                            if (run(() => MediatorRegistry.withdrawConflict(m.mediatorId, x.conflictId, why), tx("ঘোষণা প্রত্যাহার নথিভুক্ত হয়েছে।", "Withdrawal recorded."))) {
+                              setWithdrawing(null);
+                              setWhy("");
+                            }
+                          }}
+                        >
+                          {tx("প্রত্যাহার নিশ্চিত করুন", "Confirm withdrawal")}
+                        </Button>
+                        <Button variant="secondary" onClick={() => setWithdrawing(null)}>
+                          {tx("বাতিল", "Cancel")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" className={ui.textBtn} style={{ marginTop: 6 }} onClick={() => setWithdrawing(x.conflictId)}>
+                      {tx("প্রত্যাহার করুন", "Withdraw declaration")}
+                    </button>
+                  )
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+      <aside className={ui.aside}>
+        <div className={ui.panel}>
+          <div className={ui.panelTitle}>
+            <span>{tx("নতুন ঘোষণা", "New conflict declaration")}</span>
+          </div>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("ধরন", "Kind")}</span>
+            <select className={styles.select} value={c.kind} onChange={(e) => setC({ ...c, kind: e.target.value as MediatorConflict["kind"] })}>
+              {CONFLICT_KINDS.map((k) => (
+                <option key={k.code} value={k.code}>
+                  {k.label[lang]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("উৎস", "Source")}</span>
+            <select className={styles.select} value={c.source} onChange={(e) => setC({ ...c, source: e.target.value as MediatorConflict["source"] })}>
+              <option value="MEDIATOR_DECLARED">{tx("মধ্যস্থতাকারীর ঘোষণা", "Declared by the mediator")}</option>
+              <option value="OFFICER_RECORDED">{tx("কর্মকর্তা নথিভুক্ত", "Recorded by an officer")}</option>
+            </select>
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("পক্ষের নাম (ব্যক্তি / প্রতিষ্ঠান)", "Party name (person / organisation)")}</span>
+            <input className={styles.input} value={c.partyName} onChange={(e) => setC({ ...c, partyName: e.target.value })} />
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("নির্দিষ্ট আবেদন আইডি (ঐচ্ছিক)", "Specific application ID (optional)")}</span>
+            <input className={styles.input} value={c.applicationId} onChange={(e) => setC({ ...c, applicationId: e.target.value })} placeholder="APP-2026-…" />
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("এলাকা (ঐচ্ছিক)", "Locality (optional)")}</span>
+            <input className={styles.input} value={c.area} onChange={(e) => setC({ ...c, area: e.target.value })} />
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("বিবরণ (কমপক্ষে ১০ অক্ষর)", "Detail (at least 10 characters)")}</span>
+            <textarea className={styles.textarea} style={{ minHeight: 60 }} value={c.detail} onChange={(e) => setC({ ...c, detail: e.target.value })} />
+          </label>
+          <div className={styles.actions} style={{ marginTop: 8 }}>
+            <Button
+              variant="secondary"
+              disabled={c.detail.trim().length < 10}
+              onClick={() => {
+                if (run(() => MediatorRegistry.declareConflict(m.mediatorId, c), tx("ঘোষণা নথিভুক্ত হয়েছে।", "Declaration recorded."))) setC({ ...c, partyName: "", applicationId: "", area: "", detail: "" });
+              }}
+            >
+              {tx("নথিভুক্ত করুন", "Record declaration")}
+            </Button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+/* ------------------------------ admin record & audit ------------------------------ */
+
+function RecordPanel({ m }: { m: MediatorRecord }) {
+  const { lang, tx } = useTx();
+  const { run, node } = useRun();
+  const [kind, setKind] = useState<"NOTE" | "TRAINING" | "COMPLAINT" | "COMMENDATION">("NOTE");
+  const [text, setText] = useState("");
+  const KIND_LABEL: Record<string, string> = {
+    NOTE: tx("নোট", "Note"),
+    TRAINING: tx("প্রশিক্ষণ", "Training"),
+    COMPLAINT: tx("অভিযোগ", "Complaint"),
+    COMMENDATION: tx("প্রশংসা", "Commendation"),
+    STATUS_CHANGE: tx("অবস্থা পরিবর্তন", "Status change"),
+    VERIFICATION: tx("যাচাই", "Verification"),
+    AVAILABILITY: tx("সময়সূচি", "Availability"),
+    PROFILE: tx("প্রোফাইল", "Profile"),
+  };
+  return (
+    <div className={ui.layout}>
+      <section className={ui.main}>
+        {node}
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("প্রশাসনিক রেকর্ড", "Administrative record")}</div>
+          {m.adminRecord.length === 0 ? (
+            <p className={styles.hint}>{tx("কোনো এন্ট্রি নেই।", "No entries yet.")}</p>
+          ) : (
+            <div className={ui.rows}>
+              {[...m.adminRecord].reverse().map((e) => (
+                <Row key={e.entryId} label={formatDateTime(e.at, lang)}>
+                  <Tag tone={e.kind === "COMPLAINT" ? "err" : e.kind === "COMMENDATION" ? "ok" : "neutral"}>{KIND_LABEL[e.kind] ?? e.kind}</Tag> {e.text}
+                  <span className={styles.hint} style={{ display: "block" }}>
+                    {e.byName}
+                  </span>
+                </Row>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={ui.section}>
+          <div className={ui.sectionHead}>{tx("অডিট ট্রেইল", "Audit trail")}</div>
+          <div className={styles.tableWrap} style={{ maxHeight: 360 }}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{tx("সময়", "Time")}</th>
+                  <th>{tx("কাজ", "Action")}</th>
+                  <th>{tx("কে", "Actor")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...m.audit].reverse().map((e) => (
+                  <tr key={e.seq}>
+                    <td>{e.seq}</td>
+                    <td>{formatDateTime(e.at, lang)}</td>
+                    <td>
+                      <code>{e.action}</code>
+                    </td>
+                    <td>
+                      {e.role} · {e.actor}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <aside className={ui.aside}>
+        <div className={ui.panel}>
+          <div className={ui.panelTitle}>
+            <span>{tx("রেকর্ডে যোগ করুন", "Add to the record")}</span>
+          </div>
+          <label className={styles.field}>
+            <span className={styles.label}>{tx("ধরন", "Kind")}</span>
+            <select className={styles.select} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+              {(["NOTE", "TRAINING", "COMPLAINT", "COMMENDATION"] as const).map((k) => (
+                <option key={k} value={k}>
+                  {KIND_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field} style={{ marginTop: 8 }}>
+            <span className={styles.label}>{tx("লিখুন", "Entry")}</span>
+            <textarea className={styles.textarea} style={{ minHeight: 70 }} value={text} onChange={(e) => setText(e.target.value)} />
+          </label>
+          <div className={styles.actions} style={{ marginTop: 8 }}>
+            <Button
+              variant="secondary"
+              disabled={text.trim().length < 5}
+              onClick={() => {
+                if (run(() => MediatorRegistry.addRecord(m.mediatorId, kind, text), tx("রেকর্ডে যোগ হয়েছে।", "Added to the record."))) setText("");
+              }}
+            >
+              {tx("যোগ করুন", "Add")}
+            </Button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}

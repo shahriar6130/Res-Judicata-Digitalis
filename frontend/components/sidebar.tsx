@@ -7,8 +7,10 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useDloProfile } from "@/lib/dlo-profile";
 import { useLawyerProfile } from "@/lib/lawyer-profile";
+import { useMediatorProfile } from "@/lib/mediator-profile";
 import { useUdcProfile } from "@/lib/udc-profile";
-import { CitizenAuth, DlaoAuth, LawyerAuth, readDb, UdcAuth, useDistrictLawyers, useLawyerNotifications, useLawyerWork, useOfficeQueue } from "@/lib/dlas";
+import { useAgentQueue } from "@/lib/dlas/ivr-triage";
+import { CitizenAuth, DlaoAuth, LawyerAuth, MediatorAuth, officerAuthorityRole, readDb, UdcAuth, useCurrentOfficer, useDistrictLawyers, useLawyerNotifications, useLawyerWork, useMyMediations, useOfficeQueue, useUrgentCases, useCaseTransfers, useOfficeNotices } from "@/lib/dlas";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { Wordmark } from "@/components/wordmark";
 import { StatusPill } from "@/components/status-pill";
@@ -361,6 +363,7 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/helpline#new-call", label: "helplineNavNewCall", key: "new-call", Icon: Phone },
     { href: "/dashboard/helpline#new-intake", label: "helplineNavContinueIntake", key: "new-intake", Icon: Play },
     { href: "/dashboard/helpline#search", label: "helplineNavSearchRecord", key: "search", Icon: FileText },
+    { href: "/dashboard/helpline#ivr-escalations", label: "helplineNavIvrEscalations", key: "ivr-escalations", Icon: Phone },
     { href: "/dashboard/helpline#handoffs", label: "helplineNavHandoffs", key: "handoffs", Icon: AlertCircle },
     { href: "/dashboard/helpline#handoffs?filter=dlao", label: "helplineNavDlaoTasks", key: "dlao-tasks", Icon: Briefcase },
     { href: "/dashboard/helpline#history", label: "helplineNavHistory", key: "history", Icon: Clock },
@@ -372,8 +375,14 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/dlo#new", label: "dlaoNavNew", key: "new", Icon: Briefcase },
     { href: "/dashboard/dlo#review", label: "dlaoNavReview", key: "review", Icon: Clock },
     { href: "/dashboard/dlo#decided", label: "dlaoNavDecided", key: "decided", Icon: Check },
-    { href: "/dashboard/dlo#tasks", label: "dlaoNavTasks", key: "tasks", Icon: AlertCircle },
+    { href: "/dashboard/dlo#cases", label: "dlaoNavDistrictCases", key: "cases", Icon: Briefcase },
+    { href: "/dashboard/dlo#urgent", label: "dlaoNavUrgent", key: "urgent", Icon: AlertCircle },
+    { href: "/dashboard/dlo#transfers", label: "dlaoNavTransfers", key: "transfers", Icon: FileText },
     { href: "/dashboard/dlo#lawyers", label: "dlaoNavLawyers", key: "lawyers", Icon: Scale },
+    { href: "/dashboard/dlo#mediators", label: "dlaoNavMediators", key: "mediators", Icon: HelpingHand },
+    { href: "/dashboard/dlo#mediation-monitor", label: "dlaoNavMediationMonitor", key: "mediation-monitor", Icon: Scale },
+    { href: "/dashboard/dlo/settlements", label: "dlaoNavSettlements", key: "settlements", Icon: FileText },
+    { href: "/dashboard/dlo/mediation-outcomes", label: "dlaoNavMediationOutcomes", key: "mediation-outcomes", Icon: AlertCircle },
   ],
   lawyer: [
     { href: "/dashboard/lawyer#overview", label: "navOverview", key: "overview", Icon: Home },
@@ -384,11 +393,13 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/lawyer#reports", label: "navHearingReports", key: "reports", Icon: FileText },
     { href: "/dashboard/lawyer#calendar", label: "navCalendar", key: "calendar", Icon: Calendar },
   ],
+  mediator: [{ href: "/dashboard/mediator#cases", label: "navMyMediations", key: "cases", Icon: Briefcase }],
   admin: [
     { href: "/dashboard/admin", label: "navOverview", key: "overview", Icon: Home },
     { href: "/dashboard/admin#users", label: "navUsers", key: "users", Icon: Users },
     { href: "/dashboard/admin#cases", label: "navApplications", key: "cases", Icon: Briefcase },
     { href: "/dashboard/admin#rules", label: "navRules", key: "rules", Icon: Shield },
+    { href: "/dashboard/admin#mediation", label: "navMediationOversight", key: "mediation", Icon: Scale },
     { href: "/dashboard/admin#audit", label: "navAudit", key: "audit", Icon: Clock },
     { href: "/dashboard/admin#backup", label: "navBackup", key: "backup", Icon: FileText },
   ],
@@ -407,19 +418,29 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { lang, t } = useI18n();
-  const items = getLegacyItems(role);
+  const currentOfficer = useCurrentOfficer();
+  const items = getLegacyItems(role).filter((item) => (item.key !== "mediation-monitor") || (!!currentOfficer && officerAuthorityRole(currentOfficer) === "CHIEF_LEGAL_AID_OFFICER"));
   // Always subscribe so the hook order is stable. Only surface the
   // counts when the role actually maps onto the DLO queue buckets.
   const queue = useOfficeQueue();
   const work = useLawyerWork();
   const districtLawyers = useDistrictLawyers();
   const lawyerUnread = useLawyerNotifications().filter((n) => n.unread).length;
+  const mediations = useMyMediations();
+  const urgentCases = useUrgentCases();
+  const agentQueue = useAgentQueue();
+  const transfers = useCaseTransfers();
+  const notices = useOfficeNotices();
   const badges: Record<string, number> | undefined =
     role === "dlo"
-      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length, lawyers: districtLawyers.list.filter((m) => m.overdueReports || m.openSummons || m.todayStatus === "ABSENT").length }
+      ? { new: queue.NEW.length, review: queue.IN_REVIEW.length, decided: queue.DECIDED.length, tasks: queue.tasks.length, lawyers: districtLawyers.list.filter((m) => m.overdueReports || m.openSummons || m.todayStatus === "ABSENT").length, urgent: urgentCases.rows.filter((r) => !r.closed).length, transfers: transfers.incoming.length + notices.unread.filter((n) => n.kind !== "TRANSFER_RECEIVED").length }
       : role === "lawyer"
         ? { intake: work.offers.length, cases: work.accepted.length, notifications: lawyerUnread, reports: work.due.length + work.overdue.length, calendar: work.upcoming.length, attendance: work.today ? 0 : 1 }
-        : undefined;
+        : role === "mediator"
+          ? { cases: mediations.active.length }
+          : role === "helpline"
+            ? { "ivr-escalations": agentQueue.open.filter((x) => x.handoff?.status === "WAITING").length }
+            : undefined;
 
   // The legacy sidebar mirrors the citizen pattern: the active tab is
   // determined by `window.location.hash`, not by `usePathname()` (which
@@ -438,10 +459,11 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   // DLO and UDC need an inline profile panel at the bottom. Other roles
   // fall back to the wordmark-only chrome.
-  const showProfile = role === "dlo" || role === "udc" || role === "lawyer";
+  const showProfile = role === "dlo" || role === "udc" || role === "lawyer" || role === "mediator";
   const officerProfile = useDloProfile();
   const lawyerProfile = useLawyerProfile();
-  const dloProfile = role === "lawyer" ? lawyerProfile : officerProfile;
+  const mediatorProfile = useMediatorProfile();
+  const dloProfile = role === "lawyer" ? lawyerProfile : role === "mediator" ? mediatorProfile : officerProfile;
   const udcProfile = useUdcProfile();
 
   const isUdc = role === "udc";
@@ -471,7 +493,7 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
 
   return (
     <aside
-      className={`${styles.sidebar} ${styles.legacy} ${role === "dlo" || role === "lawyer" ? styles.dloSidebar : ""} ${open ? styles.open : ""}`}
+      className={`${styles.sidebar} ${styles.legacy} ${role === "dlo" || role === "lawyer" || role === "mediator" ? styles.dloSidebar : ""} ${role === "admin" ? styles.adminSidebar : ""} ${open ? styles.open : ""}`}
       lang={lang}
       aria-label={lang === "bn" ? "প্রধান নেভিগেশন" : "Main navigation"}
     >
@@ -483,12 +505,12 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
         />
       </div>
       <nav className={styles.nav} aria-label={lang === "bn" ? "ড্যাশবোর্ড" : "Dashboard"}>
-        {role === "dlo" || role === "lawyer" ? <div className={styles.dloNavHeading}>
+        {role === "dlo" || role === "lawyer" || role === "mediator" || role === "admin" ? <div className={styles.dloNavHeading}>
           <span>{lang === "bn" ? "কর্মক্ষেত্র" : "WORKSPACE"}</span>
-          <strong>{role === "dlo" ? (lang === "bn" ? "অফিসের তালিকা" : "Office queue") : (lang === "bn" ? "আইনজীবীর কাজ" : "Lawyer work")}</strong>
+          <strong>{role === "dlo" ? (lang === "bn" ? "অফিসের তালিকা" : "Office queue") : role === "mediator" ? (lang === "bn" ? "মধ্যস্থতা" : "Mediation") : role === "admin" ? (lang === "bn" ? "সিস্টেম প্রশাসন" : "System administration") : (lang === "bn" ? "আইনজীবীর কাজ" : "Lawyer work")}</strong>
         </div> : null}
         <ul className={styles.legacyList}>
-          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : currentHash, onNavigate, t, badges?.[item.key], role === "lawyer" && (item.key === "notifications" || item.key === "intake" || item.key === "attendance") && !!badges?.[item.key]))}
+          {items.map((item) => renderLegacyItem(item, pathname, (role === "dlo" || role === "lawyer") && !currentHash ? "overview" : role === "mediator" && (!currentHash || currentHash.startsWith("case/")) ? "cases" : currentHash, onNavigate, t, badges?.[item.key], role === "lawyer" && (item.key === "notifications" || item.key === "intake" || item.key === "attendance") && !!badges?.[item.key]))}
         </ul>
       </nav>
       {showProfile ? (
@@ -549,7 +571,7 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
             </button>
             {kebabOpen ? (
               <div className={styles.legacyKebabMenu} role="menu">
-                {role === "dlo" || role === "udc" || role === "lawyer" ? (
+                {role === "dlo" || role === "udc" || role === "lawyer" || role === "mediator" ? (
                   <button
                     type="button"
                     className={styles.legacyKebabItem}
@@ -562,6 +584,9 @@ function LegacySidebar({ role, open, onNavigate }: SidebarProps) {
                       } else if (role === "lawyer") {
                         LawyerAuth.logout();
                         router.replace("/lawyer");
+                      } else if (role === "mediator") {
+                        MediatorAuth.logout();
+                        router.replace("/mediator");
                       } else {
                         UdcAuth.logout();
                         router.replace("/portal/udc");
@@ -605,8 +630,8 @@ function renderLegacyItem(
   const [itemPath, itemHash = ""] = item.href.split("#");
   const currentPath = pathname ?? "";
   const isActive =
-    currentPath === itemPath &&
-    (itemHash === "" || itemHash === currentHash);
+    (currentPath === itemPath || (itemHash === "" && currentPath.startsWith(`${itemPath}/`))) &&
+    (itemHash ? itemHash === currentHash : currentHash === "");
 
   const Icon = item.Icon;
   return (
@@ -630,6 +655,9 @@ function renderLegacyItem(
             }
           } else if (currentPath !== itemPath) {
             window.location.href = item.href;
+          } else if (window.location.hash) {
+            window.history.replaceState(null, "", itemPath);
+            window.dispatchEvent(new HashChangeEvent("hashchange"));
           }
         }}
       >
@@ -1091,6 +1119,7 @@ function getRoleLabel(role: string): string | undefined {
   if (role === "helpline") return "Helpline";
   if (role === "dlo") return "DLO";
   if (role === "lawyer") return "Lawyer";
+  if (role === "mediator") return "Mediator";
   if (role === "admin") return "Admin";
   if (role === "udc") return "UDC";
   return undefined;
@@ -1100,6 +1129,7 @@ function getRoleSubLabel(role: string): string | undefined {
   if (role === "helpline") return "16699";
   if (role === "dlo") return "District";
   if (role === "lawyer") return "Panel";
+  if (role === "mediator") return "ADR";
   if (role === "admin") return "System";
   if (role === "udc") return "Entrepreneur";
   return undefined;

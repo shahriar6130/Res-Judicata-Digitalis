@@ -18,9 +18,10 @@ export function CitizenUploadsCard() {
 
   const pending: Pending[] = [];
   for (const app of apps) {
-    if (app.status === "REJECTED" || app.status === "CLOSED" || app.status === "WITHDRAWN") continue;
+    if (app.status === "REJECTED" || app.status === "RESOLVED" || app.status === "CLOSED" || app.status === "WITHDRAWN") continue;
     for (const doc of app.data.documents) {
-      if (doc.status !== "ATTACHED") pending.push({ app, doc });
+      // Only documents the Legal Aid Officer requested (not the matter's default checklist).
+      if (doc.status !== "ATTACHED" && doc.requested) pending.push({ app, doc });
     }
   }
   pending.sort((a, b) =>

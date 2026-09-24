@@ -1,0 +1,159 @@
+/*
+ * Blue White theme.
+ *
+ * Ocean blue, ice white and midnight navy with gentle interaction motion.
+ * Loaded after the base tokens.
+ */
+
+:root {
+  --black: #142d50;
+  --white: #ffffff;
+  --off-white: #f2f7fd;
+  --ink: #142d50;
+  --gray: #536c88;
+  --line: #d4e3f2;
+  --overlay: rgba(20, 45, 80, 0.58);
+  --red: #c73545;
+  --yellow: #b8871b;
+  --green: #28754a;
+  --primary-action: #1764d9;
+  --primary-action-hover: #104eae;
+  --selection-bg: #1764d9;
+  --selection-fg: #ffffff;
+
+  --sidebar-bg: #142d50;
+  --sidebar-fg: #ffffff;
+  --sidebar-muted: #d4e3f2;
+  --sidebar-border: #5099ee;
+  --sidebar-active-bg: #1764d9;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-accent: #1764d9;
+  --sidebar-hover-bg: #204675;
+
+  --status-active: #28754a;
+  --status-review: #b8871b;
+  --status-needs-action: #c73545;
+  --status-resolved: #748ca7;
+  --status-pending: #9a5f12;
+
+  --surface-card: #ffffff;
+  --surface-card-border: #d4e3f2;
+  --surface-card-lodge: #1764d9;
+  --surface-card-lodge-fg: #ffffff;
+  --surface-card-lodge-accent: #142d50;
+
+  --on-black: #ffffff;
+  --on-black-muted: #d9eaff;
+  --line-on-black: #5099ee;
+  --lawmark-opacity: 0.7;
+  --grid-line: rgba(255, 255, 255, 0.12);
+
+  --accent-citizen: #1764d9;
+  --accent-dlo: #1764d9;
+  --accent-lawyer: #1764d9;
+  --accent-udc: #1764d9;
+  --accent-admin: #1764d9;
+
+  --dlo-muted: #536c88;
+  --dlo-line: #d4e3f2;
+  --dlo-hero-muted: #d9eaff;
+  --dlo-positive-ink: #28754a;
+  --dlo-danger-ink: #c73545;
+  --dlo-warning-ink: #82520f;
+  --dlo-disabled-ink: #95abc1;
+  --dlo-chart-purple: #5099ee;
+  --dlo-chart-blue: #104eae;
+  --dlo-chart-rose: #1764d9;
+  --dlo-chart-olive: #142d50;
+  --dlo-chart-muted: #9bbbdc;
+
+  --udc-warning-ink: #82520f;
+  --udc-danger-ink: #c73545;
+
+  --admin-sidebar-bg: #142d50;
+  --admin-sidebar-fg: #ffffff;
+  --admin-sidebar-muted: #d4e3f2;
+  --admin-sidebar-border: #5099ee;
+  --admin-sidebar-hover: #204675;
+  --admin-sidebar-active-bg: #1764d9;
+  --admin-sidebar-active-fg: #ffffff;
+  --admin-page-bg: #f2f7fd;
+  --admin-panel-bg: #ffffff;
+  --admin-soft-bg: #e5f0fe;
+  --admin-hero-bg: #1764d9;
+  --admin-hero-muted: #ffffff;
+  --admin-ink: #142d50;
+  --admin-muted: #536c88;
+  --admin-line: #d4e3f2;
+  --admin-accent: #1764d9;
+  --admin-accent-hover: #104eae;
+  --admin-danger: #c73545;
+
+  --gavel-head: #9bbbdc;
+  --gavel-top: #ffffff;
+  --gavel-band: #1764d9;
+  --gavel-shadow: #142d50;
+  --gavel-handle: #6d94bd;
+
+  --bottom-nav-bg: #ffffff;
+  --bottom-nav-border: #d4e3f2;
+  --focus-color: #1764d9;
+  --control-radius: 8px;
+  --motion-base: 220ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --theme-hero-start: #1764d9;
+  --theme-hero-end: #104eae;
+  --theme-hero-fill: linear-gradient(120deg, var(--theme-hero-start), var(--theme-hero-end));
+  --theme-shadow: 0 8px 28px rgba(20, 65, 120, .09);
+}
+
+/* A strong blue rule carries the theme across every route. */
+body {
+  border-top: var(--s-1) solid var(--primary-action);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary-action);
+}
+
+/* Semantic selectors keep the treatment independent of CSS Module names. */
+:root body main > header {
+  border-bottom: 2px solid var(--line);
+}
+:root body main > section {
+  border-radius: var(--r-4);
+}
+:root body button,
+:root body a,
+:root body input,
+:root body select,
+:root body textarea {
+  transition: background-color var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease),
+    color var(--motion-base) var(--ease),
+    box-shadow var(--motion-base) var(--ease);
+}
+:root body input:focus-visible,
+:root body select:focus-visible,
+:root body textarea:focus-visible {
+  border-color: var(--primary-action);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root body main {
+    animation: blue-white-reveal 420ms var(--ease) both;
+  }
+  :root body [role="dialog"],
+  :root body [role="alertdialog"] {
+    animation: blue-white-reveal 220ms var(--ease) both;
+  }
+  @media (hover: hover) {
+    :root body button:enabled:hover {
+      box-shadow: var(--theme-shadow);
+    }
+  }
+}
+@keyframes blue-white-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

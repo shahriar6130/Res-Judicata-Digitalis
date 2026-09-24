@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/button";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -26,7 +26,6 @@ import {
   nidFormatValid,
   officeCode,
   pathwayLabel,
-  recommendPathway,
   safeTimeLabel,
   subStage,
   useDlasDb,
@@ -47,23 +46,43 @@ import {
   type DocumentRef,
   type FactStatus,
   type IdentityOutcome,
-  type PathwayType,
 } from "@/lib/dlas";
 import styles from "@/components/dlas/dlas.module.css";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
 import { OfficeAnalytics } from "./dlao-analytics";
 import { LawyerDetail, LawyersMonitor } from "./dlao-lawyers";
+import { MediatorDetail, MediatorsRegistry } from "./dlao-mediators";
+import { LegalPathway, PathwayDecisionRecord } from "./legal-pathway";
+import { MediatorAssignPanel } from "./mediator-assign";
+import { MediationMonitor, MediationRecordPanel } from "./mediation-record";
+import { OfficeControlCenter } from "./office-control";
+import { CaseActivityTrail } from "./case-activity";
+import { CaseTransferPanel, CaseTransfers } from "./case-transfer";
+import { OfficeNoticeBar, TransferBanner, TransferTag } from "./office-notices";
+import { DistrictCases, UrgentCases } from "./district-cases";
+import { MediationLifecycleView } from "@/components/demo/lifecycle-timeline";
 import ui from "./dlao.module.css";
 
 type QueueView = "overview" | "new" | "review" | "decided" | "tasks";
-type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string };
+type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string } | { kind: "mediators" } | { kind: "mediationMonitor" } | { kind: "districtCases" } | { kind: "urgent" } | { kind: "transfers" } | { kind: "mediator"; id: string; tab: string };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
   if (raw.startsWith("app/")) return { kind: "app", id: decodeURIComponent(raw.slice(4)) };
   if (raw === "lawyers") return { kind: "lawyers" };
+  if (raw === "mediators") return { kind: "mediators" };
+  if (raw === "mediation-monitor") return { kind: "mediationMonitor" };
+  if (raw === "cases") return { kind: "districtCases" };
+  if (raw === "urgent") return { kind: "urgent" };
+  if (raw === "transfers") return { kind: "transfers" };
+  if (raw === "mediators/new") return { kind: "mediators" }; // adding mediators is self sign-up only
+  if (raw.startsWith("mediator/")) {
+    const [id, tab] = raw.slice(9).split("/");
+    return { kind: "mediator", id: decodeURIComponent(id), tab: tab ?? "overview" };
+  }
   if (raw.startsWith("lawyer/")) return { kind: "lawyer", id: decodeURIComponent(raw.slice(7)) };
-  if (raw === "new" || raw === "review" || raw === "decided" || raw === "tasks") return { kind: "list", bucket: raw };
+  if (raw === "tasks") return { kind: "list", bucket: "overview" }; // the open-tasks view was removed
+  if (raw === "new" || raw === "review" || raw === "decided") return { kind: "list", bucket: raw };
   return { kind: "list", bucket: "overview" };
 }
 
@@ -236,7 +255,8 @@ export function DlaoWorkspace() {
       <p className={styles.eyebrow}>
         {tx("ধাপ ২ · যাচাই ও যোগ্যতা", "Step 2 · Verification & eligibility")} · {officeCode(o)}
       </p>
-      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : <Queue bucket={view.bucket} />}
+      <OfficeNoticeBar />
+      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : view.kind === "mediators" ? <MediatorsRegistry /> : view.kind === "mediationMonitor" ? <MediationMonitor /> : view.kind === "districtCases" ? <DistrictCases /> : view.kind === "urgent" ? <UrgentCases /> : view.kind === "transfers" ? <CaseTransfers /> : view.kind === "mediator" ? <MediatorDetail key={view.id} id={view.id} tab={view.tab} /> : <Queue bucket={view.bucket} />}
     </div>
   );
 }
@@ -246,7 +266,6 @@ export function DlaoWorkspace() {
 function Queue({ bucket }: { bucket: QueueView }) {
   const { lang } = useI18n();
   const q = useOfficeQueue();
-  const db = useDlasDb();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const rows = bucket === "overview" || bucket === "new" ? q.NEW : bucket === "review" ? q.IN_REVIEW : bucket === "decided" ? q.DECIDED : [];
   const title = {
@@ -280,7 +299,6 @@ function Queue({ bucket }: { bucket: QueueView }) {
             ["new", q.NEW.length, tx("নতুন", "New")],
             ["review", q.IN_REVIEW.length, tx("যাচাই চলছে", "In verification")],
             ["decided", q.DECIDED.length, tx("সিদ্ধান্ত", "Decided")],
-            ["tasks", q.tasks.length, tx("খোলা কাজ", "Open tasks")],
           ] as const
         ).map(([k, n, l]) => (
           <a key={k} href={`#${k}`} className={ui.queueStat}>
@@ -290,50 +308,25 @@ function Queue({ bucket }: { bucket: QueueView }) {
         ))}
       </nav> : null}
 
+      {isOverview ? <OfficeControlCenter /> : null}
+
       {isOverview ? <OfficeAnalytics /> : null}
 
       <div className={ui.queueSectionHead}>
         <div>
           <p className={ui.sectionKicker}>{tx("লাইভ তালিকা", "LIVE WORKLIST")}</p>
           <h2 className={ui.queueSectionTitle}>
-            {isOverview ? tx("নতুন আবেদন", "New applications") : bucket === "tasks" ? tx("খোলা কাজ", "Open tasks") : tx("আবেদনসমূহ", "Applications")}
+            {isOverview ? tx("নতুন আবেদন", "New applications") : tx("আবেদনসমূহ", "Applications")}
           </h2>
         </div>
-        <span className={ui.sectionCount}>{bucket === "tasks" ? q.tasks.length : rows.length} {tx("টি", "items")}</span>
+        <span className={ui.sectionCount}>{rows.length} {tx("টি", "items")}</span>
       </div>
 
-      {bucket === "tasks" ? (
-        q.tasks.length === 0 ? (
-          <p className={ui.queueEmpty}>{tx("কোনো খোলা কাজ নেই।", "No open tasks.")}</p>
-        ) : (
-          <div className={ui.worklist}>
-            {q.tasks.map((t) => (
-              <article className={ui.workItem} key={t.taskId}>
-                <div className={ui.workItemHead}>
-                  <div className={ui.workItemIdentity}>
-                    <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
-                    <a className={ui.workItemId} href={`#app/${t.applicationId}`}>{t.applicationId}</a>
-                  </div>
-                  <a className={ui.queueOpen} href={`#app/${t.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
-                </div>
-                <div className={ui.workItemTags}>
-                  <Tag>{pretty(t.type)}</Tag>{t.priority !== "NORMAL" ? <Tag tone="err">{t.priority}</Tag> : null}
-                </div>
-                <dl className={ui.workFacts}>
-                  <WorkFact name={tx("কারণ", "Reason")}>{t.reason}</WorkFact>
-                  <WorkFact name={tx("দায়িত্ব", "Assigned")}>{pretty(t.assignedRole)}</WorkFact>
-                  <WorkFact name={tx("শেষ সময়", "Due")}>{new Date(t.dueAt).toLocaleString()}</WorkFact>
-                </dl>
-              </article>
-            ))}
-          </div>
-        )
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <p className={ui.queueEmpty}>{tx("এই তালিকায় কোনো আবেদন নেই।", "No applications in this list.")}</p>
       ) : (
         <div className={ui.worklist}>
           {rows.map((a) => {
-            const openTasks = db.tasks.filter((t) => t.applicationId === a.applicationId && t.status !== "DONE").length;
             return (
               <article className={ui.workItem} key={a.applicationId}>
                 <div className={ui.workItemHead}>
@@ -341,6 +334,7 @@ function Queue({ bucket }: { bucket: QueueView }) {
                     <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
                     <a className={ui.workItemId} href={`#app/${a.applicationId}`}>{a.applicationId}</a>
                     {a.caseId ? <span className={ui.workCaseId}>{a.caseId}</span> : null}
+                    <TransferTag a={a} />
                   </div>
                   <a className={ui.queueOpen} href={`#app/${a.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
                 </div>
@@ -356,9 +350,9 @@ function Queue({ bucket }: { bucket: QueueView }) {
                     <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
                   </WorkFact>
                   <WorkFact name={tx("যাচাই", "Verification")}><VerifiedBadge a={a} /></WorkFact>
+                  <WorkFact name={tx("স্টাফ প্রি-চেক", "Staff pre-check")}><StaffCheckTag a={a} /></WorkFact>
                   <WorkFact name={tx("ধাপ", "Stage")}>
                     {STAGE_LABEL[subStage(a)]?.[lang] ?? subStage(a)}
-                    {openTasks ? <span className={ui.workSub}>{openTasks} {tx("খোলা কাজ", "open task(s)")}</span> : null}
                   </WorkFact>
                 </dl>
               </article>
@@ -367,6 +361,30 @@ function Queue({ bucket }: { bucket: QueueView }) {
         </div>
       )}
     </>
+  );
+}
+
+/* ------------------------------ staff pre-check (advisory) ------------------------------ */
+
+function StaffCheckTag({ a }: { a: ApplicationRecord }) {
+  const { lang } = useI18n();
+  const c = a.staffCheck;
+  if (!c) return <Tag>{lang === "bn" ? "বাকি" : "Not yet"}</Tag>;
+  return c.outcome === "STORY_VERIFIED" ? <Tag tone="ok">✓ {lang === "bn" ? "বিবরণ ঠিক" : "Story OK"}</Tag> : <Tag tone="warn">! {lang === "bn" ? "স্পষ্টীকরণ দরকার" : "Needs clarification"}</Tag>;
+}
+
+function StaffCheckBanner({ a }: { a: ApplicationRecord }) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const c = a.staffCheck;
+  if (!c) return null;
+  const ok = c.outcome === "STORY_VERIFIED";
+  return (
+    <Banner tone={ok ? "ok" : "warn"} icon={ok ? "✓" : "!"}>
+      <strong>{tx("অফিস স্টাফ প্রি-চেক", "Office staff pre-check")}</strong> — {ok ? tx("বিবরণ পরিষ্কার ও সামঞ্জস্যপূর্ণ", "story is clear and consistent") : tx("বিবরণে স্পষ্টীকরণ দরকার", "story needs clarification")} · {c.byName} · {new Date(c.at).toLocaleString()}
+      {c.note ? <> · “{c.note}”</> : null}
+      <span className={ui.workSub}>{tx("শুধু পরামর্শমূলক — যাচাই ও সিদ্ধান্ত কর্মকর্তার।", "Advisory only — verification and decisions stay with the officer.")}</span>
+    </Banner>
   );
 }
 
@@ -435,9 +453,9 @@ function Review({ id }: { id: string }) {
     { key: "facts", bn: "নথি ও তথ্য", en: "Documents & facts" },
     { key: "eligibility", bn: "যোগ্যতা", en: "Eligibility" },
     { key: "decision", bn: "সিদ্ধান্ত", en: "Decision" },
-    { key: "pathway", bn: "কোথায় পাঠাবেন", en: "Where to send" },
+    { key: "pathway", bn: "আইনি পথ", en: "Legal pathway" },
   ];
-  const closed = a.status === "REJECTED" || a.status === "CLOSED" || a.status === "WITHDRAWN";
+  const closed = a.status === "REJECTED" || a.status === "RESOLVED" || a.status === "CLOSED" || a.status === "WITHDRAWN";
 
   return (
     <>
@@ -467,6 +485,8 @@ function Review({ id }: { id: string }) {
           </span>
         </div>
       </header>
+
+      <StaffCheckBanner a={a} />
 
       {a.review && !a.review.decision && !closed ? <CorrectionForm key={a.version} a={a} run={run} /> : null}
 
@@ -502,6 +522,7 @@ function Review({ id }: { id: string }) {
         </ol>
       </nav>
 
+      <TransferBanner a={a} />
       <div className={ui.layout}>
         <section className={ui.main}>
           {error ? (
@@ -522,6 +543,13 @@ function Review({ id }: { id: string }) {
         </section>
         <SidePanel a={a} />
       </div>
+      <CaseTransferPanel a={a} />
+      {a.mediation ? (
+        <section className={ui.panel} style={{ marginTop: "var(--s-6)" }}>
+          <MediationLifecycleView a={a} />
+        </section>
+      ) : null}
+      <CaseActivityTrail a={a} />
     </>
   );
 }
@@ -1327,21 +1355,19 @@ function DecisionStep({ a, run, onNext }: StepProps) {
   );
 }
 
-const PATHWAY_HELP: Record<PathwayType, { bn: string; en: string }> = {
-  GRAM_ADALAT: { bn: "ইউনিয়ন পর্যায়ের ছোট দেওয়ানি/ফৌজদারি বিরোধ — রেফারেল ও প্রাপ্তি স্বীকার ট্র্যাক করা হবে।", en: "Small local civil/criminal disputes at union level. Referral and acknowledgement are tracked." },
-  MEDIATION: { bn: "উভয় পক্ষের সম্মতিতে মধ্যস্থতা — শুধু নিরাপদ হলে। মধ্যস্থতাকারী সময় নির্ধারণ করবেন।", en: "ADR with both parties' consent — only when safe. A mediator schedules the session." },
-  LAWYER: { bn: "প্যানেল আইনজীবী — আদালতে প্রতিনিধিত্ব, সুরক্ষা আদেশ বা মামলা প্রয়োজন হলে।", en: "Panel lawyer — when court representation, protection orders or a claim are needed." },
-};
 
 function PathwayStep({ a, run }: StepProps) {
   const { lang } = useI18n();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const r = a.review!;
-  const rec = useMemo(() => recommendPathway(a), [a]);
-  const [choice, setChoice] = useState<PathwayType>(rec.type);
-  const [reason, setReason] = useState("");
-  const tasks = useDlasDb().tasks.filter((t) => t.applicationId === a.applicationId && (t.type === "GRAM_ADALAT_REFERRAL" || t.type === "MEDIATION_SCHEDULING" || t.type === "LAWYER_ASSIGNMENT"));
-  const unsafeMediation = choice === "MEDIATION" && (a.data.urgency.flags.length > 0 || a.data.matter.category === "VIOLENCE");
+  const tasks = useDlasDb().tasks.filter((t) => t.applicationId === a.applicationId && (t.type === "GRAM_ADALAT_REFERRAL" || t.type === "MEDIATION_SCHEDULING" || t.type === "LAWYER_ASSIGNMENT" || t.type === "EXTERNAL_REFERRAL" || t.type === "URGENT_SAFETY_REVIEW"));
+  // Right after the officer sends the case on, bring the next flow (mediator / lawyer assignment) into view.
+  const decided = !!r.pathway;
+  const wasDecided = useRef(decided);
+  useEffect(() => {
+    if (decided && !wasDecided.current) document.getElementById("pathway-next")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    wasDecided.current = decided;
+  }, [decided]);
 
   if (r.decision?.decision !== "ELIGIBLE" || !a.caseId) {
     return <p className={styles.hint}>{tx("শুধু গৃহীত কেস (কেস আইডি সহ) পাঠানো যায়।", "Only an accepted case (with a Case ID) can be sent onward.")}</p>;
@@ -1351,108 +1377,73 @@ function PathwayStep({ a, run }: StepProps) {
     const p = r.pathway;
     return (
       <>
-        <StepHead title={tx("প্রেরণ করা হয়েছে", "Sent onward")} />
-        <div className={`${ui.result} ${ui.bannerOk}`} style={{ border: "1px solid" }}>
-          <span className={ui.bannerIcon} style={{ background: "var(--green)" }}>
+        <StepHead title={tx("আইনি পথ — চূড়ান্ত", "Legal pathway — decided")} />
+        <div className={`${ui.banner} ${ui.bannerOk}`} style={{ marginBottom: "var(--s-4)" }}>
+          <span className={ui.bannerIcon} aria-hidden>
             ✓
           </span>
           <div>
-            <div className={styles.hint}>{a.caseId}</div>
-            <div className={ui.resultBig}>{pathwayLabel(p.type, lang)}</div>
+            <strong>{tx(`পাঠানো হয়েছে: ${pathwayLabel(p.type, lang)}`, `Sent to: ${pathwayLabel(p.type, lang)}`)}</strong> —{" "}
+            {p.type === "MEDIATION" ? tx("পরবর্তী: মধ্যস্থতাকারী নিয়োগ", "next: mediator assignment") : p.type === "LAWYER" ? tx("পরবর্তী: প্যানেল আইনজীবী নিয়োগ", "next: panel lawyer assignment") : p.type === "GRAM_ADALAT" ? tx("পরবর্তী: গ্রাম আদালতে রেফারেল", "next: Gram Adalat referral") : tx("পরবর্তী: রেফারেল", "next: referral")}{" "}
+            <button type="button" onClick={() => document.getElementById("pathway-next")?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ background: "none", border: 0, padding: 0, textDecoration: "underline", cursor: "pointer", font: "inherit", fontWeight: 700 }}>
+              {tx("সেখানে যান ↓", "Go to it ↓")}
+            </button>
           </div>
         </div>
+        {a.pathwayClassification?.final ? (
+          <PathwayDecisionRecord a={a} />
+        ) : (
+          <>
+            <div className={`${ui.result} ${ui.bannerOk}`} style={{ border: "1px solid" }}>
+              <span className={ui.bannerIcon} style={{ background: "var(--green)" }}>
+                ✓
+              </span>
+              <div>
+                <div className={styles.hint}>{a.caseId}</div>
+                <div className={ui.resultBig}>{pathwayLabel(p.type, lang)}</div>
+              </div>
+            </div>
+            <p className={styles.hint}>{tx("নিয়ম-ভিত্তিক শ্রেণিবিন্যাস চালুর আগে সিদ্ধান্ত নেওয়া হয়েছে।", "Decided before the rule-based classification existed.")}</p>
+          </>
+        )}
         <div className={ui.rows}>
-          <Row label={tx("কারণ", "Reason")}>{p.reason}</Row>
-          <Row label={tx("সুপারিশ", "Recommendation")}>
-            {pathwayLabel(p.recommended, lang)} {p.followedRecommendation ? <Tag tone="ok">{tx("অনুসারে", "Followed")}</Tag> : <Tag tone="warn">{tx("ওভাররাইড", "Override")}</Tag>}
-          </Row>
+          <Row label={tx("পরবর্তী সেবা", "Downstream service")}>{pathwayLabel(p.type, lang)}</Row>
           <Row label={tx("সিদ্ধান্তদাতা", "Decided by")}>
             {p.byName} · {new Date(p.at).toLocaleString()}
           </Row>
           <Row label={tx("পরবর্তী কাজ", "Next task")}>
             {tasks.map((t) => (
-              <span key={t.taskId}>
+              <span key={t.taskId} style={{ display: "block" }}>
                 <Tag tone={t.status === "DONE" ? "ok" : "warn"}>{pretty(t.status)}</Tag> {pretty(t.type)} · {pretty(t.assignedRole)} · {tx("শেষ সময়", "due")} {new Date(t.dueAt).toLocaleString()}
               </span>
             ))}
           </Row>
         </div>
+        <div id="pathway-next" style={{ scrollMarginTop: 16 }} />
         {p.type === "LAWYER" ? <LawyerAssignPanel a={a} run={run} /> : null}
+        {p.type === "MEDIATION" ? <MediatorAssignPanel a={a} run={run} /> : null}
+        {p.type === "MEDIATION" && a.mediation ? <MediationRecordPanel a={a} /> : null}
       </>
     );
   }
 
   return (
     <>
-      <StepHead title={tx("কোথায় পাঠাবেন?", "Where should the case go?")} lead={tx("সিস্টেম একটি পথ প্রস্তাব করে; সিদ্ধান্ত আপনার, কারণসহ।", "The system suggests a pathway; you decide, with a reason.")} />
-      <div className={ui.advice}>
-        <Tag tone="ink">{tx("সুপারিশ", "Advisory")}</Tag> <strong>{pathwayLabel(rec.type, lang)}</strong>
-        <ul>
-          {rec.reasons.map((x) => (
-            <li key={x}>{x}</li>
-          ))}
-        </ul>
-      </div>
-      <div className={ui.options}>
-        {(["GRAM_ADALAT", "MEDIATION", "LAWYER"] as PathwayType[]).map((t) => (
-          <button key={t} type="button" className={ui.option} aria-pressed={choice === t} onClick={() => setChoice(t)}>
-            <span className={ui.optionTitle}>
-              {pathwayLabel(t, lang)} {t === rec.type ? <Tag tone="ok">{tx("সুপারিশকৃত", "Recommended")}</Tag> : null}
-            </span>
-            <span className={ui.optionText}>{PATHWAY_HELP[t][lang]}</span>
-          </button>
-        ))}
-      </div>
-      {unsafeMediation ? (
-        <div style={{ marginTop: "var(--s-4)" }}>
-          <Banner tone="err" icon="!">
-            {tx("সতর্কতা: জরুরি/সহিংসতার সংকেত আছে — অপর পক্ষের সাথে মধ্যস্থতা আবেদনকারীর জন্য অনিরাপদ হতে পারে।", "Caution: urgency/violence signals on record — mediation with the other party may be unsafe for the applicant.")}
-          </Banner>
-        </div>
-      ) : null}
-      <label className={styles.field} style={{ marginTop: "var(--s-4)" }}>
-        <span className={styles.label}>{tx("কারণ (বাধ্যতামূলক, কমপক্ষে ১০ অক্ষর)", "Reason (required, at least 10 characters)")}</span>
-        <textarea className={styles.textarea} value={reason} onChange={(e) => setReason(e.target.value)} />
-      </label>
-      <div className={ui.bar}>
-        <Button disabled={reason.trim().length < 10} onClick={() => run(() => DlaoReviewService.choosePathway(a.applicationId, { type: choice, reason }))}>
-          {tx(`${pathwayLabel(choice, "bn")}-এ পাঠান ও জানান`, `Send to ${pathwayLabel(choice, "en")} & notify`)}
-        </Button>
-        <span className={styles.hint}>{reason.trim().length}/10</span>
-      </div>
+      <StepHead
+        title={tx("আইনি পথ", "Legal pathway")}
+        lead={tx("নির্ধারিত নিয়ম একটি সম্ভাব্য পথ দেখায়; লিগ্যাল এইড অফিসার নিশ্চিত, পরিবর্তন বা আরও তথ্য চাইবেন।", "Deterministic rules show a possible pathway; the Legal Aid Officer confirms, changes it or asks for more information.")}
+      />
+      <LegalPathway a={a} run={run} />
     </>
   );
 }
 
 function SidePanel({ a }: { a: ApplicationRecord }) {
   const { lang } = useI18n();
-  const db = useDlasDb();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
-  const tasks = db.tasks.filter((t) => t.applicationId === a.applicationId);
-  const open = tasks.filter((t) => t.status !== "DONE");
-  const done = tasks.length - open.length;
   const audit = useMemo(() => [...a.audit].reverse(), [a.audit]);
   return (
     <aside className={ui.aside}>
-      <div className={ui.panel}>
-        <div className={ui.panelTitle}>
-          <span>{tx("খোলা কাজ", "Open tasks")}</span>
-          <Tag tone={open.length ? "warn" : "ok"}>{open.length}</Tag>
-        </div>
-        {open.length === 0 ? <p className={styles.hint}>{tx("কোনো খোলা কাজ নেই", "Nothing open")}</p> : null}
-        {open.map((t) => (
-          <div key={t.taskId} className={ui.taskItem}>
-            <div className={ui.taskTop}>
-              <Tag tone={t.priority === "NORMAL" ? "warn" : "err"}>{pretty(t.type)}</Tag>
-            </div>
-            <div>{t.reason}</div>
-            <div className={styles.hint}>
-              {pretty(t.assignedRole)} · {tx("শেষ সময়", "due")} {new Date(t.dueAt).toLocaleDateString()}
-            </div>
-          </div>
-        ))}
-        {done ? <p className={styles.hint} style={{ marginTop: "var(--s-2)" }}>✓ {done} {tx("টি সম্পন্ন", "done")}</p> : null}
-      </div>
       <details className={ui.panel}>
         <summary className={ui.panelTitle} style={{ marginBottom: 0 }}>
           <span>
@@ -1468,6 +1459,9 @@ function SidePanel({ a }: { a: ApplicationRecord }) {
             </li>
           ))}
         </ul>
+        <a className={ui.link} href="#case-activity" onClick={(ev) => { ev.preventDefault(); document.getElementById("case-activity")?.scrollIntoView({ behavior: "smooth" }); }}>
+          {tx("কার্যকলাপ / অডিট ট্রেইল ↓", "Activity / audit trail ↓")}
+        </a>{" "}
         <Link className={ui.link} href={`/debug?id=${a.applicationId}`}>
           {tx("পূর্ণ JSON ও অডিট →", "Full JSON & audit →")}
         </Link>
@@ -1847,6 +1841,7 @@ function ShortlistCard({ c, selected, onSelect }: { c: import("@/lib/dlas").Shor
         #{c.rank} {c.name} <Tag tone={c.rank === 1 ? "ok" : "neutral"}>{c.score}/100</Tag>
         {c.rank === 1 && !asked ? <Tag tone="ok">{tx("শীর্ষ পছন্দ", "Top pick")}</Tag> : null}
         {st.absentToday ? <Tag tone="err">{tx("আজ অনুপস্থিত", "Absent today")}</Tag> : null}
+        {st.redFlagged ? <Tag tone="err" title={tx(`${st.declines ?? 0}টি প্রস্তাব প্রত্যাখ্যান`, `${st.declines ?? 0} offers declined`)}>🚩 {tx("লাল পতাকা", "Red flag")}</Tag> : null}
         {asked ? <Tag tone={c.outcome === "ACCEPTED" ? "ok" : c.outcome === "OFFERED" ? "warn" : "err"}>{pretty(c.outcome)}</Tag> : null}
       </span>
       <span className={ui.optionText}>

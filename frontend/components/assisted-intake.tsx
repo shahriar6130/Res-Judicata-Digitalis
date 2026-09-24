@@ -962,7 +962,53 @@ function Step3Parties({
           ) : null}
         </label>
       </div>
+
+      <UrgencyBlock draft={draft} onChange={onChange} />
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  "Is this urgent?" — the citizen's own answer. It goes to the shared
+ *  record (data.urgency) and puts the case in the DLAO's "Urgent cases"
+ *  tab; the office still decides the priority.
+ * ------------------------------------------------------------------ */
+
+const URGENCY_OPTIONS: { code: string; bn: string; en: string }[] = [
+  { code: "IMMEDIATE_DANGER", bn: "এখনই বিপদে আছি", en: "I am in danger now" },
+  { code: "VIOLENCE_OR_THREAT", bn: "মারধর বা হুমকি", en: "Violence or threats" },
+  { code: "EVICTION", bn: "বাড়ি / জমি থেকে উচ্ছেদ", en: "Being evicted from home / land" },
+  { code: "DETENTION", bn: "কেউ আটক আছেন", en: "Someone is detained" },
+  { code: "CHILD_INVOLVED", bn: "শিশু জড়িত", en: "A child is involved" },
+  { code: "ONLINE_HARASSMENT", bn: "অনলাইন হয়রানি", en: "Online harassment" },
+];
+
+function UrgencyBlock({ draft, onChange }: { draft: IntakeDraft; onChange: <K extends keyof IntakeDraft>(k: K, v: IntakeDraft[K]) => void }) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const flags = draft.urgencyFlags ?? [];
+  const toggle = (code: string) => onChange("urgencyFlags", flags.includes(code) ? flags.filter((f) => f !== code) : [...flags, code]);
+  return (
+    <div className={styles.subBlock} style={draft.urgent ? { borderColor: "var(--red)", boxShadow: "inset 4px 0 0 var(--red)" } : undefined}>
+      <h3 className={styles.subBlockTitle}>{tx("এটা কি জরুরি?", "Is this urgent?")}</h3>
+      <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+        <input type="checkbox" checked={!!draft.urgent} onChange={(e) => { onChange("urgent", e.target.checked); if (!e.target.checked) onChange("urgencyFlags", []); }} style={{ width: 20, height: 20, marginTop: 2 }} />
+        <span>
+          <strong>{tx("হ্যাঁ, আমার দ্রুত সাহায্য দরকার", "Yes, I need help quickly")}</strong>
+          <span style={{ display: "block", fontSize: "0.85rem", opacity: 0.75 }}>{tx("অফিস জরুরি কেস আলাদা তালিকায় আগে দেখে। জীবন-ঝুঁকিতে এখনই ৯৯৯-এ ফোন করুন।", "The office sees urgent cases first, in a separate list. If a life is at risk, call 999 now.")}</span>
+        </span>
+      </label>
+      {draft.urgent ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }} role="group" aria-label={tx("কেন জরুরি", "Why is it urgent")}>
+          {URGENCY_OPTIONS.map((o) => (
+            <button key={o.code} type="button" aria-pressed={flags.includes(o.code)} onClick={() => toggle(o.code)} style={{ padding: "8px 12px", borderRadius: 999, border: `1.5px solid ${flags.includes(o.code) ? "var(--red)" : "var(--line)"}`, background: flags.includes(o.code) ? "#fef2f2" : "var(--white)", color: flags.includes(o.code) ? "#991b1b" : "inherit", font: "inherit", fontSize: "0.9rem", cursor: "pointer" }}>
+              {flags.includes(o.code) ? "✓ " : ""}
+              {o[lang === "bn" ? "bn" : "en"]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

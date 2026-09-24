@@ -16,6 +16,7 @@
 import { useSyncExternalStore } from "react";
 import { SCHEMA_VERSION, type DlasDb } from "./schema";
 import { demoUdcDirectory } from "./udc-directory";
+import { auditFingerprint, sealAuditHistory } from "./audit-trail";
 
 export const DLAS_KEY = "dlas.db.v1";
 const EVENT = "dlas:db-changed";
@@ -30,6 +31,9 @@ export function emptyDb(): DlasDb {
     officers: [],
     lawyers: [],
     lawyerRules: null,
+    officeStaff: [],
+    pathwayRules: null,
+    mediators: [],
     udcCentres: demoUdcDirectory(new Date(0).toISOString()),
     eligibilityRulesets: [],
     sessions: [],
@@ -50,6 +54,19 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+/** Mediators are auto-approved at sign-up. Records saved before that rule (still PENDING_VERIFICATION, non-sample) load as ACTIVE. */
+function autoApproveMediator(m: DlasDb["mediators"][number]): DlasDb["mediators"][number] {
+  if (m.sample || m.status !== "PENDING_VERIFICATION") return m;
+  const c = m.certification;
+  const valid = (c.status === "CERTIFIED" || c.status === "TRAINING_COMPLETED") && !!c.verifiedAt;
+  return {
+    ...m,
+    status: "ACTIVE",
+    statusReason: "Auto-approved (mediators no longer need office approval)",
+    certification: valid ? c : { ...c, status: "CERTIFIED", body: c.body ?? `Self-declared: ${m.qualification.detail}`, verifiedBy: "system", verifiedByName: "Auto-approved", verifiedAt: c.verifiedAt ?? m.createdAt },
+  };
+}
+
 function parse(raw: string | null): DlasDb {
   if (!raw) return emptyDb();
   try {
@@ -63,8 +80,11 @@ function parse(raw: string | null): DlasDb {
       citizens: Array.isArray(p.citizens) ? p.citizens : [],
       udcOperators: Array.isArray(p.udcOperators) ? p.udcOperators : [],
       officers: Array.isArray(p.officers) ? p.officers : [],
-      lawyers: Array.isArray(p.lawyers) ? p.lawyers.map((l) => ({ ...l, attendance: l.attendance ?? [], notificationsReadAt: l.notificationsReadAt ?? null, contacts: l.contacts ?? [] })) : [],
+      lawyers: Array.isArray(p.lawyers) ? p.lawyers.map((l) => ({ ...l, attendance: l.attendance ?? [], notificationsReadAt: l.notificationsReadAt ?? null, contacts: l.contacts ?? [], redFlags: l.redFlags ?? [] })) : [],
       lawyerRules: p.lawyerRules ?? null,
+      officeStaff: Array.isArray(p.officeStaff) ? p.officeStaff : [],
+      pathwayRules: p.pathwayRules ?? null,
+      mediators: Array.isArray(p.mediators) ? p.mediators.map((m) => autoApproveMediator({ ...m, conflicts: m.conflicts ?? [], adminRecord: m.adminRecord ?? [], audit: m.audit ?? [] })) : [],
       // The demo UDC directory is written into the JSON on first read; it is saved with the next write.
       udcCentres: Array.isArray(p.udcCentres) && p.udcCentres.length ? p.udcCentres : demoUdcDirectory(new Date().toISOString()),
       eligibilityRulesets: Array.isArray(p.eligibilityRulesets) ? p.eligibilityRulesets : [],
@@ -82,6 +102,9 @@ function parse(raw: string | null): DlasDb {
                 }
               : null,
             closedAt: a.closedAt ?? null,
+            staffCheck: a.staffCheck ?? null,
+            pathwayClassification: a.pathwayClassification ?? null,
+            mediation: a.mediation ?? null,
             lawyer: a.lawyer
               ? {
                   ...a.lawyer,
@@ -149,7 +172,10 @@ function persist(next: DlasDb) {
 export function mutate<T>(fn: (db: DlasDb) => T): T {
   if (!isBrowser()) throw new Error("DLAS store is browser-only");
   const draft = structuredClone(readDb());
+  // Feature 11: audit history is append-only — a write that alters an earlier entry fails and nothing is saved.
+  const history = auditFingerprint(draft);
   const result = fn(draft);
+  sealAuditHistory(history, draft);
   draft.updatedAt = new Date().toISOString();
   persist(draft);
   return result;

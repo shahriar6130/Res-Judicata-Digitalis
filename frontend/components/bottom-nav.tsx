@@ -38,7 +38,7 @@ export function BottomNav({ role }: { role: string }) {
   // Glow: unread notifications (bell) and documents the office is waiting for (cases).
   const unread = useCitizenNotifications().filter((n) => n.unread).length;
   const docsNeeded = useCitizenApplications().some(
-    (a) => a.status !== "REJECTED" && a.status !== "CLOSED" && a.status !== "WITHDRAWN" && a.data.documents.some((d) => d.status !== "ATTACHED" && d.requested),
+    (a) => a.status !== "REJECTED" && a.status !== "RESOLVED" && a.status !== "CLOSED" && a.status !== "WITHDRAWN" && a.data.documents.some((d) => d.status !== "ATTACHED" && d.requested),
   );
 
   // Only render for the citizen role (other roles keep using the

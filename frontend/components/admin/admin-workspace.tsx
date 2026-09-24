@@ -5,24 +5,30 @@ import { useI18n } from "@/lib/i18n";
 import { useDlasDb } from "@/lib/dlas/store";
 import { DISTRICTS, MATTERS, label } from "@/lib/dlas/reference";
 import { AdminService, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
+import { MEDIATION_CASE_TYPES, MEDIATION_TRACKS } from "@/lib/dlas/mediators";
 import { exportBackup, importBackup, previewBackup, type BackupPreview } from "@/lib/dlas/backup";
 import type { AuditEntry, DlasDb } from "@/lib/dlas/schema";
 import css from "./admin-workspace.module.css";
+import { AdminMediationOversight } from "./mediation-oversight";
 
 const roles: { key: ManagedRole; bn: string; en: string }[] = [
   { key: "citizens", bn: "নাগরিক", en: "Citizens" },
   { key: "lawyers", bn: "আইনজীবী", en: "Lawyers" },
   { key: "officers", bn: "ডিএলও কর্মকর্তা", en: "DLO officers" },
+  { key: "mediators", bn: "মধ্যস্থতাকারী", en: "Mediators" },
   { key: "udcOperators", bn: "ইউডিসি অপারেটর", en: "UDC operators" },
 ];
-type Section = "overview" | "users" | "cases" | "rules" | "audit" | "backup";
-const sections: Section[] = ["overview", "users", "cases", "rules", "audit", "backup"];
+const managedIdField: Record<ManagedRole, string> = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", mediators: "mediatorId", udcOperators: "operatorId" };
+type Section = "overview" | "users" | "cases" | "mediation" | "rules" | "audit" | "backup";
+const sections: Section[] = ["overview", "users", "cases", "mediation", "rules", "audit", "backup"];
 const subscribeHash = (cb: () => void) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); };
 const currentHash = () => window.location.hash.slice(1);
 
 function displayRecord(db: DlasDb, role: ManagedRole) {
-  return db[role] as unknown as Array<{ name: string; phone: string; [key: string]: unknown }>;
+  return db[role] as unknown as Array<{ name: string; phone?: string; contact?: { phone?: string }; [key: string]: unknown }>;
 }
+
+const recordPhone = (role: ManagedRole, record: { phone?: string; contact?: { phone?: string } }) => role === "mediators" ? record.contact?.phone ?? "" : record.phone ?? "";
 
 export function AdminWorkspace() {
   const { lang } = useI18n();
@@ -32,12 +38,14 @@ export function AdminWorkspace() {
   const [role, setRole] = useState<ManagedRole>("citizens");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<{ role: ManagedRole; id: string | null; input: ManagedInput } | null>(null);
+  const [deleting, setDeleting] = useState<{ role: ManagedRole; id: string; name: string } | null>(null);
   const [error, setError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [notice, setNotice] = useState("");
   const [backup, setBackup] = useState<BackupPreview | null>(null);
   const [backupError, setBackupError] = useState("");
   const tx = (bn: string, en: string) => lang === "bn" ? bn : en;
-  const count = db.citizens.length + db.lawyers.length + db.officers.length + db.udcOperators.length;
+  const count = db.citizens.length + db.lawyers.length + db.officers.length + db.mediators.length + db.udcOperators.length;
   const openTasks = db.tasks.filter((t) => t.status !== "DONE").length;
   const pending = db.applications.filter((a) => !a.review?.decision).length;
   const audit = [
@@ -46,6 +54,7 @@ export function AdminWorkspace() {
     ...db.citizens.flatMap((a) => a.audit),
     ...db.lawyers.flatMap((a) => a.audit),
     ...db.officers.flatMap((a) => a.audit),
+    ...db.mediators.flatMap((a) => a.audit),
     ...db.udcOperators.flatMap((a) => a.audit),
   ].filter((a, i, all) => all.findIndex((x) => x.seq === a.seq) === i).sort((a, b) => b.seq - a.seq).slice(0, 25);
 
@@ -53,12 +62,16 @@ export function AdminWorkspace() {
     setError(""); setNotice("");
     setEditing({
       role: selectedRole,
-      id: record ? String(record[{ citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", udcOperators: "operatorId" }[selectedRole]]) : null,
+      id: record ? String(record[managedIdField[selectedRole]]) : null,
       input: {
-        name: String(record?.name ?? ""), phone: String(record?.phone ?? ""),
+        name: String(record?.name ?? ""), phone: selectedRole === "mediators" ? String((record?.contact as { phone?: string } | undefined)?.phone ?? "") : String(record?.phone ?? ""),
         district: String(record?.district ?? ""), officeType: String(record?.officeType ?? "DLAO"),
         centre: String(record?.centre ?? ""), barEnrolmentNo: String(record?.barEnrolmentNo ?? ""),
         practiceAreas: Array.isArray(record?.practiceAreas) ? record.practiceAreas as string[] : [],
+        mediatorStatus: String(record?.status ?? "PENDING_VERIFICATION"), mediatorRole: String(record?.role ?? "PANEL_MEDIATOR"),
+        qualification: String((record?.qualification as { detail?: string } | undefined)?.detail ?? ""),
+        caseTypes: Array.isArray(record?.caseTypes) ? record.caseTypes as string[] : [],
+        tracks: Array.isArray(record?.tracks) ? record.tracks as string[] : [],
       },
     });
   }
@@ -69,6 +82,14 @@ export function AdminWorkspace() {
       setEditing(null); setError("");
       setNotice(tx("পরিবর্তন সংরক্ষিত হয়েছে।", "Changes saved."));
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }
+  function remove() {
+    if (!deleting) return;
+    try {
+      AdminService.deleteAccount(deleting.role, deleting.id);
+      setDeleting(null); setDeleteError("");
+      setNotice(tx("অ্যাকাউন্ট মুছে ফেলা হয়েছে।", "Account deleted."));
+    } catch (e) { setDeleteError(e instanceof Error ? e.message : String(e)); }
   }
   function downloadBackup() {
     try {
@@ -90,15 +111,15 @@ export function AdminWorkspace() {
     try { setBackup(previewBackup(await file.text())); }
     catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); }
   }
-  const items = displayRecord(db, role).filter((r) => [r.name, r.phone, String(r.centre ?? ""), String(r.district ?? "")].some((s) => s.toLowerCase().includes(query.toLowerCase())));
+  const items = displayRecord(db, role).filter((r) => [r.name, recordPhone(role, r), String(r.centre ?? ""), String(r.district ?? ""), String(r.status ?? "")].some((s) => s.toLowerCase().includes(query.toLowerCase())));
   const roleName = roles.find((x) => x.key === role)!;
 
   return <main className={css.page}>
     <header className={css.hero}>
-      <div><p className={css.kicker}>{tx("সিস্টেম প্রশাসন / লাইভ রেকর্ড", "SYSTEM ADMINISTRATION / LIVE RECORD")}</p><h1>{tx("কার্যক্রম নিয়ন্ত্রণ", "Operations control")}</h1><p>{tx("নাগরিক, আইনজীবী, ডিএলও, ইউডিসি ও আবেদন একই রেকর্ড থেকে পর্যবেক্ষণ করুন।", "Monitor citizens, lawyers, DLOs, UDCs and applications from the shared record.")}</p></div>
+      <div><p className={css.kicker}>{tx("সিস্টেম প্রশাসন / লাইভ রেকর্ড", "SYSTEM ADMINISTRATION / LIVE RECORD")}</p><h1>{tx("কার্যক্রম নিয়ন্ত্রণ", "Operations control")}</h1><p>{tx("নাগরিক, আইনজীবী, ডিএলও, মধ্যস্থতাকারী, ইউডিসি ও আবেদন একই রেকর্ড থেকে পর্যবেক্ষণ করুন।", "Monitor citizens, lawyers, DLOs, mediators, UDCs and applications from the shared record.")}</p></div>
       <span className={css.live}>{tx("স্থানীয় প্রোটোটাইপ", "Local prototype")}</span>
     </header>
-    <nav className={css.tabs} aria-label={tx("প্রশাসক বিভাগ", "Admin sections")}>{sections.map((s) => <a key={s} href={s === "overview" ? "/dashboard/admin" : `#${s}`} aria-current={section === s ? "page" : undefined}>{({ overview: tx("সংক্ষেপ", "Overview"), users: tx("ব্যবহারকারী", "People"), cases: tx("আবেদন", "Applications"), rules: tx("নীতিমালা", "Policy"), audit: tx("অডিট", "Audit"), backup: tx("ব্যাকআপ", "Backup") })[s]}</a>)}</nav>
+    <nav className={css.tabs} aria-label={tx("প্রশাসক বিভাগ", "Admin sections")}>{sections.map((s) => <a key={s} href={s === "overview" ? "/dashboard/admin" : `#${s}`} aria-current={section === s ? "page" : undefined}>{({ overview: tx("সংক্ষেপ", "Overview"), users: tx("ব্যবহারকারী", "People"), cases: tx("আবেদন", "Applications"), rules: tx("নীতিমালা", "Policy"), mediation: tx("মধ্যস্থতা তত্ত্বাবধান", "Mediation oversight"), audit: tx("অডিট", "Audit"), backup: tx("ব্যাকআপ", "Backup") })[s]}</a>)}</nav>
     {notice ? <p className={css.notice} role="status">{notice}</p> : null}
     {section === "overview" ? <>
       <div className={css.metrics}>
@@ -118,11 +139,12 @@ export function AdminWorkspace() {
       <div className={css.panelHead}><div><p className={css.kicker}>{tx("অ্যাকাউন্ট ডিরেক্টরি", "ACCOUNT DIRECTORY")}</p><h2>{tx("মানুষ পরিচালনা করুন", "Manage people")}</h2></div><button className={css.primary} onClick={() => edit(role)}>{tx("+ নতুন যোগ করুন", "+ Add new")}</button></div>
       <div className={css.toolbar}><div className={css.roleTabs}>{roles.map((r) => <button key={r.key} aria-pressed={role === r.key} onClick={() => { setRole(r.key); setQuery(""); }}>{r[lang]} <b>{db[r.key].length}</b></button>)}</div><input aria-label={tx("খুঁজুন", "Search")} placeholder={tx("নাম, ফোন, কেন্দ্র বা জেলা খুঁজুন", "Search name, phone, centre or district")} value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       <p className={css.subtle}>{roleName[lang]} · {items.length}</p>
-      {items.map((r) => { const key = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", udcOperators: "operatorId" }[role]; return <div className={css.person} key={String(r[key])}><div><strong>{r.name}</strong><small>{String(r[key])} · {r.phone}{r.district ? ` · ${r.district}` : ""}{r.centre ? ` · ${r.centre}` : ""}</small></div><button className={css.secondary} onClick={() => edit(role, r)}>{tx("সম্পাদনা", "Edit")}</button></div>; })}
+      {items.map((r) => { const key = managedIdField[role]; const accountId = String(r[key]); return <div className={css.person} key={accountId}><div><strong>{r.name}</strong><small>{accountId} · {recordPhone(role, r)}{r.district ? ` · ${r.district}` : ""}{r.centre ? ` · ${r.centre}` : ""}{role === "mediators" ? ` · ${String(r.status ?? "")}` : ""}</small></div><div className={css.rowActions}><button className={css.secondary} onClick={() => edit(role, r)}>{tx("সম্পাদনা", "Edit")}</button><button className={css.danger} onClick={() => { setDeleteError(""); setNotice(""); setDeleting({ role, id: accountId, name: r.name }); }}>{tx("মুছুন", "Delete")}</button></div></div>; })}
       {!items.length ? <p className={css.empty}>{tx("কোনো মিল পাওয়া যায়নি। নতুন অ্যাকাউন্ট যোগ করতে পারেন।", "No matching accounts. You can add a new one.")}</p> : null}
     </section> : null}
     {section === "cases" ? <section className={css.panel}><div className={css.panelHead}><div><p className={css.kicker}>{tx("সব অফিস ও চ্যানেল", "ALL OFFICES AND CHANNELS")}</p><h2>{tx("আবেদন পর্যবেক্ষণ", "Application monitor")}</h2></div><strong>{db.applications.length}</strong></div>{db.applications.slice().reverse().map((a) => <div className={css.person} key={a.applicationId}><div><strong>{a.applicationId} · {a.data.applicant.fullName ?? "—"}</strong><small>{label(MATTERS, a.data.matter.category, lang)} · {a.routing.office} · {a.channel.code} · {a.status}</small></div><span className={css.status}>{a.review?.decision?.decision ?? tx("সিদ্ধান্ত বাকি", "Pending")}</span></div>)}{!db.applications.length ? <p className={css.empty}>{tx("এখনো কোনো আবেদন নেই।", "No applications yet.")}</p> : null}<p className={css.subtle}>{tx("আবেদন সংশোধন ও আইনগত সিদ্ধান্ত সংশ্লিষ্ট ডিএলও যাচাই কর্মপ্রবাহে নথিভুক্ত হয়।", "Application corrections and legal decisions are recorded in the responsible DLO review workflow.")}</p></section> : null}
     {section === "rules" ? <section className={css.panel}><p className={css.kicker}>{tx("সংস্করণযুক্ত নীতিমালা", "VERSIONED POLICY")}</p><h2>{tx("সক্রিয় নিয়ম", "Current rules")}</h2><p>{tx("এলিজিবিলিটি নিয়মের কর্মরত সংস্করণ", "Working eligibility ruleset")}: <strong>{db.eligibilityRulesets.at(-1)?.version ?? "—"}</strong></p><p>{tx("আইনজীবীর নিয়ম", "Lawyer rules")}: <strong>{db.lawyerRules?.version ?? "—"}</strong></p><p className={css.subtle}>{tx("আইনগত সিদ্ধান্ত কেবল অনুমোদিত ডিএলও কর্মকর্তা নেন।", "Legal decisions remain with authorised DLO officers.")}</p></section> : null}
+    {section === "mediation" ? <AdminMediationOversight /> : null}
     {section === "audit" ? <section className={css.panel}><p className={css.kicker}>{tx("সংরক্ষিত ইতিহাস", "PERSISTED HISTORY")}</p><h2>{tx("সাম্প্রতিক অডিট ঘটনা", "Recent audit events")}</h2>{audit.map((e: AuditEntry) => <div className={css.line} key={e.seq}><span><strong>{e.action}</strong><small>{e.actor} · {e.role}</small></span><time>{new Date(e.at).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</time></div>)}{!audit.length ? <p className={css.empty}>{tx("এখনো কোনো অডিট ঘটনা নেই।", "No audit events yet.")}</p> : null}</section> : null}
     {section === "backup" ? <div className={css.grid}>
       <section className={css.panel}><p className={css.kicker}>{tx("সম্পূর্ণ তথ্য", "COMPLETE DATA")}</p><h2>{tx("JSON এক্সপোর্ট", "Export JSON")}</h2><p>{tx("আবেদন, অ্যাকাউন্ট, কাজ, অডিট, সংরক্ষিত নথির কপি এবং অন্যান্য অ্যাপ ডেটা একটি ফাইলে ডাউনলোড করুন।", "Download applications, accounts, tasks, audits, stored document copies and other app data in one file.")}</p><button type="button" className={css.primary} onClick={downloadBackup}>{tx("JSON ডাউনলোড করুন", "Download JSON")}</button><p className={css.subtle}>{tx("ফাইলে ব্যক্তিগত তথ্য ও সংরক্ষিত নথি থাকতে পারে।", "This file may contain personal information and stored documents.")}</p></section>
@@ -138,7 +160,15 @@ export function AdminWorkspace() {
       {editing.role !== "citizens" && !(editing.role === "officers" && editing.input.officeType === "SCLAC") ? <label>{tx("জেলা", "District")}<select required value={editing.input.district} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, district: e.target.value } })}><option value="">{tx("জেলা নির্বাচন", "Select district")}</option>{DISTRICTS.map((d) => <option key={d.code} value={d.code}>{d.label[lang]}</option>)}</select></label> : null}
       {editing.role === "udcOperators" ? <label>{tx("ইউডিসি কেন্দ্র", "UDC centre")}<input required value={editing.input.centre} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, centre: e.target.value } })} /></label> : null}
       {editing.role === "lawyers" ? <><label>{tx("বার এনরোলমেন্ট", "Bar enrolment")}<input required value={editing.input.barEnrolmentNo} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, barEnrolmentNo: e.target.value } })} /></label><fieldset><legend>{tx("কাজের ক্ষেত্র", "Practice areas")}</legend><div className={css.checks}>{MATTERS.map((m) => <label key={m.code}><input type="checkbox" checked={editing.input.practiceAreas?.includes(m.code) ?? false} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, practiceAreas: e.target.checked ? [...(editing.input.practiceAreas ?? []), m.code] : (editing.input.practiceAreas ?? []).filter((x) => x !== m.code) } })} />{m.label[lang]}</label>)}</div></fieldset></> : null}
+      {editing.role === "mediators" ? <>
+        <label>{tx("অবস্থা", "Status")}<select value={editing.input.mediatorStatus} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, mediatorStatus: e.target.value } })}>{["PENDING_VERIFICATION", "ACTIVE", "INACTIVE", "SUSPENDED"].map((x) => <option key={x}>{x.replaceAll("_", " ")}</option>)}</select></label>
+        <label>{tx("মধ্যস্থতাকারীর ভূমিকা", "Mediator role")}<select value={editing.input.mediatorRole} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, mediatorRole: e.target.value } })}>{["PANEL_MEDIATOR", "COMMUNITY_MEDIATOR", "LEGAL_AID_OFFICER"].map((x) => <option key={x}>{x.replaceAll("_", " ")}</option>)}</select></label>
+        <label className={css.fullField}>{tx("যোগ্যতা", "Qualification")}<input required value={editing.input.qualification} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, qualification: e.target.value } })} /></label>
+        <fieldset><legend>{tx("মধ্যস্থতার ধারা", "Mediation tracks")}</legend><div className={css.checks}>{MEDIATION_TRACKS.map((m) => <label key={m.code}><input type="checkbox" checked={editing.input.tracks?.includes(m.code) ?? false} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, tracks: e.target.checked ? [...(editing.input.tracks ?? []), m.code] : (editing.input.tracks ?? []).filter((x) => x !== m.code) } })} />{m.label[lang]}</label>)}</div></fieldset>
+        <fieldset><legend>{tx("মামলার ধরন", "Case types")}</legend><div className={css.checks}>{MEDIATION_CASE_TYPES.map((m) => <label key={m.code}><input type="checkbox" checked={editing.input.caseTypes?.includes(m.code) ?? false} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, caseTypes: e.target.checked ? [...(editing.input.caseTypes ?? []), m.code] : (editing.input.caseTypes ?? []).filter((x) => x !== m.code) } })} />{m.label[lang]}</label>)}</div></fieldset>
+      </> : null}
       {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit">{tx("সংরক্ষণ করুন", "Save account")}</button>
     </form></section></div> : null}
+    {deleting ? <div className={css.backdrop}><section className={`${css.dialog} ${css.deleteDialog}`} role="alertdialog" aria-modal="true" aria-labelledby="admin-delete-title" aria-describedby="admin-delete-description"><p className={css.kicker}>{roles.find((r) => r.key === deleting.role)?.[lang]}</p><h2 id="admin-delete-title">{tx("অ্যাকাউন্ট মুছে ফেলবেন?", "Delete this account?")}</h2><p id="admin-delete-description"><strong>{deleting.name}</strong><br /><span className={css.subtle}>{deleting.id}</span></p><p className={css.deleteWarning}>{tx("এই ব্যক্তির প্রবেশাধিকার বাতিল হবে। বিদ্যমান আবেদন ও অডিট ইতিহাস সংরক্ষিত থাকবে। সক্রিয় নিয়োগ থাকলে মধ্যস্থতাকারী বা আইনজীবীর অ্যাকাউন্ট মোছা যাবে না।", "This removes the person's access. Existing applications and audit history remain. Mediator or lawyer accounts with active assignments cannot be deleted.")}</p>{deleteError ? <p role="alert" className={css.error}>{deleteError}</p> : null}<div className={css.dialogActions}><button type="button" className={css.secondary} onClick={() => { setDeleting(null); setDeleteError(""); }}>{tx("বাতিল", "Cancel")}</button><button type="button" className={css.danger} onClick={remove}>{tx("অ্যাকাউন্ট মুছুন", "Delete account")}</button></div></section></div> : null}
   </main>;
 }

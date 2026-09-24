@@ -17,13 +17,14 @@
 }
 
 .primary {
-  background: var(--black);
-  border-color: var(--black);
+  background: var(--primary-action);
+  border-color: var(--primary-action);
   color: var(--white);
 }
 
 .primary:hover {
-  background: var(--ink);
+  background: var(--primary-action-hover);
+  border-color: var(--primary-action-hover);
 }
 
 .secondary {

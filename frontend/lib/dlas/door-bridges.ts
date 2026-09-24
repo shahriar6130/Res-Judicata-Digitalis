@@ -27,7 +27,10 @@ import type {
   LanguageCode,
   Relation,
   SafeTime,
+  UrgencyFlag,
 } from "./schema";
+
+const URGENCY_FLAGS = ["IMMEDIATE_DANGER", "VIOLENCE_OR_THREAT", "ONLINE_HARASSMENT", "EVICTION", "DETENTION", "CHILD_INVOLVED"] as const;
 
 /* ================================================================== *
  *  Citizen door (existing 5-step wizard)
@@ -46,6 +49,8 @@ export interface CitizenDraftLike {
   partyName: string;
   partyAddress: string;
   description: string;
+  urgent?: boolean;
+  urgencyFlags?: string[];
   documents: { id: string; name: string; mimeType: string; size: number; dataUrl: string }[];
   contactSlot: "anytime" | "custom" | null;
   contactDay: DayCode | "";
@@ -99,6 +104,10 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
       category: mapLegacyMatter(d.matter),
       summary: d.description.trim() || null,
       opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+    },
+    urgency: {
+      selfReportedUrgent: !!d.urgent,
+      flags: d.urgent ? (d.urgencyFlags ?? []).filter((f): f is UrgencyFlag => (URGENCY_FLAGS as readonly string[]).includes(f)) : [],
     },
     safeContact: {
       method,

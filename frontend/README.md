@@ -9,7 +9,7 @@ the user's reduced-motion preference.
 
 The administrator dashboard at `/dashboard/admin` uses the shared local record
 for live counts, cross-office application monitoring, audit history, and searchable
-create/edit forms for citizen, lawyer, DLO officer, and UDC operator accounts. Account
+create/edit/delete controls for citizen, lawyer, DLO officer, mediator, and UDC operator accounts. Account
 changes are audited. The DLO review screen offers a reasoned correction form during
 verification for applicant, filer, matter, urgency, and safe-contact information.
 Changing verified fields reopens the related check; a district change reroutes open work.
@@ -37,6 +37,9 @@ first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/das
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
+app/themes/black_theme.css   active original black theme
+app/themes/red_white.css   saved courthouse image theme overrides
+app/themes/blue_white.css   saved blue and white theme overrides
 components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
               Button, Field, Sidebar, LawMark
 lib/          i18n context + dictionary, roles, brand, portal-art
@@ -62,6 +65,24 @@ signed-in citizen's session or applicant/representative phone. An open follow-up
 access to another citizen's application or upload controls.
 The home document-upload section appears only when an owned, open application has an outstanding
 document; there is no placeholder card when nothing needs uploading.
+
+Successful mediation continues from `/dashboard/mediator` through a persisted settlement state
+machine. **Settlement reached** opens manual fields for the issue, proposed and agreed resolution,
+conditions, deadline, and additional terms. Party execution is simulated and visibly labelled
+`DEMO / SIMULATED`; mediator confirmation is stored separately. The DLO sidebar opens the separate
+CLO queue at `/dashboard/dlo/settlements`, with one review route per agreement. Only an explicit
+CLO **Certify** action after both signatures and mediator confirmation records `RESOLVED` and may
+create settlement follow-up tasks. Return and clarification actions reopen mediator correction;
+revised terms require fresh execution and confirmation.
+
+Failed mediation also continues through a persisted workflow. **Mediation failed** collects the
+mediation date, attendance, discussed issues, outcome, optional reason/status, follow-up need, and
+proposed referral without requesting confidential caucus notes. It creates a formal failure/referral
+record and an advisory system suggestion. The separate officer queue is available at
+`/dashboard/dlo/mediation-outcomes`; officers may confirm, change the path, or request more
+information. Confirming `LAWYER_ASSIGNMENT` creates the existing panel-lawyer assignment task and
+exposes that workflow in the DLO case workspace. The citizen timeline shows the handoff from
+mediation through officer review to lawyer assignment.
 
 The DLO workspace opens on `#overview` (also the default route). Its header shows the active
 workload, the four status tiles navigate to `#new`, `#review`, `#decided`, and `#tasks`, and charts
@@ -122,6 +143,12 @@ claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/lay
 Nothing hardcodes a color or font family outside `app/tokens.css` and
 `app/layout.tsx`; change the whole look in those two files.
 
+### Saved theme
+
+The active theme is app/themes/black_theme.css, imported after app/tokens.css in app/globals.css. This restores the original black and off-white appearance and red admin palette. The blue_white.css and red_white.css alternatives remain saved.
+
+To switch themes, change the active theme import in `app/globals.css` among `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
+
 ## Language
 
 Every screen renders fully in Bangla (default) or fully in English. The text-only toggle
@@ -138,3 +165,27 @@ npm run build
 npm run start
 npm run lint
 ```
+### Court mediation and mediation privacy (Features 8–9)
+
+- The legal pathway form captures mediation origin and all court referral fields. Court-origin matters reuse `/dashboard/mediator` and remain labelled throughout assignment and mediation.
+- Certified court settlements and confirmed court-path failure records create a `COURT_AUTHORITY_NOTIFICATION` task. Officer dispatch recording is explicitly simulated.
+- `lib/dlas/mediation-access.ts` contains the mediation role/scope matrix and case access helpers.
+- Mediator caucus content is stored under `workspace.mediatorConfidential` and is omitted from public/officer projections. Assigned-mediator checks run on reads and every mutation.
+- DLO sign-up supports Legal Aid Officer and Chief Legal Aid Officer authority roles. Only the Chief role can open the settlement certification worklist or certify an agreement.
+- Mediation sensitive-action audits include an explicit `caseId`; confidential note text is never copied into an audit entry.
+### Device simulator UI
+
+`/device` defaults to the IVR simulator; `/device/ivr` and `/device/ussd` select the corresponding phone flow. The interface uses a compact heading, a two-option mode switch, and one centered handset. The handset display has a compact fixed height with internal scrolling for longer prompts, and its keypad and call controls retain 44px targets. Every mount starts fresh: the active device session is not restored and the flow neither stores nor shows conversation history. Voice text entry appears inside the handset when required. The device surface omits message, live JSON, and debug-console panels while continuing to write required application fields, provenance, audit events, handoffs, and submissions.
+### Admin mediator and UDC management
+
+`/dashboard/admin#users` includes Mediators and UDC operators. Mediator add/edit uses the shared `db.mediators` registry and captures status, role, district, qualification, mediation tracks, and case types. UDC operator add/edit uses `db.udcOperators` and synchronizes the associated registered UDC centre. Both flows append admin/account audit entries; the existing mediator verification, certification, assignment, and login workflows remain in place.
+
+Every People row has a Delete action with a confirmation dialog. Deletion preserves historical application and admin audit records and writes a deletion audit event. Active mediator and lawyer assignments block removal with an inline message. Deleting a UDC operator also removes the operator's linked registered centre entry.
+### Admin sidebar
+
+The admin sidebar links to Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
+
+
+### Blue White visual refresh
+
+The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.

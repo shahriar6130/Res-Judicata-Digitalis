@@ -22,6 +22,9 @@ import {
   LawyerAuth,
   LawyerContactService,
   LawyerService,
+  activeRedFlag,
+  countedDeclines,
+  useCurrentLawyer,
   dayKey,
   useLawyerNotifications,
   MATTERS,
@@ -199,6 +202,7 @@ function Overview() {
   return (
     <>
       <h1 className={styles.title}>{tx("আজকের কাজ", "Today's work")}</h1>
+      <DeclineStanding />
       {(w.me?.contacts ?? [])
         .filter((c) => c.kind === "SUMMONS" && (c.status === "SENT" || c.status === "ACKNOWLEDGED"))
         .map((c) => (
@@ -289,14 +293,16 @@ function AttendanceCard() {
           <div style={{ fontSize: "var(--t-sub)", fontWeight: 600 }}>{new Intl.DateTimeFormat(lang === "bn" ? "bn-BD" : "en-GB", { weekday: "long", day: "numeric", month: "long" }).format(new Date(w.now || 0))}</div>
           <div className={styles.hint}>
             {today
-              ? tx(`রেকর্ড: ${today.status === "PRESENT" ? "উপস্থিত" : "অনুপস্থিত"} · ${formatDateTime(today.at, "bn")}`, `Registered: ${today.status === "PRESENT" ? "present" : "absent"} · ${formatDateTime(today.at, "en")}`)
+              ? tx(`রেকর্ড: ${today.status === "PRESENT" ? "উপস্থিত" : "অনুপস্থিত"} · ${formatDateTime(today.at, "bn")}${today.method === "BIOMETRIC_SIMULATED" ? " · বায়োমেট্রিক (সিমুলেটেড)" : ""}`, `Registered: ${today.status === "PRESENT" ? "present" : "absent"} · ${formatDateTime(today.at, "en")}${today.method === "BIOMETRIC_SIMULATED" ? " · biometric (simulated)" : ""}`)
               : tx("এখনো দেওয়া হয়নি — মামলা বণ্টনে উপস্থিতি গণনা হয়।", "Not registered yet — attendance counts when cases are assigned.")}
           </div>
         </div>
         <div style={{ display: "flex", gap: "var(--s-3)" }}>
-          <button type="button" className={ui.option} aria-pressed={today?.status === "PRESENT"} onClick={() => mark("PRESENT")} style={{ minWidth: 130, alignItems: "center", ...(today?.status === "PRESENT" ? { background: "var(--green)", color: "white", borderColor: "var(--green)" } : {}) }}>
-            <span className={ui.optionTitle}>✓ {tx("উপস্থিত", "Present")}</span>
-          </button>
+          {/* Present is registered on the (simulated) biometric scanner — press and hold 2 s at /lawyer/biometric */}
+          <a href="/lawyer/biometric" className={ui.option} style={{ minWidth: 170, alignItems: "center", textDecoration: "none", color: "inherit", ...(today?.status === "PRESENT" ? { background: "var(--green)", color: "white", borderColor: "var(--green)" } : {}) }}>
+            <span className={ui.optionTitle}>🖐 {today?.status === "PRESENT" ? tx("উপস্থিত", "Present") : tx("বায়োমেট্রিক উপস্থিতি", "Biometric check-in")}</span>
+            <span style={{ fontSize: 11, opacity: 0.85 }}>{tx("২ সেকেন্ড চেপে ধরুন · সিমুলেটেড", "hold 2 s · simulated")}</span>
+          </a>
           <button type="button" className={ui.option} aria-pressed={today?.status === "ABSENT"} onClick={() => mark("ABSENT")} style={{ minWidth: 130, alignItems: "center", ...(today?.status === "ABSENT" ? { background: "var(--red)", color: "white", borderColor: "var(--red)" } : {}) }}>
             <span className={ui.optionTitle}>✗ {tx("অনুপস্থিত", "Absent")}</span>
           </button>
@@ -457,6 +463,7 @@ function Intake() {
   return (
     <>
       <h1 className={styles.title}>{tx("মামলা গ্রহণ", "Case intake")}</h1>
+      <DeclineStanding />
       <p className={styles.lead}>
         {tx(
           "জেলা অফিস আপনাকে যে মামলা দিতে চায় তা এখানে আসে। বিস্তারিত দেখে গ্রহণ করুন, অথবা কারণসহ প্রত্যাখ্যান করুন — তখন ইঞ্জিন তালিকার পরের আইনজীবীকে পাঠাবে।",
@@ -559,6 +566,39 @@ function MyCases({ open }: { open: string | null }) {
   );
 }
 
+/** Red flag / decline count for the logged-in lawyer. `compact` = one line under the decline form. */
+function DeclineStanding({ compact }: { compact?: boolean }) {
+  const { lang, tx } = useTx();
+  const db = useDlasDb();
+  const me = useCurrentLawyer();
+  const rules = useLawyerRules();
+  if (!me) return null;
+  const flag = activeRedFlag(me);
+  const n = countedDeclines(db, me).length;
+  const limit = rules.declinesBeforeRedFlag;
+  if (flag)
+    return (
+      <Banner tone="err" icon="🚩">
+        <strong>{tx("আপনাকে লাল পতাকা দেওয়া হয়েছে", "You are red-flagged")}</strong> — {tx(`${flag.declines.length}টি মামলার প্রস্তাব প্রত্যাখ্যান (সীমা ${flag.threshold}) · ${formatDateTime(flag.raisedAt, lang)}। ডিএলএও পর্যালোচনা না করা পর্যন্ত ইঞ্জিন আপনাকে তালিকার শেষে রাখবে।`, `${flag.declines.length} case offers declined (limit ${flag.threshold}) · ${formatDateTime(flag.raisedAt, lang)}. Until the DLAO reviews it, the engine lists you after other lawyers.`)}
+      </Banner>
+    );
+  if (compact)
+    return (
+      <p className={styles.hint} style={{ color: n + 1 >= limit ? "var(--red)" : undefined }}>
+        {n + 1 >= limit
+          ? tx(`এটি হবে আপনার ${n + 1}তম প্রত্যাখ্যান — ${limit}টিতে লাল পতাকা দেওয়া হয় এবং ডিএলএও জানতে পারেন।`, `This will be decline ${n + 1} of ${limit} — at ${limit} you are red-flagged and the DLAO is alerted.`)
+          : tx(`প্রত্যাখ্যাত প্রস্তাব: ${n}/${limit} (সীমায় পৌঁছালে লাল পতাকা)`, `Declined offers so far: ${n} of ${limit} (red flag at the limit)`)}
+      </p>
+    );
+  if (n > 0 && n >= limit - 2)
+    return (
+      <Banner tone="warn" icon="!">
+        {tx(`আপনি ${n}/${limit}টি প্রস্তাব প্রত্যাখ্যান করেছেন — ${limit}টিতে লাল পতাকা দেওয়া হবে।`, `You have declined ${n} of ${limit} offers — at ${limit} you will be red-flagged for DLAO review.`)}
+      </Banner>
+    );
+  return null;
+}
+
 function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
   const { lang, tx } = useTx();
   const [declining, setDeclining] = useState(false);
@@ -630,6 +670,7 @@ function OfferCard({ a, s }: { a: ApplicationRecord; s: LawyerAssignment }) {
             <span className={styles.label}>{tx("প্রত্যাখ্যানের কারণ (কমপক্ষে ১০ অক্ষর) — মামলাটি তালিকার পরের আইনজীবীর কাছে যাবে", "Reason for declining (at least 10 characters) — the case goes to the next lawyer on the shortlist")}</span>
             <textarea className={styles.textarea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tx("যেমন: স্বার্থের সংঘাত / একই দিনে অন্য শুনানি", "e.g. conflict of interest / clashing hearing")} />
           </label>
+          <DeclineStanding compact />
           <div className={styles.actions} style={{ marginTop: "var(--s-2)" }}>
             <Button variant="destructive" disabled={reason.trim().length < 10} onClick={() => run(() => LawyerService.decline(a.applicationId, reason))}>
               {tx("প্রত্যাখ্যান করুন", "Decline")}

@@ -53,8 +53,8 @@ Successful prototype sign-in routes directly to the matching dashboard. For citi
 - Do not expose legal decisions, overrides, or case resolution controls to the administrator.
 
 The implemented admin dashboard reads the shared local record for real people, application,
-task, and audit counts. It provides searchable directories and create/edit forms for
-citizens, lawyers, DLO officers, and UDC operators. Account changes are persisted with
+task, and audit counts. It provides searchable directories and create/edit/delete controls for
+citizens, lawyers, DLO officers, mediators, and UDC operators. Account changes are persisted with
 administrator audit entries. The applications view monitors every office and channel;
 legal decisions remain in the DLO workflow. The policy section displays the currently
 stored ruleset versions.
@@ -125,3 +125,97 @@ previous keys where possible.
 - Steps follow the Step-2 diagram: received → identity → documents & facts → vulnerability & eligibility (advisory recommendation from the JSON ruleset) → human decision. Yes creates Case ID `DLAS-YYYY-NNNNN` and allows eligibility notes; No requires a reason, notifies the applicant and closes the application (REJECTED). Blocked steps open follow-up tasks.
 - Divergence from the earlier Prompt 12 draft: Case ID creation and rejection are part of this step because the Step-2 diagram includes them; pathway selection (mediation / lawyer / referral) remains the next step.
 - Citizen side updates automatically: status, timeline, Case ID, "not accepted — reason" and notifications.
+
+## Feature 6 — successful mediation settlement
+
+The canonical mediation workspace stores one `SettlementWorkflow` after a mediator explicitly
+records `SETTLEMENT_REACHED`. Required, manually entered terms are issue, proposed resolution,
+agreed resolution, conditions, and deadline; additional terms are optional. No term is generated
+or inferred by the application.
+
+The allowed state transitions are
+`TERMS_RECORDED → PARTY_EXECUTION → AWAITING_MEDIATOR_CONFIRMATION → AWAITING_CLO_CERTIFICATION → RESOLVED`.
+`RETURNED_FOR_CORRECTION` and `CLARIFICATION_REQUESTED` are CLO decisions that return control to
+the mediator. Saving a revision increments the agreement revision, clears both signatures and the
+mediator confirmation, and returns to `TERMS_RECORDED`. Prototype signatures store their timestamp
+and `simulated: true`. The mediator confirmation stores mediator ID, name, status, and timestamp.
+
+The separate CLO queue is `/dashboard/dlo/settlements`; each review opens at
+`/dashboard/dlo/settlements/[applicationId]` and is limited to the signed-in officer's office.
+Certification is a human action and is rejected unless both parties are signed and the mediator is
+confirmed. Certification stores agreement ID, certification timestamp, certifying officer, legal
+outcome, and any follow-up requirements, then sets the application to `RESOLVED`. Selected follow-up
+requirements create owned `SETTLEMENT_FOLLOW_UP` tasks for compliance checks, party contact,
+deadline review, or enforcement monitoring.
+
+## Feature 7 — mediation failure workflow
+
+`MEDIATION_FAILED` creates a `MediationFailureRecord`; it does not set a bare Failed case status.
+The mediator records mediation date, attendance by party, issues discussed, outcome, optional
+reason/status, follow-up requirement, and a proposed referral pathway. The record snapshots the
+session number, channel and completion time while explicitly marking confidential caucus content
+as excluded.
+
+The referral pathways are `COURT_LEGAL_PATHWAY`, `LAWYER_ASSIGNMENT`,
+`FURTHER_LEGAL_AID_REVIEW`, and `OTHER_REFERRAL`. A deterministic system suggestion stores reasons
+and `advisoryOnly: true`. The record remains `AWAITING_OFFICER_REVIEW` until an authorized officer
+confirms the suggestion, changes it with a reason, or requests more procedural information. An
+information request creates a mediator task; the response returns the record to officer review
+without soliciting caucus content.
+
+Officer review routes are `/dashboard/dlo/mediation-outcomes` and
+`/dashboard/dlo/mediation-outcomes/[applicationId]`. A confirmed lawyer pathway changes the
+officer-controlled service pathway to `LAWYER`, initializes the existing lawyer matter if needed,
+and creates a `LAWYER_ASSIGNMENT` task. It does not choose or assign a lawyer. The existing officer
+shortlist and panel-lawyer offer workflow begins from that task. Audit and citizen timeline entries
+show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer assignment.
+## Features 8–9: court origin and mediation access control
+
+- `PathwayInputs` stores `mediationOrigin` plus court name, court level, case number, referral date, order/reference, referring authority, current litigation stage, and referral deadline.
+- `MediationMatter.origin` distinguishes `PRE_LITIGATION`, `MANDATORY_PRE_CASE`, `COURT_REFERRED`, and `APPELLATE_REFERRAL`; `track` continues to drive the shared eligibility and workspace engine.
+- Court settlement certification creates a pending `SETTLEMENT_OUTCOME` authority notification. A court/legal failure referral creates `FAILURE_RETURN`. Both create `COURT_AUTHORITY_NOTIFICATION` tasks and require an officer to record the simulated dispatch.
+- `MEDIATION_ROLE_SCOPES` defines the Citizen, Legal Aid Officer, Chief Legal Aid Officer, Mediator, Panel Lawyer, and DBLA/Admin scopes. Case gates remain assignment based for mediators and panel lawyers and office based for officers.
+- Only the assigned, non-revoked mediator can open or mutate a mediation workspace. Its read model excludes NID, direct phone/address, eligibility information, internal notes, staff checks, unrelated risk, and other cases.
+- New caucus writes live in `workspace.mediatorConfidential.caucusNotes`; the optional legacy `caucus` array is read only for stored-record migration. Public projections strip both containers.
+- Officer accounts carry an optional `authorityRole`. Existing SCLAC records resolve to Chief Legal Aid Officer; other legacy officer records resolve to Legal Aid Officer. Settlement review and certification require the Chief role.
+- Every new sensitive mediation action records actor, role, explicit case ID, action, and timestamp in the existing append-only audit array. Caucus audit entries never include note text.
+## Device simulator presentation
+
+- `/device` continues to default to IVR, with `/device/ivr` and `/device/ussd` selecting the same underlying scripted flow.
+- The compact screen retains SIM entry, call/dial controls, keypad or USSD response, voice input, emergency transfer, and the required canonical application-field writes.
+- The handset display is fixed at a compact height and scrolls long prompts internally; keypad and primary phone controls retain 44px minimum targets.
+- Device sessions are page scoped. Opening, switching to, or reloading a device route starts with no active session or conversation history. The device flow does not call the transcript persistence API.
+- There is no separate conversation or simulated-message pane. Voice text entry appears inside the handset display only when the current IVR node requires text.
+- Developer JSON, provenance, audit inspection, and the `/debug` navigation control are not presented in the device user interface.
+- Removing diagnostic UI does not remove the underlying audit, provenance, persistence, or `/debug` route used by developers elsewhere.
+## Admin directory: mediators and UDC operators
+
+- `ManagedRole` includes `mediators` and `udcOperators` alongside citizens, lawyers, and officers.
+- Admin mediator creation writes the existing `DlasDb.mediators` registry shape with a `MED-*` identifier, nested contact record, district, status, role, qualification, supported tracks, supported case types, default availability, and append-only mediator/admin audit entries.
+- Editing a mediator updates that same registry record; it does not create a second mediator account store or change mediator authentication.
+- UDC operator administration continues to write `DlasDb.udcOperators`. Saving an operator creates or updates the corresponding `REGISTERED_OPERATOR` entry in `DlasDb.udcCentres`.
+- Admin overview totals and audit aggregation include mediator and UDC operator accounts.
+- Deletion requires an explicit confirmation. It removes the account from its role directory while preserving application and admin audit history, then writes `account.deleted` or `mediator.account_deleted` to the admin audit.
+- A mediator with an active, non-revoked mediation assignment and a lawyer with an offered or accepted assignment cannot be deleted. The administrator receives an inline dependency error.
+- Deleting a UDC operator removes its linked `REGISTERED_OPERATOR` centre entry; demo-directory and unrelated centre entries remain.
+## Admin sidebar behavior
+
+- Admin sidebar links map directly to the implemented `overview`, `users`, `cases`, `rules`, `mediation`, `audit`, and `backup` sections.
+- Hash changes update the visible admin workspace without a full page reload.
+- Clicking Overview from a hash section clears the hash and restores the overview.
+- Exactly one sidebar item is active: the hashless Overview item is active only when no section hash is present.
+- Admin colors are scoped through --admin-* tokens. The active black theme restores the original red administrator palette.
+
+## Theme snapshot and restoration
+
+- `frontend/app/tokens.css` is the active theme source imported by `frontend/app/globals.css`.
+- `frontend/app/themes/black_theme.css` is the preserved snapshot of the original global, role, status, and admin tokens.
+- `frontend/app/themes/red_white.css` preserves the courthouse image theme.
+- frontend/app/themes/black_theme.css is active. blue_white.css and red_white.css are saved alternatives.
+- Theme presentation is CSS-only. No theme selector or theme state appears in the product UI.
+- `globals.css` imports the active theme after `tokens.css`. Developers switch among the saved themes by changing that single import path; no component or application state changes are required.
+
+
+### Blue White visual refresh
+
+The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.

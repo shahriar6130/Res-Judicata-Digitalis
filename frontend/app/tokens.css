@@ -17,6 +17,10 @@
   --red: #e53935;
   --yellow: #f4c430;
   --green: #16a34a;
+  --primary-action: var(--black);
+  --primary-action-hover: var(--ink);
+  --selection-bg: var(--black);
+  --selection-fg: var(--white);
 
   /* Type */
   /* --font-playfair and --font-bengali are injected by next/font in layout.tsx */
@@ -145,6 +149,24 @@
   --udc-warning-ink: #7c4a06;
   --udc-danger-ink: #8b2925;
   --accent-admin: #7c3aed;
+  --admin-sidebar-bg: #641f24;
+  --admin-sidebar-fg: #fff8f6;
+  --admin-sidebar-muted: #e7bdba;
+  --admin-sidebar-border: #8d3b41;
+  --admin-sidebar-hover: #772a30;
+  --admin-sidebar-active-bg: #fff1ee;
+  --admin-sidebar-active-fg: #641f24;
+  --admin-page-bg: #f8e9e7;
+  --admin-panel-bg: #fff8f6;
+  --admin-soft-bg: #f4deda;
+  --admin-hero-bg: #7a2028;
+  --admin-hero-muted: #f0c8c4;
+  --admin-ink: #5d1820;
+  --admin-muted: #87575c;
+  --admin-line: #d8aaa8;
+  --admin-accent: #a52b35;
+  --admin-accent-hover: #86212a;
+  --admin-danger: #7f1721;
 
   /* Icon */
   --icon: 28px;
@@ -164,6 +186,7 @@
 
   /* Focus */
   --focus-width: 2px;
+  --focus-color: var(--black);
 
   /* Motion */
   --motion-fast: 150ms;

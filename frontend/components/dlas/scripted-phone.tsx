@@ -9,18 +9,14 @@
  *  writes the same ApplicationRecord as every other door.
  * ------------------------------------------------------------------ */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { IntakeGateway, useDlasDb, type IntakeSession } from "@/lib/dlas";
 import { NODES, START_NODE, jumpTarget, type FlowCtx, type FlowMode } from "@/lib/dlas/scripted-flow";
+import { IvrEscalation } from "@/lib/dlas/ivr-triage";
 import { useSpeechInput } from "@/lib/useSpeechInput";
-import { LiveRecordPanel, SimSmsInbox, SimTag, StepTrail, styles, useDoorSession, useTx } from "./shared";
+import { styles, useDoorSession, useTx } from "./shared";
 import ui from "./scripted-phone.module.css";
-
-
-function nodeKey(sessionId: string) {
-  return `dlas.node.${sessionId}`;
-}
 
 export function ScriptedPhone({ mode }: { mode: FlowMode }) {
   const { lang, tx } = useTx();
@@ -29,19 +25,11 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
   const { sessionId, session, setSessionId } = useDoorSession(channel);
   // The caller's own SIM number — typed in, never pre-filled.
   const [sim, setSim] = useState("");
-  const [nodeId, setNodeId] = useState<string | null>(() => {
-    if (!sessionId || typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem(nodeKey(sessionId));
-    } catch {
-      return null;
-    }
-  });
+  const [nodeId, setNodeId] = useState<string | null>(null);
   const [buffer, setBuffer] = useState("");
   const [speech, setSpeech] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [tts, setTts] = useState(false);
-  const logRef = useRef<HTMLUListElement>(null);
   // Real browser speech-to-text fills the "voice answer" box; the caller can still edit it.
   const mic = useSpeechInput(lang, { onComplete: (heard) => setSpeech(heard) });
 
@@ -49,13 +37,8 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
   const node = nodeId ? NODES[nodeId] : null;
   const ctx: FlowCtx | null = sessionId ? { mode, lang, sessionId } : null;
 
-  function goto(id: string, sid: string) {
+  function goto(id: string) {
     setNodeId(id);
-    try {
-      window.localStorage.setItem(nodeKey(sid), id);
-    } catch {
-      /* ignore */
-    }
   }
 
   function promptText(n: (typeof NODES)[string], s: IntakeSession, c: FlowCtx) {
@@ -75,7 +58,6 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
     const s = IntakeGateway.getSession(sid)!;
     const n = NODES[id];
     const text = promptText(n, s, c);
-    IntakeGateway.transcript(sid, [{ from: "SYSTEM", text, nodeId: id }]);
     say(text);
   }
 
@@ -94,21 +76,16 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
     }
     setError(null);
     setSessionId(s.sessionId);
-    goto(START_NODE, s.sessionId);
+    goto(START_NODE);
     announce(START_NODE, s.sessionId, { mode, lang, sessionId: s.sessionId });
   }
 
   function hangUp() {
     const submitted = session?.step === "SUBMITTED";
-    if (sessionId && session && !submitted) IntakeGateway.abandon(sessionId);
+    const withAgent = session?.agentHandoff?.status === "WAITING" || session?.agentHandoff?.status === "CONNECTED";
+    // With an agent transfer open the session stays: the 16699 agent calls the caller back.
+    if (sessionId && session && !submitted && !withAgent) IntakeGateway.abandon(sessionId);
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    if (sessionId) {
-      try {
-        window.localStorage.removeItem(nodeKey(sessionId));
-      } catch {
-        /* ignore */
-      }
-    }
     // Keep a submitted session selected so the handset can show its Application ID.
     if (!submitted) setSessionId(null);
     setNodeId(null);
@@ -121,8 +98,6 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
     if (!node || !sessionId || !ctx) return;
     const s = IntakeGateway.getSession(sessionId);
     if (!s) return;
-    const shown = node.input === "text" && mode === "IVR" ? `🎙 “${value}”` : value;
-    IntakeGateway.transcript(sessionId, [{ from: "USER", text: shown, nodeId: node.id }]);
     const r = node.handle(value, ctx, s);
     setBuffer("");
     setSpeech("");
@@ -130,16 +105,15 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
       const jump = jumpTarget(r.error);
       const msg = r.error.replace(/ → [A-Z_]+$/, "");
       setError(msg);
-      IntakeGateway.transcript(sessionId, [{ from: "SYSTEM", text: `⚠ ${msg}`, nodeId: node.id }]);
       say(msg);
       if (jump) {
-        goto(jump, sessionId);
+        goto(jump);
         announce(jump, sessionId, ctx);
       }
       return;
     }
     setError(null);
-    goto(r.next, sessionId);
+    goto(r.next);
     announce(r.next, sessionId, ctx);
   }
 
@@ -153,18 +127,33 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
     }
   }
 
+  // "Processing" nodes (the simulated AI review) advance on their own.
+  const autoMs = node?.auto ?? 0;
+  const autoNode = node?.id ?? null;
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [session?.transcript.length]);
+    if (!autoMs || !live) return;
+    const h = window.setTimeout(() => answer(""), autoMs);
+    return () => window.clearTimeout(h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoNode, autoMs, live]);
+  function emergency() {
+    if (!sessionId || !ctx) return;
+    try {
+      IvrEscalation.emergency(sessionId, node?.id ?? "unknown");
+      setError(null);
+      goto("EMERGENCY");
+      announce("EMERGENCY", sessionId, ctx);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   const opts = node && session && ctx ? node.options?.(ctx, session) ?? [] : [];
-  const title = mode === "IVR" ? "16699" : "*16699#";
   const app = session?.applicationId ? db.applications.find((a) => a.applicationId === session.applicationId) : undefined;
 
   return (
     <div className={`${styles.work} ${ui.work}`}>
       <div className={ui.mainColumn}>
-        <StepTrail step={session?.step} />
         <div className={`${styles.phoneWrap} ${ui.phoneWrap}`}>
           {/* ------------ the handset ------------ */}
           <div className={`${styles.phone} ${ui.phone}`} aria-label={mode === "IVR" ? tx("আইভিআর ফোন সিমুলেটর", "IVR phone simulator") : tx("ইউএসএসডি ফোন সিমুলেটর", "USSD feature-phone simulator")}>
@@ -222,8 +211,18 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
               ) : (
                 <>
                   <span className={styles.eyebrow}>🔊 {tx("সিস্টেম বলছে", "System says")}</span>
+                  {node?.auto ? <span className={ui.processing} role="status">🤖 {tx("সিমুলেটেড AI বিশ্লেষণ করছে…", "Simulated AI is processing…")}</span> : null}
                   <div style={{ whiteSpace: "pre-wrap" }}>{node && session && ctx ? promptText(node, session, ctx) : ""}</div>
                   {error ? <span className={styles.errText}>{error}</span> : null}
+                  {live && node?.input === "text" && !node.terminal ? (
+                    <div className={ui.voiceReply}>
+                      <textarea className={styles.textarea} aria-label={tx("ভয়েস উত্তর", "Voice answer")} value={speech} onChange={(e) => setSpeech(e.target.value)} placeholder={tx("বলুন বা লিখুন", "Speak or type")} />
+                      <div className={ui.voiceActions}>
+                        <button type="button" className={styles.chip} onClick={mic.start} aria-pressed={mic.status === "listening"}>🎤 {mic.status === "listening" ? tx("শুনছি…", "Listening…") : tx("বলুন", "Speak")}</button>
+                        <Button onClick={() => speech.trim() && answer(speech.trim())}>{tx("পাঠান", "Send")}</Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
@@ -248,61 +247,19 @@ export function ScriptedPhone({ mode }: { mode: FlowMode }) {
                 {mode === "IVR" ? tx("কল কাটুন", "Hang up") : tx("বাতিল", "Cancel")}
               </button>
             </div>
-          </div>
-
-          {/* ------------ controls & transcript ------------ */}
-          <div className={ui.conversationColumn}>
-            {mode === "IVR" && live && node?.input === "text" ? (
-              <div className={`${styles.card} ${styles.cardTight}`}>
-                <p className={styles.eyebrow}>
-                  {tx("ভয়েস উত্তর", "Voice answer")} · <SimTag>{tx("ব্রাউজারের স্পিচ রিকগনিশন", "Browser speech recognition")}</SimTag>
-                </p>
-                <p className={styles.hint}>{tx("মাইক্রোফোনে বলুন বা লিখুন। যন্ত্রের শোনা কথা 'AI_INFERRED' হিসেবে জমা হয়, পড়ে শোনানোর পর নিশ্চিত হয়।", "Speak into the microphone or type. What the machine heard is stored as AI_INFERRED until it is read back and confirmed.")}</p>
-                <textarea className={styles.textarea} aria-label={tx("ভয়েস উত্তর", "Voice answer")} value={speech} onChange={(e) => setSpeech(e.target.value)} />
-                <div className={styles.chips} style={{ marginTop: "var(--s-2)" }}>
-                  <button type="button" className={styles.chip} onClick={mic.start} aria-pressed={mic.status === "listening"}>
-                    🎤 {mic.status === "listening" ? tx("শুনছি…", "Listening…") : tx("মাইক্রোফোনে বলুন", "Speak into the microphone")}
-                  </button>
-                  {mic.status === "unsupported" ? (
-                    <span className={styles.hint}>{tx("এই ব্রাউজারে ভয়েস ইনপুট নেই — লিখে দিন", "No voice input in this browser — type instead")}</span>
-                  ) : mic.status === "error" ? (
-                    <span className={styles.hint}>{tx("শোনা যায়নি — আবার চেষ্টা করুন বা লিখে দিন", "Couldn't hear — try again or type")}</span>
-                  ) : null}
-                </div>
-                <div className={styles.actions}>
-                  <Button onClick={() => speech.trim() && answer(speech.trim())}>🎙 {tx("বলুন (পাঠান)", "Speak (send)")}</Button>
-                </div>
-              </div>
-            ) : null}
-
             {mode === "IVR" ? (
-              <label className={styles.check}>
+              <button type="button" className={ui.emergencyBtn} onClick={emergency} disabled={!live || session?.agentHandoff?.kind === "EMERGENCY"} aria-label={tx("জরুরি — এখনই এজেন্টের সাথে যুক্ত করুন", "Emergency — connect me to an agent now")}>
+                🚨 {session?.agentHandoff?.kind === "EMERGENCY" ? tx("জরুরি সংযোগ চলছে", "Emergency transfer active") : tx("জরুরি", "EMERGENCY")}
+              </button>
+            ) : null}
+            {mode === "IVR" ? (
+              <label className={ui.voiceToggle}>
                 <input type="checkbox" checked={tts} onChange={(e) => setTts(e.target.checked)} />
-                {tx("প্রম্পট ব্রাউজারের কণ্ঠে পড়ে শোনান", "Read prompts aloud with the browser's voice")}
+                {tx("প্রম্পট পড়ে শোনান", "Read prompts aloud")}
               </label>
             ) : null}
-
-            <div className={`${styles.card} ${styles.cardTight} ${ui.transcriptCard}`}>
-              <p className={styles.eyebrow}>
-                {title} · {tx("কথোপকথন (রেকর্ডে সংরক্ষিত)", "Conversation (saved on the record)")}
-              </p>
-              {(session?.transcript.length ?? 0) === 0 ? <p className={ui.emptyTranscript}>{tx("কল বা মেনু শুরু করলে কথোপকথন এখানে দেখা যাবে।", "Start the call or menu to see the conversation here.")}</p> : null}
-              <ul className={`${styles.transcript} ${ui.transcript}`} ref={logRef}>
-                {(session?.transcript ?? []).map((l, i) => (
-                  <li key={i} className={l.from === "SYSTEM" ? styles.lineSys : styles.lineUser} style={{ whiteSpace: "pre-wrap" }}>
-                    {l.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
         </div>
-      </div>
-
-      <div className={`${styles.side} ${ui.side}`}>
-        <div className={ui.recordHeading}><span>{tx("রেকর্ড ও বার্তা", "RECORD & MESSAGES")}</span><p>{tx("এই সিমুলেশনের তথ্য নিচে দেখা যাবে।", "Review the details written by this simulation.")}</p></div>
-        <LiveRecordPanel sessionId={sessionId} />
-        <SimSmsInbox phone={session?.identity.phone ?? null} />
       </div>
     </div>
   );

@@ -9,7 +9,7 @@
 .metrics div:last-child { border-right: 0; }
 .metrics strong { font-family: var(--font-serif); font-size: var(--t-title); line-height: 1; font-weight: var(--weight-semibold); }
 .metrics span { color: var(--gray); font-size: var(--t-small); }
-.focus { display: flex; align-items: end; justify-content: space-between; gap: var(--s-8); padding: var(--s-8); background: var(--ink); color: var(--white); }
+.focus { display: flex; align-items: end; justify-content: space-between; gap: var(--s-8); padding: var(--s-8); background: var(--theme-hero-fill, var(--ink)); color: var(--white); }
 .focus h2 { font-family: var(--font-serif); font-size: var(--t-section); line-height: var(--leading-section); margin: 0 0 var(--s-3); }
 .focus p:not(.eyebrow) { color: var(--on-black-muted); max-width: 540px; margin: 0; }
 .focus .eyebrow { color: var(--on-black-muted); }

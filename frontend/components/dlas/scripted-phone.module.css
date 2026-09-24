@@ -1,38 +1,38 @@
-.work { grid-template-columns: minmax(0, 1fr) minmax(290px, 360px); gap: var(--s-8); }
+.work { display: block; }
 .mainColumn { min-width: 0; }
-.mainColumn > ol { margin-bottom: var(--s-6); }
-.phoneWrap { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: var(--s-6); align-items: start; }
-.phone { width: 100%; max-width: none; padding: var(--s-4); border: 1px solid var(--black); border-radius: var(--s-6); box-shadow: none; }
-.phoneSpeaker { width: 64px; height: 3px; margin: 0 auto var(--s-4); background: var(--line-on-black); border-radius: var(--r-4); }
-.phoneStatus { gap: var(--s-2); align-items: center; padding: 0 var(--s-1) var(--s-3); margin: 0; border-bottom: 1px solid var(--line-on-black); }
+.phoneWrap { display: flex; justify-content: center; align-items: flex-start; }
+.phone { width: min(100%, 300px); max-width: none; padding: var(--s-3); border: 1px solid var(--black); border-radius: var(--s-4); box-shadow: none; }
+.phoneSpeaker { width: 52px; height: 2px; margin: 0 auto var(--s-3); border-radius: var(--r-4); background: var(--line-on-black); }
+.phoneStatus { align-items: center; gap: var(--s-2); margin: 0; padding: 0 var(--s-1) var(--s-2); border-bottom: 1px solid var(--line-on-black); }
 .phoneStatus span:first-child { overflow-wrap: anywhere; }
 .phoneStatus span:last-child { flex: none; color: var(--white); }
-.phoneScreen { min-height: 270px; margin-top: var(--s-3); padding: var(--s-4); border-radius: var(--r-2); }
+.phoneScreen { height: 190px; min-height: 0; max-height: 190px; margin-top: var(--s-2); padding: var(--s-3); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-2); }
 .phoneScreen > strong { font: var(--weight-medium) var(--t-sub)/var(--leading-sub) var(--font-serif); }
 .phoneScreen input { background: var(--white); }
 .ussdBox { min-width: 0; padding: 0; border: 0; background: transparent; }
 .ussdBox > div:first-child { font-weight: var(--weight-medium); }
-.ussdBox ul { padding: var(--s-3); border-block: 1px solid var(--line); }
-.ussdBox li + li { margin-top: var(--s-2); }
+.ussdBox ul { padding: var(--s-2); border-block: 1px solid var(--line); }
+.ussdBox li + li { margin-top: var(--s-1); }
 .ussdReply { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .ussdReply input { min-width: 0; flex: 1; }
-.keypad { margin-top: var(--s-4); gap: var(--s-2); }
-.key { min-height: 50px; border-radius: var(--r-2); font-family: var(--font-sans); font-weight: var(--weight-medium); }
-.callRow { margin-top: var(--s-4); }
-.callBtn, .endBtn { min-height: 46px; border-radius: var(--r-2); }
+.keypad { margin-top: var(--s-3); gap: var(--s-1); }
+.key { min-height: 44px; padding-block: var(--s-2); border-radius: var(--r-2); font-family: var(--font-sans); font-weight: var(--weight-medium); }
+.callRow { margin-top: var(--s-3); }
+.callBtn, .endBtn { min-height: 44px; padding: var(--s-2); border-radius: var(--r-2); }
 .phone button:focus-visible { outline: var(--focus-width) solid var(--white); outline-offset: 2px; }
 .phoneScreen input:focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: 2px; }
-.conversationColumn { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
-.conversationColumn > div, .conversationColumn > label { min-width: 0; }
-.transcriptCard { border-radius: var(--r-0); }
-.transcriptCard > p:first-child { padding-bottom: var(--s-3); border-bottom: 1px solid var(--line); }
-.emptyTranscript { padding: var(--s-6) 0; color: var(--gray); font-size: var(--t-small); line-height: var(--leading-small); }
-.transcript { max-height: 520px; min-width: 0; }
-.transcript li { max-width: 100%; overflow-wrap: anywhere; border-radius: var(--r-2); }
-.side { min-width: 0; top: var(--s-6); }
-.side > aside, .side > div:not(:first-child) { border-radius: var(--r-0); }
-.recordHeading { border-top: 2px solid var(--black); padding-top: var(--s-3); }
-.recordHeading span { color: var(--gray); font-size: var(--t-label); font-weight: var(--weight-semibold); letter-spacing: .09em; }
-.recordHeading p { color: var(--gray); font-size: var(--t-small); line-height: var(--leading-small); margin: var(--s-2) 0 0; }
-@media (max-width: 1180px) { .work { grid-template-columns: minmax(0, 1fr); } .side { position: static; } }
-@media (max-width: 720px) { .phoneWrap { grid-template-columns: minmax(0, 1fr); } .phone { width: min(100%, 360px); margin: 0 auto; } .conversationColumn { width: 100%; } }
+.voiceReply { display: grid; gap: var(--s-2); margin-top: var(--s-2); }
+.voiceReply textarea { min-height: 58px; padding: var(--s-2); resize: vertical; }
+.voiceActions { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.voiceActions button { min-height: 36px; padding: var(--s-1) var(--s-2); }
+.voiceToggle { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-2); color: var(--on-black-muted); font-size: var(--t-label); cursor: pointer; }
+.voiceToggle input { width: 16px; height: 16px; accent-color: var(--white); }
+.emergencyBtn { display: block; width: 100%; min-height: 44px; margin-top: var(--s-2); padding: var(--s-2) var(--s-3); border: 0; border-radius: var(--r-2); background: var(--red); color: var(--white); font: inherit; font-weight: var(--weight-bold); letter-spacing: .06em; cursor: pointer; }
+.emergencyBtn:disabled { opacity: .55; cursor: not-allowed; }
+.emergencyBtn:not(:disabled):hover { background: var(--dlo-danger-ink); }
+.processing { display: inline-flex; align-items: center; gap: var(--s-2); margin: var(--s-1) 0; padding: var(--s-1) var(--s-3); border: 1px dashed var(--accent-admin); border-radius: var(--r-4); background: var(--off-white); color: var(--accent-admin); font-size: var(--t-label); font-weight: var(--weight-bold); animation: ivrPulse 1.2s var(--ease) infinite; }
+@keyframes ivrPulse { 50% { opacity: .45; } }
+
+@media (max-width: 760px) {
+  .phone { margin: 0 auto; }
+}

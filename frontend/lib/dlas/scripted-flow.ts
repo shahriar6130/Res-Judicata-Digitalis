@@ -12,6 +12,7 @@
  * ------------------------------------------------------------------ */
 
 import { IntakeGateway, type CaptureTag } from "./gateway";
+import { IvrEscalation } from "./ivr-triage";
 import {
   CONTACT_METHODS,
   DISTRICTS,
@@ -47,6 +48,8 @@ export interface FlowNode {
   /** Returns the next node id, or an error message to re-prompt. */
   handle: (value: string, ctx: FlowCtx, s: IntakeSession) => { next: string } | { error: string };
   terminal?: boolean;
+  /** Auto-advance after this many ms (the node "processes" — no caller input). */
+  auto?: number;
 }
 
 const t = (ctx: FlowCtx, bn: string, en: string) => (ctx.lang === "bn" ? bn : en);
@@ -145,9 +148,14 @@ export const NODES: Record<string, FlowNode> = {
     options: (ctx) => [
       { key: "1", label: t(ctx, "আইনি সহায়তার আবেদন", "Apply for legal aid") },
       { key: "0", label: ctx.mode === "IVR" ? t(ctx, "একজন মানুষের সাথে কথা বলুন", "Talk to a person") : t(ctx, "কল-ব্যাক চাই", "Request a call-back") },
+      ...(ctx.mode === "IVR" ? [{ key: "9", label: t(ctx, "জরুরি — এখনই বিপদে আছি", "EMERGENCY — I am in danger now") }] : []),
     ],
     handle: (v, ctx, s) => {
       if (v === "1") return { next: "WHO" };
+      if (v === "9" && ctx.mode === "IVR") {
+        IvrEscalation.emergency(s.sessionId, "MAIN menu (9)");
+        return { next: "EMERGENCY" };
+      }
       if (v === "0") {
         IntakeGateway.requestCallback(s.sessionId, ctx.mode === "IVR" ? "IVR caller pressed 0 for a person" : "USSD user requested call-back");
         return { next: "END_CALLBACK" };
@@ -320,8 +328,76 @@ export const NODES: Record<string, FlowNode> = {
       if (v === "2") return { next: "SUMMARY" };
       if (v !== "1") return { error: "1 / 2" };
       confirmReadBack(ctx, s, "matter.summary", s.draft.matter.summary ?? "");
-      return { next: "DANGER" };
+      // IVR: the (simulated) AI assistant reviews the story before the call continues.
+      return { next: ctx.mode === "IVR" ? "AI_TRIAGE" : "DANGER" };
     },
+  },
+  AI_TRIAGE: {
+    id: "AI_TRIAGE",
+    input: "choice",
+    auto: 2400,
+    prompt: (ctx) => t(ctx, "অনুগ্রহ করে অপেক্ষা করুন — আমাদের সহকারী (সিমুলেটেড AI) আপনার কথা বুঝে দেখছে…", "Please hold — our assistant (simulated AI) is reviewing what you said…"),
+    handle: (_v, ctx, s) => {
+      const tr = IvrEscalation.triage(s.sessionId, ctx.lang);
+      return { next: tr.decision === "ROUTE_TO_AGENT" ? "AGENT_TRANSFER" : "DANGER" };
+    },
+  },
+  AGENT_TRANSFER: {
+    id: "AGENT_TRANSFER",
+    input: "choice",
+    prompt: (ctx, s) => {
+      const tr = s.aiTriage?.[s.aiTriage.length - 1];
+      return tr?.severity === "CRITICAL"
+        ? t(ctx, "আপনি যা বলেছেন তাতে এখনই একজন প্রশিক্ষিত মানুষের সাহায্য দরকার। আপনাকে ১৬৬৯৯-এর একজন এজেন্টের সাথে যুক্ত করা হচ্ছে — লাইনে থাকুন। জীবন ঝুঁকিতে থাকলে ৯৯৯-এ কল করুন।", "What you described needs a trained person now. We are connecting you to a 16699 agent — please stay on the line. If a life is in danger, call 999.")
+        : t(ctx, "আপনার বিষয়টি একজন মানুষের দেখা ভালো। আপনাকে ১৬৬৯৯-এর একজন এজেন্টের সাথে যুক্ত করা হচ্ছে।", "Your situation is best handled by a person. We are connecting you to a 16699 agent.");
+    },
+    options: (ctx, s) => {
+      const critical = s.aiTriage?.[s.aiTriage.length - 1]?.severity === "CRITICAL";
+      return [
+        { key: "1", label: t(ctx, "লাইনে থাকুন, এজেন্টের সাথে কথা বলব", "Stay on the line for the agent") },
+        ...(critical ? [] : [{ key: "2", label: t(ctx, "না, স্বয়ংক্রিয় আবেদন চালিয়ে যাব", "No, continue the automated application") }]),
+      ];
+    },
+    handle: (v, ctx, s) => {
+      const critical = s.aiTriage?.[s.aiTriage.length - 1]?.severity === "CRITICAL";
+      if (v === "1") return { next: "AGENT_WAIT" };
+      if (v === "2" && !critical) {
+        IvrEscalation.cancelHandoff(s.sessionId, "Caller chose to continue the automated application");
+        return { next: "DANGER" };
+      }
+      return { error: critical ? "1" : "1 / 2" };
+    },
+  },
+  AGENT_WAIT: {
+    id: "AGENT_WAIT",
+    input: "choice",
+    terminal: true,
+    prompt: (ctx, s) => {
+      const h = s.agentHandoff;
+      if (h?.status === "CONNECTED") return t(ctx, `এজেন্ট ${h.agentName ?? ""} কলে যুক্ত হয়েছেন। তিনি আপনার সাথে কথা বলে আবেদন সম্পূর্ণ করবেন।`, `Agent ${h.agentName ?? ""} has joined the call. They will complete your application with you.`);
+      if (h?.status === "COMPLETED") return t(ctx, `এজেন্ট আপনার আবেদন জমা দিয়েছেন। আবেদন আইডি: ${s.applicationId ?? ""}`, `The agent submitted your application. Application ID: ${s.applicationId ?? ""}`);
+      if (h?.status === "CLOSED") return t(ctx, `এজেন্ট কলটি শেষ করেছেন: ${h.outcome ?? ""}`, `The agent closed the call: ${h.outcome ?? ""}`);
+      return t(ctx, "একজন এজেন্টের অপেক্ষায়… লাইনে থাকুন। কল কেটে গেলেও এজেন্ট আপনাকে ফোন করবেন।", "Waiting for an agent… please stay on the line. If the call drops, the agent will call you back.");
+    },
+    handle: () => ({ next: "AGENT_WAIT" }),
+  },
+  EMERGENCY: {
+    id: "EMERGENCY",
+    input: "choice",
+    terminal: true,
+    prompt: (ctx, s) => {
+      const h = s.agentHandoff;
+      const head = t(ctx, "জরুরি অবস্থা। কারও জীবন বিপদে থাকলে এখনই ৯৯৯-এ কল করুন।", "EMERGENCY. If anyone's life is in danger, call 999 now.");
+      if (h?.status === "CONNECTED") return `${head}
+${t(ctx, `এজেন্ট ${h.agentName ?? ""} কলে যুক্ত হয়েছেন।`, `Agent ${h.agentName ?? ""} has joined the call.`)}`;
+      if (h?.status === "COMPLETED") return `${head}
+${t(ctx, `এজেন্ট আবেদন জমা দিয়েছেন: ${s.applicationId ?? ""}`, `The agent submitted the application: ${s.applicationId ?? ""}`)}`;
+      if (h?.status === "CLOSED") return `${head}
+${t(ctx, `এজেন্ট কল শেষ করেছেন: ${h.outcome ?? ""}`, `The agent closed the call: ${h.outcome ?? ""}`)}`;
+      return `${head}
+${t(ctx, "আপনাকে এখনই ১৬৬৯৯-এর একজন এজেন্টের সাথে যুক্ত করা হচ্ছে (অগ্রাধিকার)। লাইনে থাকুন।", "Connecting you to a 16699 agent now (top priority). Please stay on the line.")}`;
+    },
+    handle: () => ({ next: "EMERGENCY" }),
   },
   DANGER: {
     id: "DANGER",

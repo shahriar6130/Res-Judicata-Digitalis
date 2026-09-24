@@ -384,3 +384,230 @@ DLAO sends a reminder / message            DlaoLawyerMonitor.remind()         �
 
 Access: an offered lawyer sees only the case summary and the officer's note; the full record (client, safe-contact rules, documents, all earlier hearings and reports) opens only while an access grant is active, and every lawyer action checks it. A new lawyer sees the previous lawyer's hearings read-only and cannot report on them.
 The deadline sweep runs while the DLAO or lawyer workspace is open (on every record change and once a minute) and writes only on new alerts. The citizen sees "Panel lawyer assigned" (each lawyer), each hearing date, and — before travelling — "No lawyer report for the … hearing" when a report is overdue (A5).
+
+### 7.3 Red flag — too many declined offers
+
+| What | JSON |
+|---|---|
+| Rule | `lawyerRules.declinesBeforeRedFlag` (default **8**) |
+| Counted | `assignments[]` with `lawyerId = X`, `status = "DECLINED"` and `respondedAt` after the lawyer's last **cleared** flag (`countedDeclines`) |
+| Raised (on the 8th decline, once) | `lawyers[].redFlags[] += {flagId, reason: "DECLINED_OFFERS", raisedAt, threshold, declines[{applicationId, caseId, assignmentId, at, reason}], status: "ACTIVE"}`; `LAWYER_RED_FLAG` DLAO task; simulated SMS to the lawyer; `lawyer.red_flagged` audit entries on the lawyer and the case |
+| Effect (advisory) | The lawyer stays on the panel. The engine lists red-flagged lawyers after all others (`stats.redFlagged`, `stats.declines` on shortlist candidates). The DLAO can still choose them |
+| Cleared by a human | `DlaoLawyerMonitor.clearRedFlag(lawyerId, note ≥ 10 chars)` → `status: "CLEARED"`, `clearedAt/By/ByName`, `clearNote`; closes the task; `lawyer.red_flag_cleared` audit entry; SMS to the lawyer. New declines count from `clearedAt` |
+| Screens | DLO `#lawyers`: "Red-flagged" stat and 🚩 tag, plus "Declined n/8" once a lawyer is 2 away from the limit. DLO `#lawyer/<id>`: every declined offer with its reason, and the clear form. DLO shortlist: 🚩 tag. Lawyer overview and intake: warning at limit − 2, red banner when flagged; the decline form shows "This will be decline n of 8" |
+
+## 8. DLO office staff (`/dlo-stuff`) — story pre-check
+
+Staff work inside a District Legal Aid Office. They see only the office's **incoming** cases and can only check the **story**. They cannot see documents, NID, phone or safe-contact details, the officer's review or any decision.
+
+| What | JSON |
+|---|---|
+| Accounts (sign-up / login by phone, one office district) | `db.officeStaff[]` → `{staffId, name, phone, district, createdAt, lastLoginAt, audit[]}`; session key `localStorage["dlas.staff.current"]` |
+| Incoming list | `applications` where `data.applicant.district === staff.district`, `!review.decision`, status `SUBMITTED` / `UNDER_REVIEW` / `INFO_REQUESTED` |
+| Read model | `StaffCaseView`: story fields only (summary, category, other party, incident date, urgency flags, filed-by). No documents, NID or contact details |
+| Story check | `application.staffCheck = {outcome: STORY_VERIFIED \| NEEDS_CLARIFICATION, items[{key, answer: YES\|NO\|UNSURE}], note, by, byName, at, history[]}` |
+| Rule | All four answers YES → `STORY_VERIFIED`; anything else → `NEEDS_CLARIFICATION`, and a note of at least 10 characters is required |
+| Audit | `application.audit[]` gets `staff.story_checked` with role `dlo_staff` and `advisoryOnly: true` |
+
+The check is **advisory**. It does not change `status` or `review`. The officer sees it as "Staff pre-check" in the `/dashboard/dlo` queue and as a banner on the review page, and still does the identity, fact and document verification and makes the decision.
+
+## 9. Mediator registry (Feature 1) — `/dashboard/dlo#mediators`
+
+Mediators are **not** panel lawyers. They have their own record, their own service (`lib/dlas/mediators.ts`) and their own screen. No assignment happens in the registry.
+
+| What | JSON |
+|---|---|
+| Registry | `db.mediators[]` → `MediatorRecord` |
+| Identity | `mediatorId` (MED-XXXXXX), `name`, `role` (LEGAL_AID_OFFICER / PANEL_MEDIATOR / COMMUNITY_MEDIATOR) |
+| Status | `status` ACTIVE / INACTIVE / SUSPENDED / PENDING_VERIFICATION, plus `statusReason` and `statusChangedAt`. New registrations are always PENDING_VERIFICATION. ACTIVE requires a valid, officer-verified certification. Every change needs a reason (at least 10 characters) |
+| Qualification | `qualification {kind, detail}` |
+| Certification / training | `certification {status CERTIFIED / TRAINING_COMPLETED / IN_TRAINING / NOT_TRAINED, body, certificateNo, issuedOn, validUntil, verifiedBy, verifiedByName, verifiedAt}`. Editing the certificate resets verification. The derived `certificationState()` is VALID / EXPIRED / UNVERIFIED / NOT_QUALIFYING |
+| Experience | `experience {years, mediationsConducted, settled, note}` |
+| Scope | `caseTypes[]` (13 mediation case types, each tagged pre-litigation or court-referred), `tracks[]` (PRE_LITIGATION / COURT_REFERRED), `district`, `operationalAreas[]`, `languages[]` |
+| Availability | `availability {status AVAILABLE / LIMITED / UNAVAILABLE, days[], channels[] PHYSICAL / VOICE / ONLINE, maxActiveMatters, unavailableUntil, note, updatedAt}` |
+| Current workload | `workload {activeMatters, basis: SAMPLE / RECORDED / RECORDS}`. The number is entered by hand until assignment exists; Feature 3 computes it from assignments (`basis: RECORDS`) |
+| Conflict declarations | `conflicts[] {conflictId, kind, source MEDIATOR_DECLARED / OFFICER_RECORDED, partyName, applicationId, area, detail, status ACTIVE / WITHDRAWN, withdrawnReason}` |
+| Administrative record | `adminRecord[] {kind NOTE / TRAINING / COMPLAINT / COMMENDATION / STATUS_CHANGE / VERIFICATION / AVAILABILITY / PROFILE, text, by, at}` |
+| Contact | `contact {phone, email, preferredChannel, office}` |
+| Sample data | `sample: true`, loaded only on request ("Load sample mediators") and labelled SAMPLE everywhere as illustrative, not real people. Removable. Real registrations are never deleted |
+| Audit | `audit[]`: mediator.registered, .updated, .certification_verified, .status_changed, .availability_set, .conflict_declared, .conflict_withdrawn, .record_added, .sample_loaded |
+| Access | A DLAO officer sees and edits their own district's mediators; SCLAC sees all |
+| Link to future assignment | `assignmentReadiness(m)` runs the hard filters that don't depend on a case: status → certification → availability → capacity → scope. Feature 3 adds the case-specific filters (district, case type, track, conflicts matched against the case's parties, locality and case ID), then ranks by experience, relevant experience, workload, availability and record. The system recommends and the officer confirms |
+
+## 10. Legal pathway classification (Feature 2) — Step 2 "Legal pathway"
+
+**Rule:** the system recommends; the authorised officer reviews and then confirms or changes; the system records the decision. The system never finalises a pathway.
+
+| What | JSON / code |
+|---|---|
+| Rule table (data, not UI) | `DEFAULT_PATHWAY_RULES` in `lib/dlas/pathway-rules.ts`. An install can override it with `db.pathwayRules` (same shape), and `pathwayRulesOf(db)` picks the one in force. It holds: `version`, `mandatoryPreCaseDistricts` (currently `"ALL"` — set to the districts where mandatory pre-case mediation is notified), `subcategories` per matter category, and `rules[]` `{ruleId, enabled, when {categories, subcategories, subcategoryMissing, urgencyAny, courtStatus, mandatoryDistrictOnly}, result, title, basis, law, track, referralTarget, expectedDocs}`. The first enabled rule that matches wins |
+| Classifier | `classifyPathway(record, inputs, rules)`. It is pure and deterministic, and reads structured fields only: category, subcategory, court status, district, urgency flags, the other party and the attached documents. No AI and no free-text inference |
+| Pathway statuses | MANDATORY_PRE_CASE_MEDIATION · MEDIATION_AVAILABLE · COURT_REFERRED_MEDIATION · LAWYER_ASSISTANCE · URGENT_ESCALATION · OTHER_REFERRAL · REQUIRES_OFFICER_REVIEW (can never be final) |
+| Officer-entered facts | `application.pathwayClassification.inputs {subcategory, courtStatus UNKNOWN/NONE/FILED_PENDING/REFERRED_FOR_MEDIATION/DECIDED/APPEAL, courtName, courtCaseNo, referralDate, setBy, setAt}`. Provenance is `OFFICER_ENTERED` |
+| System assessments | `.assessments[] {assessmentId, at, rulesVersion, result, ruleId, matched[], warnings[], evidence[], inputs snapshot}`, recorded whenever the result or inputs change |
+| Officer decisions | `.decisions[] {decisionId, action CONFIRMED / CHANGED / INFO_REQUESTED, assessmentId, systemClassification, previousSystemClassification, previousFinal, finalPathway, referralTarget, reason, by, byName, at}` |
+| Final pathway | `.final {status, referralTarget, decisionId, by, byName, at}`. Only Confirm or Change sets it. It also writes `review.pathway` through `commitPathway()`, so the downstream task starts as before: MEDIATION_SCHEDULING, the lawyer engine, GRAM_ADALAT_REFERRAL, or EXTERNAL_REFERRAL. URGENT_ESCALATION also opens an URGENT_SAFETY_REVIEW task. `review.pathway.followedRecommendation` is true only when the officer confirmed |
+| Request more information | Creates a COMPLETE_MISSING_INFO task, optionally sends a safe SMS (simulated), and is recorded as INFO_REQUESTED |
+| Audit | pathway.inputs_recorded, pathway.system_assessed (`advisoryOnly`), pathway.officer_confirmed / .officer_changed, pathway.info_requested, pathway.chosen |
+| Legal basis shown to the officer (to verify) | Legal Aid Services Act 2000 s.21A (court-referred) and s.21B (pre-case). The Legal Aid Services (Amendment) Ordinance 2025 makes pre-case mediation mandatory for listed laws: Family Courts Act 2023 s.5, Dowry Prohibition Act 2018 ss.3–4, House Rent Control Act 1991, SAT Act 1950 s.96, Non-Agricultural Tenancy Act 1949 s.24, Parents Maintenance Act 2013 s.8, and partition suits. It is being rolled out district by district. Excluded: Nari o Shishu Nirjatan Daman Ain s.11(g) and NI Act s.138 |
+
+## 11. Mediator assignment (Feature 3) — separate from panel lawyers
+
+| What | JSON / code |
+|---|---|
+| Matter | `application.mediation {openedAt, pathwayStatus, track PRE_LITIGATION / COURT_REFERRED, caseType, caseTypeSource MAPPED / OFFICER_SET, assignmentStatus, runs[], assignments[]}`. It is opened when the officer confirms a mediation pathway, which also creates a MEDIATOR_ASSIGNMENT task |
+| Case type | Taken from the pathway subcategory through `MEDIATION_CASE_TYPE_MAP` (data); the officer can correct it |
+| Hard filters | 1 STATUS active · 2 CERTIFICATION valid and verified · 3 JURISDICTION (same district and the mediator takes this track) · 4 AVAILABILITY (not unavailable and under capacity) · 5 CONFLICT (no active declaration matching the case ID, a party name or the applicant's locality; also excludes a mediator already removed from this case) · 6 CASE_TYPE handled |
+| Suitability facts (no score, no "best") | relevant experience HIGH / MEDIUM / LOW, current workload (recorded baseline plus matters assigned here), availability (days and channels), area match, administrative record (complaints and commendations). The officer can sort by name, workload or experience |
+| Eligibility runs | `runs[] {runId, at, by, caseType, track, district, candidates[] {mediatorId, eligible, checks[], conflictIds[], considerations}}` |
+| Assignments | `assignments[] {assignmentId, mediatorId, runId, status AWAITING_OFFICER_CONFIRMATION / ASSIGNED / WITHDRAWN / REASSIGNMENT_REQUESTED / COMPLETED, recommendedBy/At/Note, conflictCheck {at, clear, conflictIds}, assignedBy/At/ByName, reason, accessGrantedAt, accessRevokedAt, endedAt, endReason}` |
+| Matter status | PENDING → RECOMMENDED (a run found eligible mediators) → AWAITING_OFFICER_CONFIRMATION (officer recommended one) → ASSIGNED (officer confirmed with a reason; conflict re-checked) → REASSIGNMENT_REQUESTED (access revoked, MEDIATOR_REASSIGNMENT task) → … → COMPLETED |
+| Conflict | Recommending or confirming a conflicted mediator is refused ("CONFLICT DETECTED"). If a matching conflict is declared after assignment, the panel shows CONFLICT DETECTED and requires reassignment |
+| Side effects on confirm | Case-based access granted; the MEDIATION_SCHEDULING task is assigned to the mediator; simulated SMS to the mediator and a neutral SMS to the applicant; `mediator.assigned_to_case` recorded on the mediator's audit |
+| Audit | mediation.matter_opened, .case_type_set, .eligibility_checked (`advisoryOnly`), .mediator_recommended, .conflict_detected, .mediator_assigned, .recommendation_withdrawn, .reassignment_requested, .assignment_completed |
+
+## 12. Mediation workspace (Feature 4) — `/mediator` (sign-in) · `/dashboard/mediator`
+
+| What | JSON / code |
+|---|---|
+| Mediator account | The registry record itself (`db.mediators[]`). Login is by phone; session key `localStorage["dlas.mediator.current"]`. Self-registration at `/mediator` creates a PENDING_VERIFICATION record that the officer verifies (Feature 1). A mediator only receives cases once ACTIVE |
+| Case-based access | A mediator can open a case only while their `mediation.assignments[]` entry is ASSIGNED and `accessRevokedAt` is null. This is checked on every read and every write |
+| Need-to-know view | `useMediatorCase()` → `MediatorCaseView`: case ID, dispute type and subcategory, stage, pathway, mandatory / court-referred, court reference, created date, officer, who assigned the mediator; applicant name, identity-verified yes/no, contact method and window, neutral-wording and SMS flags, representation, language, accessibility; opposing party name; documents excluding the NID, marked verified / received / pending, relevant to this dispute, restricted, downloadable. **Not exposed:** NID, phone numbers, address, income and eligibility, officer notes, staff checks |
+| Workspace | `application.mediation.workspace {openedAt, access {channel, connectivity, language, interpreter, accessibilityNotes}, respondent {contactPreference, representation, representativeName, verification}, sessions[], caucus[], settlement[], outcomes[]}` |
+| Sessions | `{sessionId, number, channel PHYSICAL / VOICE / ONLINE (online is simulated), scheduledFor, place, status SCHEDULED / IN_PROGRESS / PAUSED / COMPLETED, startedAt, endedAt, pauses[], attendance {APPLICANT, RESPONDENT: {status UNRECORDED / PRESENT / ABSENT / REPRESENTED, mode, at}}}`. A session cannot end until both parties' attendance is recorded. Scheduling closes the MEDIATION_SCHEDULING task and sends a safe SMS to the applicant (simulated) |
+| Private caucus | `caucus[] {noteId, side APPLICANT / RESPONDENT, sessionId, text, at, by}`. **Confidential**: shown only in the mediator workspace. The audit records `mediation.caucus_note_added {side, confidential: true}`, never the text |
+| Settlement discussion | `settlement[] {itemId, list ISSUES / DISCUSSION / PROPOSED / AGREED / OUTSTANDING, text, status ACTIVE / WITHDRAWN, history[]}`. Entered by the mediator only; there is no AI and no generated terms or amounts. Every edit and move is kept in the item's history |
+| Outcome | `outcomes[] {kind SETTLEMENT_REACHED / MEDIATION_FAILED / NEEDS_FOLLOW_UP / ADJOURNED, note, agreedTerms[], outstanding[], failure {reason, recommendedNext}, followUpBy, nextSession, legalStatus}`. It is an explicit mediator action and needs at least one completed session. **Settlement** needs at least one agreed term and both parties present or represented; `legalStatus` becomes AWAITING_SIGNATURES_AND_CERTIFICATION, never "final"; a MEDIATION_OUTCOME_REVIEW task goes to the DLAO. **Failed** creates a failure record and a HIGH-priority MEDIATION_OUTCOME_REVIEW task (the officer chooses the next pathway). **Follow-up** creates a MEDIATION_FOLLOW_UP task for the mediator. **Adjourn** schedules the next session. After a settlement or a failure the workspace becomes read-only |
+| Workspace status | NOT_SCHEDULED / SCHEDULED / IN_PROGRESS / PAUSED / AWAITING_OUTCOME / OUTCOME_RECORDED (`workspaceStatus()`) |
+| Audit (role `mediator`) | mediation.workspace_opened (at most once per 30 minutes), .session_scheduled / _rescheduled / _started / _paused / _resumed / _ended, .attendance_applicant / _respondent, .caucus_note_added, .settlement_updated {op, list}, .outcome_recorded, .document_viewed / _downloaded, .access_updated, .respondent_updated |
+
+## 13. Multi-channel mediation (Feature 5) — the channel is transport; the mediator owns the process
+
+| What | JSON / code |
+|---|---|
+| Channel per session | `sessions[].channel` PHYSICAL / VOICE / ONLINE, chosen in "MEDIATION CHANNEL" when scheduling. Physical sessions add `place` (location) and `room` |
+| Transport (simulated) | `sessions[].transport {voice, online, checkIn, fallbacks[], log[]}`. **No telephony or video service is connected.** Sessions created before Feature 5 get an empty transport (`transportOf()`) |
+| Voice | `voice.APPLICANT / RESPONDENT {state IDLE → INITIATED → CONNECTED / NO_ANSWER → ENDED, attempts, initiatedAt, connectedAt, endedAt}`. The transitions are enforced (you cannot connect a call that was never initiated). The system dials under the safe-contact rules, so the mediator never sees the number; the audit entry carries the applicant's safe-contact method and time |
+| Online (simulated room) | `online {roomId, participants APPLICANT / RESPONDENT / MEDIATOR {state NOT_JOINED / CONNECTED / WEAK / DISCONNECTED}}`. The mediator joins when the session starts; the other states are set with the simulator. The session timer counts elapsed time minus pauses |
+| Physical | location, room, scheduled time, `checkIn` per party ("arrived at venue"), attendance |
+| Mediator-owned process | Start, pause / resume, end, attendance, caucus, settlement discussion and outcome are the same controls for every channel. Transport actions never change session status |
+| Limited connectivity | `connectivityLimited(ws, session)` is true when the mediator recorded connectivity as LIMITED, or when an online participant is WEAK or DISCONNECTED. It shows **LIMITED CONNECTIVITY** in the workspace header and a bar with the **voice / physical fallback** buttons. Scheduling online with limited connectivity is allowed, with a warning |
+| Fallback | `MediationWorkspaceService.switchChannel(to, reason, place?, room?)` → `transport.fallbacks[] {from, to, reason, at}`. The session keeps its status, attendance, caucus notes and settlement items; the mediation is never blocked. If the session has not started yet, the applicant is sent a safe SMS about the new channel (simulated) |
+| Audit | mediation.voice_call {side, state, attempt}, mediation.online_connection {who, state}, mediation.venue_check_in {side}, mediation.channel_switched {from, to, reason, sessionStatus}; all transport entries carry `simulated: true` |
+## Mediation origin, confidential notes, and authority notifications
+
+`pathwayClassification.inputs` may contain the court referral metadata used by the shared mediation engine. `application.mediation.origin` is the explicit four-value origin while `track` remains the two-value mediator eligibility dimension.
+
+`application.mediation.workspace.mediatorConfidential.caucusNotes` is a private mediator-only partition. Public and officer read models must remove both this property and the legacy `workspace.caucus` migration source. Audit rows record caucus-note creation without the note body.
+
+`application.mediation.authorityNotifications[]` records a certified settlement outcome or confirmed failure return that must be reported to the referring authority. `PENDING_DISPATCH` becomes `DEMO_RECORDED` only through an authenticated officer action with a dispatch reference. It does not represent actual electronic delivery.
+
+Sensitive mediation audit rows include `actor`, `role`, `caseId`, `action`, and `at`. `DlaoOfficerAccount.authorityRole` distinguishes Legal Aid Officer from Chief Legal Aid Officer without changing the existing officer login record or storage key.
+
+## 14. Mediator privacy / role-based access (Feature 9) — need-to-know, audited
+
+| What | JSON / code |
+|---|---|
+| Role scopes | `MEDIATION_ROLE_SCOPES` (`lib/dlas/mediation-access.ts`) for CITIZEN, LEGAL_AID_OFFICER, CHIEF_LEGAL_AID_OFFICER, MEDIATOR, PANEL_LAWYER and DBLA_ADMIN; checked with `canAccessMediationScope(role, scope)`. Only MEDIATOR holds `MEDIATOR_CONFIDENTIAL_NOTES`; only CLO and DBLA_ADMIN hold `DISTRICT_MONITORING`; only CLO holds `AGREEMENT_CERTIFICATION` |
+| Case-level access | Mediator: `mediatorCanAccessCase` (ASSIGNED and not revoked; the existing need-to-know view in `/mediator`). Officer / CLO: `officerCanAccessApplication` (own office; SCLAC sees all) |
+| PUBLIC CASE RECORD (officer / CLO) | `officerMediationRecord(a)` in `lib/dlas/mediation-oversight.ts`, built on `publicMediationWorkspace()`: status, mediator, sessions (channel, place, attendance, fallback count), outcomes, settlement {agreementId, status, certifiedBy/At}, failure {recordId, status}, mediation audit rows. Caucus content is never included; only `confidentialNoteCount` |
+| MEDIATOR CONFIDENTIAL NOTES | `workspace.mediatorConfidential.caucusNotes`; readable only in the mediator workspace. The officer panel shows a locked block with the count and "not accessible to your role" |
+| Sensitive-view audit | `MediationAccessLog.recordView(applicationId, surface)` → case audit `mediation.record_viewed` {officer, authorityRole, surface, confidentialNotesExcluded: true}, role `dlao` / `clo`, with `caseId`. Deduplicated per officer, case and surface for 30 minutes |
+| Audit row shape | `auditRow(e, a)` → User · Role · Case · Action · Timestamp for every entry. `mediatorAudit` (mediator registry) and `staff.story_checked` now carry `caseId` |
+| UI | `/dashboard/dlo#app/<id>` Legal pathway step → **MEDIATION RECORD — officer view** (scope chips, PUBLIC CASE RECORD, locked confidential block, audit table). `/dashboard/dlo#mediation-monitor` → **District mediation monitor**, CLO only (sidebar item hidden for others; a direct link shows "Access restricted"): stage counts, sessions this week by channel, limited connectivity, fallbacks, overdue mediation and settlement tasks, mediator workload, latest 40 audit rows |
+
+## 15. Legal Aid Office control center (Feature 10) — `/dashboard/dlo#overview`
+
+| What | JSON / code |
+|---|---|
+| Read model | `lib/dlas/office-control.ts` → `classifyCase(a, tasks, officer, now)` (pure) and `useOfficeControl()`. It only reads the shared record: `status`, `review`, `validation.missing`, `pathwayClassification` (latest assessment / final), `review.pathway`, `mediation` (assignmentStatus, workspace sessions, settlementWorkflow, failureRecord, authorityNotifications), open `tasks[]`, `routing` priority and `audit[]`. It writes nothing |
+| Status per case | INTAKE: NEW, PENDING_VERIFICATION, INCOMPLETE (info requested, required fields missing, or a blocked check). PATHWAY: AWAITING_CLASSIFICATION, MANDATORY_AWAITING_CONFIRMATION, MEDIATION_AVAILABLE, LAWYER_PATHWAY. MEDIATION: ASSIGNMENT_PENDING, AWAITING_OFFICER_CONFIRMATION, AWAITING_SCHEDULE, SCHEDULED, IN_PROGRESS, AWAITING_OUTCOME / OUTCOME_REVIEW, SETTLEMENT_EXECUTION, AGREEMENT_AWAITING_CERTIFICATION, FAILED, REFERRAL_PENDING, RESOLVED. Other: REFERRED, REJECTED. Urgent = the officer's priority decision (or the recommended priority) is URGENT, or the final pathway is URGENT_ESCALATION |
+| Next action | `{action, label, href}` plus `owner` OFFICER / CLO / MEDIATOR / PARTY / LAWYER. The href opens the workflow that owns the change: `#app/<id>` (verification, pathway, mediator assignment, mediation record), `/dashboard/dlo/settlements/<id>` (CLO: review and certify), `/dashboard/dlo/mediation-outcomes/<id>` (failure and referral review). Scheduling stays with the mediator, so the officer's action is a follow-up |
+| Deadline | The earliest of the case's open task `dueAt` and its next scheduled session time → OVERDUE / DUE_SOON (≤ 48 h) / LATER |
+| UI | `components/dlao/office-control.tsx`, inserted into the existing overview between the summary tiles and the analytics: **Needs your attention now** (owner = you or overdue; urgent, then overdue, then deadline); lanes for Intake, Pathway, Mediation and Deadlines (upcoming 7 days, overdue mediation, awaiting certification, follow-ups due in 48 h); each stage filters the **case table** (Case ID · Applicant · Dispute type · Pathway · Mediator · Status · Last action · Next action · Deadline · Quick action) |
+
+## 16. Mediation audit trail (Feature 11) — WHO · WHAT · WHEN · CASE · STATUS, append-only
+
+| What | JSON / code |
+|---|---|
+| Entry | `AuditEntry {seq, at (WHEN), actor + role + detail.officer/mediator (WHO), action (WHAT), caseId (CASE), status (STATUS), detail}`. `status = {application, stage, pathway, mediation}` is the case status right after the action. It is stamped by the store on every new application audit row (`lib/dlas/audit-trail.ts` → `statusSnapshot`), so no service can forget it. Rows written before Feature 11 have no status and are shown as "status not recorded" |
+| Append-only | `store.mutate()` fingerprints every `audit[]` in the DB before the mutator runs. `sealAuditHistory()` then rejects the whole write (`AuditTamperError`, nothing saved) if any earlier entry was changed, removed or reordered. The only exception is removing a whole illustrative sample record (`sample: true`, e.g. sample mediators). No screen has edit or delete controls. Limitation: this is a browser prototype, so someone with devtools can still rewrite localStorage directly; a server store would enforce the same rule on its side |
+| Refused action still audited | A conflict of interest found at mediator confirmation now saves `mediation.conflict_detected` (and the failed conflict check) before the confirmation is refused |
+| New events | `mediation.caucus_opened` {side, sessionId} (the first note per side per session; never the content). `settlement.submitted_for_certification` {agreementId, to: CHIEF_LEGAL_AID_OFFICER} (written when the mediator confirms) |
+| Rendering | `describeAudit(e, a)` returns an actor label (Legal Aid Officer / CLO / Mediator / Applicant / System …) and a plain-language sentence. System-generated steps (pathway classification, eligible mediator list, conflict detection, SMS, tasks) show as **System** with "run by <person>". `caseActivity(a)` returns them oldest first |
+| UI | `/dashboard/dlo#app/<id>` → **ACTIVITY / AUDIT TRAIL** (`components/dlao/case-activity.tsx`), full width under the case steps. Grouped by day, `HH:MM — Who · name`, then the sentence, case ID, status after, #seq and expandable details. Filters: Key events, All, Intake & verification, Pathway, Mediation, Settlement / failure, Lawyer. Read-only |
+
+## 17. End-to-end mediation demo (Feature 12) — `/demo/mediation`
+
+| What | JSON / code |
+|---|---|
+| Lifecycle read model | `lib/dlas/mediation-lifecycle.ts` → `mediationLifecycle(a, tasks, expected?)`. It is derived only from the record, audit and tasks, and works for every mediation case. Each stage has a lane (CITIZEN, SYSTEM, OFFICER, MEDIATOR, PARTY, CLO, LAWYER, DBLA), a state (DONE, CURRENT, UPCOMING), a checkpoint (SYSTEM SUGGESTION, OFFICER REVIEW REQUIRED → OFFICER CONFIRMED, MEDIATOR ACTION, PARTY ACTION, CLO CERTIFICATION REQUIRED → CLO CERTIFIED, LAWYER ACTION, COMPLETED, OVERSIGHT), who and when from the audit, supporting facts, and the real screen that owns it. After the session the case branches: SETTLEMENT (settlement → execution → mediator confirmation → CLO → resolved → follow-up) or FAILURE (failure record → officer review → legal pathway → shortlist → officer offer → panel lawyer accepts) |
+| Demo runner | `lib/dlas/mediation-demo.ts` → `runDemoStep(caseKey, note?, newRun?)` performs the CURRENT stage through the real service, signed in as the fictional demo account that owns it (citizen, Legal Aid Officer, sample mediator, CLO, panel lawyer). It then restores whoever was signed in. Human steps record the reason shown and edited in the UI. `signInForDemo(role)` lets a judge open the real screen as that role. Because the runner reads the stage from the record, a step done in the real screen is picked up. A new run files new applications; nothing is deleted (the audit is append-only) |
+| Demo data | District JHENAIDAH. Fictional people marked "(demo)"; phones in the 01300-0000xx block; sample mediators come from the existing sample loader (labelled SAMPLE). Case A: spousal maintenance → settlement. Case B: inherited land partition → failure → panel lawyer. Only SMS, OTP delivery and party signatures are simulated |
+| Follow-up | `SettlementFollowUpService.complete(applicationId, taskId, note)`: the officer records a CLO-required `SETTLEMENT_FOLLOW_UP` as done. Audit: `settlement.follow_up_completed` {kind, note, remaining} |
+| UI | `/demo/mediation`: a role strip (Technology, Mediator, Legal Aid Officer, CLO, Panel lawyer, DBLA), case tabs, a NEXT STEP card (checkpoint badge, the reason to be recorded, "Decide as …" / "Run: System" / "Do it in the real screen instead") and the lifecycle timeline. The same timeline appears in the officer's case details (`/dashboard/dlo#app/<id>`, above the audit trail) and feeds the DBLA view `/dashboard/admin#mediation` (all districts, read-only: current stage, checkpoint, progress, what each case is waiting on) |
+
+## 18. DLAO ↔ DLAO transfer, district register, citizen-urgent tab, biometric attendance
+
+| What | JSON / code |
+|---|---|
+| Handling office | `lib/dlas/case-handling.ts` → `handlingDistrict(a)`: the applicant's district, or the `toDistrict` of the latest ACCEPTED transfer. Officer access (`officerCanAccessApplication`), the mediator panel (eligibility) and the panel-lawyer shortlist (`rankLawyers`) all use it. The applicant's own district is never rewritten |
+| Transfer | `application.transfers[] {transferId, fromOffice/fromDistrict, toOffice/toDistrict, reason, status PENDING / ACCEPTED / REJECTED / CANCELLED, requestedBy/Name/At, respondedBy/Name/At, responseMessage, taskId}`. `CaseTransferService` (`lib/dlas/case-transfer.ts`) has three actions. `request` requires a reason of at least 10 characters and opens a `CASE_TRANSFER_REVIEW` task in the receiving office. `respond(ACCEPT \| REJECT)`: a rejection requires a message and opens a `CASE_TRANSFER_REJECTED` task, carrying the message, for the sender; acceptance moves `routing.office` and the open DLAO tasks and sends the applicant a safe SMS. `cancel` withdraws a pending request. A transfer is blocked while a mediator or panel lawyer is offered or assigned, or while the case is closed. Until acceptance the receiving office sees a summary only. Audit: `case.transfer_requested / _accepted / _rejected / _cancelled` |
+| Transfer UI | Case page `/dashboard/dlo#app/<id>` → "Transfer to another DLAO" (district and reason; pending banner with cancel; history with the receiving office's message). Inbox `/dashboard/dlo#transfers` (also `/dlo/infer`): incoming requests (accept, or reject with a message), sent requests with their answers. The sidebar badge counts incoming requests |
+| District register | `/dashboard/dlo#cases` (`lib/dlas/district-cases.ts`): every case the office handles. Running time is shown as a colour dot (green under 30 days, amber 30–90, red over 90), and so is the time since the last audit entry (green up to 7 days, amber 8–14, red over 14). It also shows the state and next action, and the lawyer or mediator. For lawyer cases it adds hearings, the next hearing, overdue reports and missed hearings, with links to lawyer control (summon, red flag) and to withdraw / reassign. Filters: open, lawyer, mediation, silent 14+ days, running 90+ days, closed. Read-only |
+| Citizen urgency | The web intake step 3 asks "Is this urgent?" (checkbox plus reasons: danger now, violence or threats, eviction, detention, child involved, online harassment) → `data.urgency {selfReportedUrgent, flags}`. The existing pipeline then raises the advisory priority and the safety-review task. `/dashboard/dlo#urgent` lists these cases (sidebar badge = open urgent cases). Priority and pathway stay the officer's decision |
+| Biometric attendance | `/lawyer/biometric`: a simulated fingerprint pad. Press and hold for 2 s → `LawyerAuth.markAttendance("PRESENT", {method: "BIOMETRIC_SIMULATED", deviceId: "SIM-FP-SCANNER-01"})`; releasing early records nothing. `LawyerDayAttendance` gains `method` (`SELF_DECLARED` / `BIOMETRIC_SIMULATED`) and `deviceId`; the audit entry `attendance.marked / changed` carries the method and `simulated: true`. The lawyer's attendance page links to the pad instead of offering a plain "Present" button; "Absent" remains self-declared |
+
+## 19. IVR: simulated AI triage, emergency button, 16699 agent hand-off · transfer notices · requested documents
+
+| What | JSON / code |
+|---|---|
+| Simulated AI triage | `lib/dlas/ivr-triage.ts` → `triageStory(text, lang)`: a rule-based stand-in for an AI model (`engine: SIMULATED_TRIAGE_V1`, `simulated: true`, `advisoryOnly: true`). Findings are CRITICAL (danger to life, self-harm, sexual violence, child at risk, detention, trafficking) or SENSITIVE (physical violence, imminent eviction, complex litigation, distress, unclear story), each with the matched words as evidence. It routes to an agent on anything critical, on complex litigation, or on two or more sensitive findings; otherwise the IVR continues. It never rejects anyone and never decides eligibility. Stored as `session.aiTriage[]` and copied to `application.aiTriage[]` on submit. Audit: `ai.story_triaged`, `handoff.to_agent` |
+| IVR flow | `SUMMARY_CONFIRM → AI_TRIAGE` (auto node: "Please hold — our assistant (simulated AI) is reviewing…") `→ AGENT_TRANSFER → AGENT_WAIT` or `→ DANGER` (the normal flow). A critical call cannot opt out; a sensitive one can press 2 to continue the automated application (`handoff.caller_continued_automated`). Hanging up while a transfer is open does not abandon the session, because the agent calls back |
+| Emergency | A red 🚨 EMERGENCY button on the IVR phone during any call, plus main-menu option 9 → `IvrEscalation.emergency()`. It sets `urgency {selfReportedUrgent: true, flags: [IMMEDIATE_DANGER]}` and opens an `EMERGENCY_CALL` task (URGENT, due in 2 minutes). The caller hears "call 999 now; connecting you to an agent". Audit: `emergency.pressed` |
+| Agent hand-off | `session.agentHandoff {kind AI_ESCALATION / EMERGENCY, status WAITING / CONNECTED / COMPLETED / CLOSED, taskId, triageId, agentId/Name, outcome}`; tasks `AGENT_LIVE_TRANSFER` / `EMERGENCY_CALL` for `HELPLINE_AGENT`. 16699 agents sign in (`db.helplineAgents[]`, `HelplineAgentAuth`). `AgentDesk.take / capture / consent / submit / close`: the agent completes the missing fields on the SAME intake session (provenance `OPERATOR_ENTERED · AGENT_FORM`, consent `AGENT_VERBAL_READBACK`) and submits. The result is an ApplicationRecord in `dlas.db.v1` like any other door, with `agentHandoff` and `aiTriage` carried onto it. Screen: `/dashboard/helpline#ivr-escalations` (emergencies first, with the AI findings and the draft captured so far) |
+| Transfer notices | `db.officeNotices[] {office, kind TRANSFER_RECEIVED / ACCEPTED / REJECTED / CANCELLED, applicationId, caseRef, title, body, at, readBy[]}`, written by `CaseTransferService`. `OfficeNoticeBar` shows unread notices at the top of every DLO view ("Case transfer received from X DLAO"; "X DLAO rejected the transfer — the case is back with your office" with its message). The case page shows "Transferred case — received from X" to the receiving office and "Rejected — back with your office" to the sender; queue rows get a transfer tag |
+| Requested documents | The citizen's "Documents needed" (case page and home card) lists only the documents the Legal Aid Officer requested (`document.requested`), not the matter's default checklist |
+
+## 20. Mediator best picks → offer → accept / decline → auto-next
+
+Code: `lib/dlas/mediator-offers.ts`. UI: `components/dlao/mediator-assign.tsx` (Best picks + open offer), `components/mediator/mediator-workspace.tsx` (Case offers). Test: `t32offers.js`.
+
+**Ranking (advisory).** After the hard filters (§ mediator assignment), `rankCandidates()` scores each *eligible* mediator 0–100 by fixed rules:
+experience HIGH/MEDIUM/LOW = 35/22/10 · free capacity = 30 × (1 − load/capacity) · availability AVAILABLE/LIMITED = 15/6 · record COMMENDED/none/CONCERN = 15/8/0 · area match = 5. Ties: lower load, then name. The breakdown is shown to the officer and written to audit. The officer chooses whom to offer to; the system never assigns.
+
+**Record.** `application.mediation.assignments[]` item (`MediatorAssignmentRecord`) gains
+`status: OFFERED | DECLINED | EXPIRED` (plus existing ASSIGNED / WITHDRAWN …) and
+`offer: { offeredAt, respondBy (+24h), via: OFFICER_PICK | AUTO_NEXT, rank, score, respondedAt, declineReason }`.
+`mediation.assignmentStatus = AWAITING_MEDIATOR_ACCEPTANCE` while an offer is open (at most one open offer per case).
+
+**Transitions.**
+| Actor | Call | Effect |
+|---|---|---|
+| DLAO | `MediatorOfferService.offer(appId, mediatorId, reason)` | live re-check (conflict/capacity) → OFFERED; task `MEDIATOR_CASE_OFFER` to the mediator; SMS to mediator (SIMULATED); audit `mediation.mediator_offered` |
+| DLAO | `withdrawOffer(appId, reason)` | WITHDRAWN; task closed; audit `mediation.offer_withdrawn` |
+| Mediator | `accept(appId)` | conflict re-check → ASSIGNED, need-to-know access, scheduling task, applicant SMS (safe channel / neutral wording), office notice `MEDIATOR_ACCEPTED`; audit `mediation.mediator_accepted` |
+| Mediator | `decline(appId, reason)` | DECLINED → next-ranked eligible mediator offered automatically (`via: AUTO_NEXT`, audit `mediation.auto_offered_next`), office notice `MEDIATOR_DECLINED` |
+| System | `sweepMediatorOffers(now)` (runs on the minute clock on DLO + mediator screens) | past `respondBy` → EXPIRED → next pick, same as decline |
+| System | none left | `assignmentStatus = RECOMMENDED`, DLAO task `MEDIATOR_ASSIGNMENT` (HIGH), notice `MEDIATOR_NONE_LEFT`, audit `mediation.offers_exhausted` |
+
+A mediator who declined or let an offer expire is never re-offered automatically; the officer may still choose them manually. Before acceptance the mediator sees only case ref, matter, case type, track and office — no party personal data. Office notices live in `db.officeNotices[]` and appear in the DLO notice bar.
+
+### 20.1 Mediators are auto-approved; the office only assigns
+
+- `MediatorAuth.signUp` creates the mediator as `status: ACTIVE` with `certification = { status: CERTIFIED, body: "Self-declared at sign-up: <qualification>", verifiedBy: "system", verifiedByName: "Auto-approved at sign-up", verifiedAt: <signup time> }`; audit `mediator.self_registered { autoApproved: true }`. They pass the eligibility filters at once and appear in Best picks.
+- Store migration (`store.ts autoApproveMediator`): any non-sample mediator still `PENDING_VERIFICATION` loads as ACTIVE with an auto-approved certificate.
+- DLO dashboard `#mediators` / `#mediator/<id>` is **view-only**: no add (`#mediators/new` → list), edit, certificate verification, status change, availability, conflict declarations or admin-record entries. Tabs: Profile, Record & audit.
+- The only office action on mediators is assignment: Legal pathway → Mediation → Best picks → offer (§20). Mediators protect themselves from conflicts by declining the offer.
+- `MediatorRegistry.*` library functions remain (used by tests / sample data) but have no DLO UI.
+
+## 21. Settlement: DLO verifies last → testimonial → case closed (no CLO step)
+
+Code: `lib/dlas/mediation-workspace.ts` `SettlementVerificationService` (old `CloSettlementService` kept as an alias: `certify` = `verify`). UI: `/dashboard/dlo/settlements[/<APP-ID>]` (`components/dlao/clo-settlement-review.tsx`), visible to every Legal Aid Officer. Test: `t34verify.js`.
+
+1. Mediator records terms → both parties sign (SIMULATED) → mediator confirms → `settlementWorkflow.status = AWAITING_CLO_CERTIFICATION` (legacy enum name; means *awaiting the DLO's verification*).
+2. **DLO verifies** — `verify(appId, { outcome })`: any officer of the handling office (`officerCanAccessMediationCase`), no CLO role needed. Sets `resolution {certifyingOfficer = DLO, certificationTimestamp, outcome}`, `flow.status = RESOLVED`; the case is still open. Audit `settlement.certified` (detail `verifiedBy: LEGAL_AID_OFFICER`). The DLO can instead `review(appId, RETURNED_FOR_CORRECTION | CLARIFICATION_REQUESTED, note)` → back to the mediator.
+3. **DLO generates the testimonial** — `issueTestimonial(appId)`: writes `settlementWorkflow.testimonial` (`SettlementTestimonial`: `testimonialId TST-…`, office, case ref, agreement, parties, mediator, agreed resolution, conditions, deadline, verified outcome, signature/confirmation/verification times, `issuedBy/At`, `simulated: true`) and **closes the case**: `application.status = RESOLVED`, `stage = CLOSURE`, `closedAt = now`; every open task of the case is closed except a pending `COURT_AUTHORITY_NOTIFICATION`. Audit `settlement.testimonial_issued` + `case.closed`; applicant SMS on the safe channel (neutral wording where required, SIMULATED gateway). Issuing twice is refused.
+4. The testimonial is shown on the settlement page with **Print** and **Download (.html)**, marked DEMO / SIMULATED (no official seal or e-signature). The citizen timeline's *Closure* step shows the testimonial number and the office to collect it from.
+
+Lifecycle (Feature 12) settlement tail is now `mediator_confirmation → dlo_verification (OFFICER) → testimonial (OFFICER) → closed (SYSTEM)`; the CLO checkpoints and the settlement follow-up stage were removed. Office control: "Verify the agreement (final step)" → "Generate the testimonial & close the case" → "Closed — testimonial issued". `LEGAL_AID_OFFICER` now has the `AGREEMENT_CERTIFICATION` scope.

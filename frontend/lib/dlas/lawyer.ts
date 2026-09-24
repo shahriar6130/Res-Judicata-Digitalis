@@ -39,7 +39,9 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { mutate, readDb, useDlasDb } from "./store";
 import { DISTRICTS, MATTERS, label, normalizePhone } from "./reference";
 import { DlaoAuth } from "./dlao";
+import { handlingDistrict } from "./case-handling";
 import type {
+  LawyerRedFlag,
   ApplicationRecord,
   AssignmentLedger,
   AuditEntry,
@@ -71,6 +73,7 @@ export const DEFAULT_LAWYER_RULES: LawyerRuleset = {
   shortlistSize: 5,
   attendanceWindowDays: 30,
   weights: { workload: 35, winRate: 30, attendance: 25, specialisation: 10 },
+  declinesBeforeRedFlag: 8,
 };
 
 const now = () => new Date().toISOString();
@@ -143,6 +146,7 @@ export const LawyerAuth = {
         attendance: [],
         notificationsReadAt: null,
         contacts: [],
+        redFlags: [],
         audit: [],
       };
       audit(db, a.audit, { actor: a.lawyerId, role: "panel_lawyer", action: "lawyer.signed_up", detail: { district: a.district, barEnrolmentNo: a.barEnrolmentNo, practiceAreas: a.practiceAreas } });
@@ -182,7 +186,7 @@ export const LawyerAuth = {
   },
 
   /** Register today's attendance (present / absent). Changing it the same day keeps one entry and is audited. */
-  markAttendance(status: "PRESENT" | "ABSENT") {
+  markAttendance(status: "PRESENT" | "ABSENT", via: { method: "SELF_DECLARED" | "BIOMETRIC_SIMULATED"; deviceId?: string | null } = { method: "SELF_DECLARED" }) {
     const me = LawyerAuth.current();
     if (!me) throw new Error("Lawyer login required");
     return mutate((db) => {
@@ -190,12 +194,16 @@ export const LawyerAuth = {
       l.attendance = l.attendance ?? [];
       const date = dayKey();
       const prev = l.attendance.find((x) => x.date === date);
-      if (prev?.status === status) return prev;
+      if (prev?.status === status && (prev.method ?? "SELF_DECLARED") === via.method) return prev;
+      const method = via.method;
+      const before = prev?.status ?? null;
       if (prev) {
         prev.status = status;
         prev.at = now();
-      } else l.attendance.push({ date, status, at: now() });
-      audit(db, l.audit, { actor: l.lawyerId, role: "panel_lawyer", action: prev ? "attendance.changed" : "attendance.marked", detail: { date, status, from: prev ? (status === "PRESENT" ? "ABSENT" : "PRESENT") : null } });
+        prev.method = method;
+        prev.deviceId = via.deviceId ?? null;
+      } else l.attendance.push({ date, status, at: now(), method, deviceId: via.deviceId ?? null });
+      audit(db, l.audit, { actor: l.lawyerId, role: "panel_lawyer", action: prev ? "attendance.changed" : "attendance.marked", detail: { date, status, from: before, method, deviceId: via.deviceId ?? null, simulated: method === "BIOMETRIC_SIMULATED" } });
       return l.attendance.find((x) => x.date === date)!;
     });
   },
@@ -309,6 +317,46 @@ function paymentFor(a: ApplicationRecord, s: LawyerAssignment, status: NonNullab
   };
 }
 
+/* ---------------- red flag: too many declined offers ---------------- */
+
+export function activeRedFlag(l: PanelLawyerAccount): LawyerRedFlag | null {
+  return [...(l.redFlags ?? [])].reverse().find((f) => f.status === "ACTIVE") ?? null;
+}
+
+/** Declined offers that count towards the next red flag (everything after the last flag the DLAO cleared). */
+export function countedDeclines(db: DlasDb, l: PanelLawyerAccount): LawyerRedFlag["declines"] {
+  const cleared = [...(l.redFlags ?? [])].reverse().find((f) => f.status === "CLEARED");
+  const since = cleared?.clearedAt ?? "";
+  const out: LawyerRedFlag["declines"] = [];
+  for (const a of db.applications)
+    for (const s of a.lawyer?.assignments ?? [])
+      if (s.lawyerId === l.lawyerId && s.status === "DECLINED" && (s.respondedAt ?? "") > since)
+        out.push({ applicationId: a.applicationId, caseId: a.caseId, assignmentId: s.assignmentId, at: s.respondedAt ?? s.offeredAt, reason: s.declineReason ?? null });
+  return out.sort((x, y) => x.at.localeCompare(y.at));
+}
+
+/** After a decline: at the rule threshold the lawyer is red-flagged and the DLAO gets a review task (once per flag). */
+function checkRedFlag(db: DlasDb, a: ApplicationRecord, lawyerId: string) {
+  const l = db.lawyers.find((x) => x.lawyerId === lawyerId);
+  if (!l || activeRedFlag(l)) return;
+  const threshold = rulesOf(db).declinesBeforeRedFlag;
+  const declines = countedDeclines(db, l);
+  if (declines.length < threshold) return;
+  const flag: LawyerRedFlag = { flagId: rid("RFL"), reason: "DECLINED_OFFERS", raisedAt: now(), threshold, declines, status: "ACTIVE", clearedAt: null, clearedBy: null, clearedByName: null, clearNote: null };
+  l.redFlags = [...(l.redFlags ?? []), flag];
+  audit(db, l.audit, { actor: "system", role: "system", action: "lawyer.red_flagged", detail: { flagId: flag.flagId, declines: declines.length, threshold } });
+  audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.red_flagged", detail: { lawyerId, flagId: flag.flagId, declines: declines.length, threshold } });
+  openTask(db, a, {
+    type: "LAWYER_RED_FLAG",
+    assignedRole: "DLAO",
+    priority: "HIGH",
+    reason: `Red flag: ${l.name} has declined ${declines.length} case offers (rule ${threshold}). Review the reasons and clear the flag — advisory, the lawyer stays on the panel until you decide.`,
+    dueAt: addHours(now(), 72),
+    context: { lawyerId, flagId: flag.flagId, declines: declines.length, threshold },
+  });
+  smsLawyer(db, a, lawyerId, `DLAS: you have declined ${declines.length} case offers and are red-flagged for review by the legal aid office.`);
+}
+
 /* ---------------- engine: lawyer statistics & top-N shortlist ---------------- */
 
 export type LawyerStats = ShortlistCandidate["stats"];
@@ -342,6 +390,8 @@ export function lawyerStats(db: DlasDb, l: PanelLawyerAccount, a: ApplicationRec
     attendancePct: presentDays + absentDays ? Math.round((presentDays / (presentDays + absentDays)) * 100) : null,
     absentToday: (l.attendance ?? []).some((d) => d.date === dayKey(at) && d.status === "ABSENT"),
     matchesMatter: !!a?.data.matter.category && l.practiceAreas.includes(a.data.matter.category),
+    declines: countedDeclines(db, l).length,
+    redFlagged: !!activeRedFlag(l),
   };
 }
 
@@ -360,7 +410,7 @@ export function scoreLawyer(db: DlasDb, st: LawyerStats): { score: number; break
 
 /** The engine's ranked picks for this case (district panel, minus lawyers who already declined / were removed). */
 export function rankLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): Omit<ShortlistCandidate, "outcome" | "reason" | "offeredAt">[] {
-  const district = a.data.applicant.district;
+  const district = handlingDistrict(a); // follows an accepted DLAO → DLAO transfer
   const tried = new Set((a.lawyer?.assignments ?? []).filter((s) => s.status !== "ACCEPTED" && s.status !== "OFFERED").map((s) => s.lawyerId));
   return db.lawyers
     .filter((l) => (!district || l.district === district) && !tried.has(l.lawyerId))
@@ -369,7 +419,8 @@ export function rankLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): 
       const { score, breakdown } = scoreLawyer(db, stats);
       return { lawyerId: l.lawyerId, name: l.name, rank: 0, score, breakdown, stats };
     })
-    .sort((x, y) => y.score - x.score || x.stats.activeCases - y.stats.activeCases)
+    // Red-flagged lawyers go after everyone else (still listed — the DLAO decides).
+    .sort((x, y) => Number(!!x.stats.redFlagged) - Number(!!y.stats.redFlagged) || y.score - x.score || x.stats.activeCases - y.stats.activeCases)
     .map((c, i) => ({ ...c, rank: i + 1 }));
 }
 
@@ -784,6 +835,7 @@ export const LawyerService = {
       }
       if (sl && sl.status === "ACTIVE") autoOfferNext(db, a, sl, s.note);
       else openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `${me.name} declined: ${reason.trim()} — assign another panel lawyer`, dueAt: addHours(now(), 24) });
+      checkRedFlag(db, a, me.lawyerId);
       return s;
     });
   },
@@ -1027,6 +1079,20 @@ export function lawyerNotificationsFor(db: DlasDb, me: PanelLawyerAccount | unde
       }
     }
   }
+  // Red flag for declined offers (and a warning two declines before it).
+  const rf = activeRedFlag(me);
+  const rules = rulesOf(db);
+  if (rf)
+    out.push({ id: `rfl-${rf.flagId}`, at: rf.raisedAt, tone: "err", title: { bn: "লাল পতাকা: অনেক প্রস্তাব প্রত্যাখ্যান", en: "Red flag: too many declined offers" }, body: { bn: `আপনি ${rf.declines.length}টি মামলার প্রস্তাব প্রত্যাখ্যান করেছেন (সীমা ${rf.threshold})। ডিএলএও পর্যালোচনা করবেন; ততদিন ইঞ্জিনের তালিকায় আপনি পরে থাকবেন।`, en: `You declined ${rf.declines.length} case offers (limit ${rf.threshold}). The DLAO will review; until then the engine lists you after other lawyers.` }, href: "#intake" });
+  for (const f of (me.redFlags ?? []).filter((x) => x.status === "CLEARED"))
+    out.push({ id: `rflc-${f.flagId}`, at: f.clearedAt ?? f.raisedAt, tone: "ok", title: { bn: "লাল পতাকা তুলে নেওয়া হয়েছে", en: "Red flag cleared" }, body: { bn: `${f.clearedByName ?? ""}: ${f.clearNote ?? ""}`, en: `${f.clearedByName ?? ""}: ${f.clearNote ?? ""}` }, href: "#notifications" });
+  if (!rf) {
+    const ds = countedDeclines(db, me);
+    const n = ds.length;
+    if (n > 0 && n >= rules.declinesBeforeRedFlag - 2)
+      out.push({ id: `rflw-${n}`, at: ds[n - 1].at, tone: "warn", title: { bn: `সতর্কতা: ${n}/${rules.declinesBeforeRedFlag} প্রস্তাব প্রত্যাখ্যাত`, en: `Warning: ${n} of ${rules.declinesBeforeRedFlag} offers declined` }, body: { bn: `${rules.declinesBeforeRedFlag}টি প্রত্যাখ্যানে আপনাকে লাল পতাকা দেওয়া হবে।`, en: `At ${rules.declinesBeforeRedFlag} declines you will be red-flagged for DLAO review.` }, href: "#intake" });
+  }
+
   // Calls, summons and reminders from the DLAO.
   for (const c of me.contacts ?? []) {
     const about = c.applicationId ? db.applications.find((x) => x.applicationId === c.applicationId) : null;

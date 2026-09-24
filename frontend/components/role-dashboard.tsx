@@ -16,6 +16,7 @@ import { useCitizenCases, useCurrentCitizen } from "@/lib/dlas/citizen-view";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { DlaoWorkspace } from "@/components/dlao/dlao-workspace";
 import { LawyerWorkspace } from "@/components/lawyer/lawyer-workspace";
+import { MediatorWorkspace } from "@/components/mediator/mediator-workspace";
 import type { RoleId } from "@/lib/roles";
 import styles from "./role-dashboard.module.css";
 
@@ -24,6 +25,7 @@ type DashboardProps = { role: RoleId };
 export function RoleDashboard({ role }: DashboardProps) {
   return role === "citizen" ? <CitizenGate /> :
     role === "lawyer" ? <LawyerWorkspace /> :
+    role === "mediator" ? <MediatorWorkspace /> :
     role === "dlo" ? <DlaoWorkspace /> :
     role === "admin" ? <AdminWorkspace /> :
     <OperationalRoleDashboard role={role} />;

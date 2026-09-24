@@ -125,6 +125,9 @@ export type IntakeDraft = {
   partyName: string;
   partyAddress: string;
   description: string;
+  /** The citizen says it is urgent (and why) — shown to the DLAO in the "Urgent cases" tab; priority stays the officer's decision. */
+  urgent?: boolean;
+  urgencyFlags?: string[];
 
   /* --- Step 4: Documents --- */
   documents: IntakeDocument[];

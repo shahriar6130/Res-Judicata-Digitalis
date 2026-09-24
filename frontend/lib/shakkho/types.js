@@ -14,7 +14,7 @@
  *  No LLM call lives in this file. Everything is plain data.
  * ------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EVIDENCE_ACCESS_PURPOSES = exports.SafeContactBlockedError = exports.RepresentationOutOfScopeError = void 0;
+exports.MEDIATION_STEPS = exports.EVIDENCE_ACCESS_PURPOSES = exports.SafeContactBlockedError = exports.RepresentationOutOfScopeError = void 0;
 class RepresentationOutOfScopeError extends Error {
     constructor(message) {
         super(message);
@@ -55,4 +55,16 @@ exports.EVIDENCE_ACCESS_PURPOSES = [
         labelBn: "প্রাপ্তিস্থান কর্তৃপক্ষের পর্যালোচনা",
         labelEn: "Receiving-authority review",
     },
+];
+/** The 9-step stepper shown on the mediator case page. Each state above maps to exactly one step. */
+exports.MEDIATION_STEPS = [
+    { key: "registration", titleBn: "নিবন্ধন", titleEn: "Registration", states: ["registered"] },
+    { key: "parties", titleBn: "পক্ষ ও যোগাযোগ", titleEn: "Parties and contact", states: ["party_contact_pending"] },
+    { key: "scheduling", titleBn: "সময়সূচী ও নোটিশ", titleEn: "Scheduling and notices", states: ["scheduled", "notices_sent"] },
+    { key: "documents", titleBn: "নথি", titleEn: "Documents", states: ["documents_under_review"] },
+    { key: "attendance", titleBn: "উপস্থিতি", titleEn: "Attendance", states: ["ready_for_session", "attendance_confirmed"] },
+    { key: "session", titleBn: "মধ্যস্থতা অধিবেশন", titleEn: "Mediation session", states: ["in_session", "adjourned", "no_show_rescheduled"] },
+    { key: "draft", titleBn: "নিষ্পত্তি খসড়া", titleEn: "Settlement draft", states: ["drafting", "draft_under_review"] },
+    { key: "signing", titleBn: "পক্ষের পর্যালোচনা ও স্বাক্ষর", titleEn: "Party review and signing", states: ["party_review", "awaiting_signatures", "partially_signed", "signed"] },
+    { key: "outcome", titleBn: "ফলাফল", titleEn: "Outcome", states: ["outcome_recorded", "closed", "no_settlement", "cancelled"] },
 ];

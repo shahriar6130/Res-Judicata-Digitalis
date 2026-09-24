@@ -12,6 +12,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/button";
+import { AiSummary } from "@/components/dlas/ai-summary";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -48,6 +49,7 @@ import {
   type MediatorCaseView,
   type PartySide,
   type SettlementList,
+  type SettlementDraft,
   type WorkspaceStatus,
   type FailureReferralPathway,
 } from "@/lib/dlas";
@@ -398,6 +400,10 @@ function CaseWorkspace({ id, tab }: { id: string; tab: string }) {
           </div>
         </div>
       </header>
+
+      <div style={{ marginTop: "var(--s-3)" }}>
+        <AiSummary applicationId={id} role="MEDIATOR" />
+      </div>
 
       <div className={styles.tabs} role="tablist" aria-label={tx("কার্যক্ষেত্রের অংশ", "Workspace sections")} style={{ marginTop: "var(--s-4)" }}>
         {TABS.map((t) => (
@@ -1208,6 +1214,30 @@ function Settlement({ id, ws, locked }: { id: string; ws: MediationWorkspace | n
   const [draft, setDraft] = useState<Record<SettlementList, string>>({ ISSUES: "", DISCUSSION: "", PROPOSED: "", AGREED: "", OUTSTANDING: "" });
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const items = (ws?.settlement ?? []).filter((x) => x.status === "ACTIVE");
+  // SIMULATED AI draft: a short "thinking" sequence, then the boxes are pre-filled; nothing is saved until the mediator adds a point.
+  const [ai, setAi] = useState<SettlementDraft | null>(null);
+  const [fromAi, setFromAi] = useState<Partial<Record<SettlementList, boolean>>>({});
+  const [thinking, setThinking] = useState<number | null>(null);
+  const THINK = [tx("মামলার রেকর্ড পড়ছে…", "Reading the case record…"), tx("সেশনের উপস্থিতি ও আবেদনকারীর বর্ণনা দেখছে…", "Checking session attendance and the applicant's account…"), tx("আলোচনার খসড়া লিখছে…", "Drafting the discussion points…")];
+  const startDraft = () => {
+    setThinking(0);
+    THINK.forEach((_, i) => setTimeout(() => setThinking(i), i * 900));
+    setTimeout(() => {
+      setThinking(null);
+      run(() => {
+        const d = MediationWorkspaceService.draftSettlementWithAi(id);
+        setAi(d);
+        const next = { ...draft };
+        const marks: Partial<Record<SettlementList, boolean>> = {};
+        for (const l of SETTLEMENT_LISTS) if (d.texts[l.code] && !draft[l.code].trim()) {
+          next[l.code] = d.texts[l.code];
+          marks[l.code] = true;
+        }
+        setDraft(next);
+        setFromAi(marks);
+      }, tx("খসড়া তৈরি — প্রতিটি ঘর দেখে সম্পাদনা করুন, তারপর + চাপুন।", "Draft ready — review and edit each box, then press +."));
+    }, THINK.length * 900);
+  };
   return (
     <section className={ui.flowStep}>
       <div className={ui.flowLabel}>
@@ -1216,8 +1246,27 @@ function Settlement({ id, ws, locked }: { id: string; ws: MediationWorkspace | n
       </div>
       {node}
       <p className={styles.hint} style={{ marginTop: 0 }}>
-        {tx("আপনি যা শুনেছেন ও পক্ষরা যা বলেছেন তা লিখুন। সিস্টেম কোনো শর্ত, পরিমাণ বা সমাধান প্রস্তাব করে না — কোনো AI আলোচক নেই।", "Record what the parties say and agree. The system never suggests terms, amounts or solutions — there is no AI negotiator.")}
+        {tx("আপনি যা শুনেছেন ও পক্ষরা যা বলেছেন তা লিখুন। চাইলে AI খসড়া (সিমুলেটেড) ঘরগুলো আগে পূরণ করে দেয় — শুধু মামলার রেকর্ড থেকে, কোনো টাকার অঙ্ক নয়, গোপন আলোচনা নয়। আপনি সম্পাদনা করে + না চাপা পর্যন্ত কিছু সংরক্ষিত হয় না।", "Record what the parties say and agree. The AI draft (simulated) can pre-fill the boxes first — only from the case record, never amounts, never caucus notes. Nothing is saved until you edit a box and press +.")}
       </p>
+      {!locked ? (
+        <div className={ui.modeBar} style={{ alignItems: "center" }}>
+          <Button variant="secondary" disabled={thinking !== null} onClick={startDraft}>
+            ✨ {ai ? tx("আবার AI খসড়া", "Draft again with AI") : tx("AI দিয়ে খসড়া করুন", "Draft with AI")}
+          </Button>
+          <Tag tone="ink">{tx("সিমুলেটেড AI", "SIMULATED AI")}</Tag>
+          {thinking !== null ? (
+            <span role="status" aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span aria-hidden style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--line)", borderTopColor: "var(--ink)", animation: "spin 0.8s linear infinite" }} />
+              <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+              {THINK[thinking]}
+            </span>
+          ) : ai ? (
+            <span className={styles.hint}>
+              {tx("খসড়া", "Draft")} {ai.draftId} · {ai.basis.join(" · ")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <div className={ui.settleGrid}>
         {SETTLEMENT_LISTS.map((l) => {
           const list = items.filter((x) => x.list === l.code);
@@ -1246,6 +1295,7 @@ function Settlement({ id, ws, locked }: { id: string; ws: MediationWorkspace | n
                       <>
                         <span style={{ whiteSpace: "pre-wrap" }}>{it.text}</span>
                         {it.history.length ? <span className={styles.hint}> · {tx("সম্পাদিত", "edited")}</span> : null}
+                        {it.source === "AI_DRAFT_EDITED" || it.source === "AI_DRAFT_UNCHANGED" ? <span className={styles.hint}> · ✨ {it.source === "AI_DRAFT_EDITED" ? tx("AI খসড়া থেকে, সম্পাদিত", "from AI draft, edited") : tx("AI খসড়া থেকে", "from AI draft")}</span> : null}
                         {!locked ? (
                           <span style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
                             <button type="button" className={ui.textBtn} onClick={() => setEditing({ id: it.itemId, text: it.text })}>
@@ -1270,17 +1320,39 @@ function Settlement({ id, ws, locked }: { id: string; ws: MediationWorkspace | n
                 ))}
               </ol>
               {!locked ? (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input className={styles.input} value={draft[l.code]} onChange={(e) => setDraft({ ...draft, [l.code]: e.target.value })} placeholder={tx("যোগ করুন…", "Add…")} aria-label={l.label[lang]} />
-                  <Button
-                    variant="secondary"
-                    disabled={draft[l.code].trim().length < 3}
-                    onClick={() => {
-                      if (run(() => MediationWorkspaceService.addItem(id, l.code, draft[l.code]))) setDraft({ ...draft, [l.code]: "" });
-                    }}
-                  >
-                    +
-                  </Button>
+                <div style={{ display: "grid", gap: 4 }}>
+                  {fromAi[l.code] && ai ? (
+                    <span style={{ fontSize: "var(--t-label)", fontWeight: 700, color: draft[l.code] === ai.texts[l.code] ? "var(--status-pending)" : "var(--green)" }}>
+                      {draft[l.code] === ai.texts[l.code] ? tx("✨ AI খসড়া — সম্পাদনা করুন", "✨ AI draft — edit before adding") : tx("✨ AI খসড়া · আপনি সম্পাদনা করেছেন", "✨ AI draft · edited by you")}
+                    </span>
+                  ) : null}
+                  <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                    <textarea
+                      className={styles.textarea}
+                      rows={fromAi[l.code] ? 3 : 1}
+                      style={{ minHeight: 0, ...(fromAi[l.code] && ai && draft[l.code] === ai.texts[l.code] ? { borderColor: "var(--status-pending)", background: "#fffbeb" } : {}) }}
+                      value={draft[l.code]}
+                      onChange={(e) => {
+                        setDraft({ ...draft, [l.code]: e.target.value });
+                        if (!e.target.value.trim()) setFromAi({ ...fromAi, [l.code]: false });
+                      }}
+                      placeholder={tx("যোগ করুন…", "Add…")}
+                      aria-label={l.label[lang]}
+                    />
+                    <Button
+                      variant="secondary"
+                      disabled={draft[l.code].trim().length < 3}
+                      onClick={() => {
+                        const fd = fromAi[l.code] && ai ? { draftId: ai.draftId, draftText: ai.texts[l.code] } : null;
+                        if (run(() => MediationWorkspaceService.addItem(id, l.code, draft[l.code], fd))) {
+                          setDraft({ ...draft, [l.code]: "" });
+                          setFromAi({ ...fromAi, [l.code]: false });
+                        }
+                      }}
+                    >
+                      +
+                    </Button>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -1619,6 +1691,7 @@ const WHAT: Record<string, { bn: string; en: string }> = {
   "mediation.failure_more_information_requested": { bn: "কর্মকর্তা আরও তথ্য চেয়েছেন", en: "Officer requested more information" },
   "mediation.referral_confirmed": { bn: "কর্মকর্তা রেফারেল নিশ্চিত করেছেন", en: "Officer confirmed referral" },
   "mediation.lawyer_handoff_created": { bn: "আইনজীবী নিয়োগে হস্তান্তর তৈরি", en: "Lawyer assignment handoff created" },
+  "settlement.ai_draft_generated": { bn: "সিমুলেটেড AI খসড়া তৈরি (কিছু সংরক্ষিত হয়নি)", en: "Simulated AI draft generated (nothing saved)" },
   "settlement.party_signed": { bn: "DEMO / SIMULATED পক্ষের স্বাক্ষর নথিভুক্ত", en: "DEMO / SIMULATED party signature recorded" },
   "settlement.mediator_confirmed": { bn: "মধ্যস্থতাকারী নিষ্পত্তি নিশ্চিত করেছেন", en: "Mediator confirmed settlement" },
   "settlement.terms_revised": { bn: "নিষ্পত্তির শর্ত সংশোধিত", en: "Settlement terms revised" },

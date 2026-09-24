@@ -5,7 +5,10 @@
  *  Legal Aid Officer (DLO). No separate CLO step any more.
  *    1. Both parties sign (simulated) and the mediator confirms.
  *    2. The DLO verifies (or returns for correction / asks for clarification).
- *    3. The DLO generates the settlement TESTIMONIAL → the case is CLOSED.
+ *    3. The DLO generates the settlement TESTIMONIAL → sent to the citizen,
+ *       who may appeal within the window. No appeal / citizen accepts /
+ *       appeal rejected → CLOSED (resolved). Appeal accepted → a panel
+ *       lawyer is assigned by the DLO (lib/dlas/settlement-appeal.ts).
  *  lib/dlas/mediation-workspace.ts SettlementVerificationService
  * ------------------------------------------------------------------ */
 
@@ -13,7 +16,8 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/button";
 import { useI18n } from "@/lib/i18n";
-import { CourtAuthorityService, MATTERS, SettlementVerificationService, formatDateTime, label, useCloDistrictActivity, useCloSettlement, useCloSettlements, type SettlementTestimonial } from "@/lib/dlas";
+import { APPEAL_WINDOW_DAYS, CourtAuthorityService, SettlementAppealService, SettlementVerificationService, formatDateTime, useCloDistrictActivity, useCloSettlement, useCloSettlements, useSettlementAppealSweep, type SettlementAppeal, type SettlementTestimonial } from "@/lib/dlas";
+import { TestimonialView } from "@/components/dlas/testimonial-view";
 import styles from "@/components/dlas/dlas.module.css";
 import ui from "@/components/dlao/dlao.module.css";
 
@@ -26,9 +30,17 @@ const STATUS: Record<string, { bn: string; en: string }> = {
   RETURNED_FOR_CORRECTION: { bn: "সংশোধনের জন্য ফেরত", en: "Returned for correction" },
   CLARIFICATION_REQUESTED: { bn: "ব্যাখ্যা চাওয়া হয়েছে", en: "Clarification requested" },
   RESOLVED: { bn: "যাচাইকৃত — প্রত্যয়নপত্র বাকি", en: "Verified — testimonial pending" },
-  CLOSED: { bn: "প্রত্যয়নপত্র ইস্যু — কেস বন্ধ", en: "Testimonial issued — case closed" },
+  CLOSED: { bn: "বন্ধ — নিষ্পন্ন", en: "Closed — resolved" },
+  WINDOW_OPEN: { bn: "প্রত্যয়নপত্র নাগরিকের কাছে — আপিলের সময় চলছে", en: "Testimonial with the citizen — appeal window open" },
+  FILED: { bn: "নাগরিক আপিল করেছেন — আপনার সিদ্ধান্ত", en: "Citizen appealed — your decision" },
+  ACCEPTED: { bn: "আপিল গৃহীত — আইনজীবী নিয়োগ", en: "Appeal accepted — assign a lawyer" },
 };
-const statusKey = (flow: { status: string; testimonial?: SettlementTestimonial | null }) => (flow.testimonial ? "CLOSED" : flow.status);
+const statusKey = (flow: { status: string; testimonial?: SettlementTestimonial | null; appeal?: SettlementAppeal | null }) => {
+  if (!flow.testimonial) return flow.status;
+  const ap = flow.appeal;
+  if (!ap) return "CLOSED";
+  return ap.status === "WINDOW_OPEN" || ap.status === "FILED" || ap.status === "ACCEPTED" ? ap.status : "CLOSED";
+};
 
 function Row({ label: l, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,6 +61,8 @@ export function CloSettlementQueue() {
   const settlements = useCloSettlements();
   const activity = useCloDistrictActivity();
   const toVerify = settlements.filter((a) => a.mediation?.workspace?.settlementWorkflow?.status === "AWAITING_CLO_CERTIFICATION");
+  useSettlementAppealSweep();
+  const appeals = settlements.filter((a) => a.mediation?.workspace?.settlementWorkflow?.appeal?.status === "FILED");
   const toIssue = settlements.filter((a) => {
     const f = a.mediation?.workspace?.settlementWorkflow;
     return f?.status === "RESOLVED" && !f.testimonial;
@@ -70,6 +84,9 @@ export function CloSettlementQueue() {
         <span className={`${ui.tag} ${toIssue.length ? ui.warn : ""}`}>
           {tx("প্রত্যয়নপত্র বাকি", "Testimonial pending")} {toIssue.length}
         </span>
+        <span className={`${ui.tag} ${appeals.length ? ui.err : ""}`}>
+          {tx("আপিল", "Appeals")} {appeals.length}
+        </span>
       </div>
       {!settlements.length ? <div className={ui.banner}>{tx("এই অফিসে কোনো নিষ্পত্তি চুক্তি নেই।", "No settlement agreements in this office yet.")}</div> : null}
       <div className={ui.worklist}>
@@ -87,11 +104,11 @@ export function CloSettlementQueue() {
                     {a.data.applicant.fullName} · {a.data.matter.opposingParty || tx("প্রতিপক্ষের নাম নেই", "Respondent not named")}
                   </strong>
                 </div>
-                <span className={`${ui.tag} ${k === "CLOSED" ? ui.ok : k === "AWAITING_CLO_CERTIFICATION" || k === "RESOLVED" ? ui.warn : ""}`}>{STATUS[k]?.[lang] ?? k}</span>
+                <span className={`${ui.tag} ${k === "CLOSED" ? ui.ok : k === "FILED" ? ui.err : k === "AWAITING_CLO_CERTIFICATION" || k === "RESOLVED" || k === "ACCEPTED" ? ui.warn : ""}`}>{STATUS[k]?.[lang] ?? k}</span>
               </div>
               <p>{flow.terms.agreedResolution}</p>
               <Link className={ui.textBtn} href={`/dashboard/dlo/settlements/${encodeURIComponent(a.applicationId)}`}>
-                {k === "AWAITING_CLO_CERTIFICATION" ? tx("যাচাই করুন →", "Verify →") : k === "RESOLVED" ? tx("প্রত্যয়নপত্র তৈরি করুন →", "Generate testimonial →") : k === "CLOSED" ? tx("প্রত্যয়নপত্র দেখুন →", "View testimonial →") : tx("খুলুন →", "Open →")}
+                {k === "AWAITING_CLO_CERTIFICATION" ? tx("যাচাই করুন →", "Verify →") : k === "RESOLVED" ? tx("প্রত্যয়নপত্র তৈরি করুন →", "Generate testimonial →") : k === "FILED" ? tx("আপিলের সিদ্ধান্ত দিন →", "Decide the appeal →") : k === "CLOSED" || k === "WINDOW_OPEN" ? tx("প্রত্যয়নপত্র দেখুন →", "View testimonial →") : tx("খুলুন →", "Open →")}
               </Link>
             </article>
           );
@@ -104,6 +121,8 @@ export function CloSettlementQueue() {
 export function CloSettlementReview({ applicationId }: { applicationId: string }) {
   const { lang, tx } = useTx();
   const { officer, application: a, workflow: flow } = useCloSettlement(applicationId);
+  useSettlementAppealSweep();
+  const [decisionNote, setDecisionNote] = useState("");
   const [note, setNote] = useState("");
   const [outcome, setOutcome] = useState("");
   const [dispatchReference, setDispatchReference] = useState("");
@@ -135,7 +154,8 @@ export function CloSettlementReview({ applicationId }: { applicationId: string }
   const ready = flow.status === "AWAITING_CLO_CERTIFICATION" && flow.execution.APPLICANT.status === "SIGNED" && flow.execution.RESPONDENT.status === "SIGNED" && flow.mediatorConfirmation.status === "CONFIRMED";
   const authorityNotice = a.mediation?.authorityNotifications?.find((x) => x.kind === "SETTLEMENT_OUTCOME");
   const k = statusKey(flow);
-  const step = flow.testimonial ? 3 : flow.resolution ? 2 : 1;
+  const ap = flow.appeal ?? null;
+  const step = a.closedAt || ap?.status === "ACCEPTED" ? 4 : flow.testimonial ? 3 : flow.resolution ? 2 : 1;
   return (
     <div className={ui.readable}>
       <Link className={ui.textBtn} href="/dashboard/dlo/settlements">
@@ -150,9 +170,9 @@ export function CloSettlementReview({ applicationId }: { applicationId: string }
       </div>
 
       <ol className={ui.modeBar} style={{ listStyle: "none", padding: 0 }} aria-label={tx("শেষ ধাপ", "Final steps")}>
-        {[tx("১. চুক্তি যাচাই", "1. Verify the agreement"), tx("২. প্রত্যয়নপত্র তৈরি", "2. Generate testimonial"), tx("৩. কেস বন্ধ", "3. Case closed")].map((t, i) => (
-          <li key={t} className={`${ui.tag} ${i + 1 < step || step === 3 ? ui.ok : i + 1 === step ? ui.ink : ""}`} aria-current={i + 1 === step ? "step" : undefined}>
-            {i + 1 < step || step === 3 ? "✓ " : ""}
+        {[tx("১. চুক্তি যাচাই", "1. Verify the agreement"), tx("২. প্রত্যয়নপত্র তৈরি", "2. Generate testimonial"), tx(`৩. নাগরিক — আপিলের সময় ${APPEAL_WINDOW_DAYS} দিন`, `3. Citizen — ${APPEAL_WINDOW_DAYS}-day appeal window`), ap?.status === "ACCEPTED" ? tx("৪. আপিল গৃহীত → আইনজীবী", "4. Appeal accepted → lawyer") : tx("৪. কেস বন্ধ (নিষ্পন্ন)", "4. Case closed (resolved)")].map((t, i) => (
+          <li key={t} className={`${ui.tag} ${i + 1 < step || step === 4 ? ui.ok : i + 1 === step ? ui.ink : ""}`} aria-current={i + 1 === step ? "step" : undefined}>
+            {i + 1 < step || step === 4 ? "✓ " : ""}
             {t}
           </li>
         ))}
@@ -244,19 +264,17 @@ export function CloSettlementReview({ applicationId }: { applicationId: string }
       {flow.resolution && !flow.testimonial ? (
         <section className={`${ui.flowStep} ${ui.suggest}`}>
           <span className={ui.suggestBadge}>{tx("ধাপ ২ — প্রত্যয়নপত্র", "STEP 2 — TESTIMONIAL")}</span>
-          <p style={{ marginTop: 8 }}>{tx("নিষ্পত্তির প্রত্যয়নপত্র (টেস্টিমোনিয়াল) তৈরি করুন। এটি ইস্যু হলে কেস বন্ধ হবে, খোলা কাজ বন্ধ হবে এবং আবেদনকারীকে এসএমএসে জানানো হবে।", "Generate the settlement testimonial. Issuing it closes the case, closes its open tasks and tells the applicant by SMS.")}</p>
+          <p style={{ marginTop: 8 }}>{tx(`নিষ্পত্তির প্রত্যয়নপত্র (টেস্টিমোনিয়াল) তৈরি করুন। এটি নাগরিকের কাছে পাঠানো হবে; তিনি ${APPEAL_WINDOW_DAYS} দিনের মধ্যে আপিল করতে পারেন। আপিল না হলে কেস নিজে থেকে নিষ্পন্ন হিসেবে বন্ধ হবে।`, `Generate the settlement testimonial. It is sent to the citizen, who can appeal within ${APPEAL_WINDOW_DAYS} days. With no appeal the case closes as resolved by default.`)}</p>
           {authorityNotice?.status === "PENDING_DISPATCH" ? <div className={`${ui.banner} ${ui.bannerWarn}`}>{tx("আদালত-প্রেরিত মামলা: রেফারকারী কর্তৃপক্ষকে ফলাফল জানানো নিচে রেকর্ড করুন (কেস বন্ধ হলেও এই কাজটি খোলা থাকবে)।", "Court-referred case: record the outcome notice to the referring authority below (that task stays open even after closure).")}</div> : null}
           <div className={styles.actions}>
-            <Button onClick={() => run(() => SettlementVerificationService.issueTestimonial(applicationId), tx("প্রত্যয়নপত্র ইস্যু হয়েছে — কেস বন্ধ।", "Testimonial issued — the case is closed."))}>{tx("প্রত্যয়নপত্র তৈরি করুন ও কেস বন্ধ করুন", "Generate testimonial & close the case")}</Button>
+            <Button onClick={() => run(() => SettlementVerificationService.issueTestimonial(applicationId), tx("প্রত্যয়নপত্র নাগরিকের কাছে পাঠানো হয়েছে — আপিলের সময় শুরু।", "Testimonial sent to the citizen — the appeal window is open."))}>{tx("প্রত্যয়নপত্র তৈরি করে নাগরিককে পাঠান", "Generate testimonial & send to the citizen")}</Button>
           </div>
         </section>
       ) : null}
 
       {flow.testimonial ? (
         <>
-          <div className={`${ui.banner} ${ui.bannerOk}`} role="status">
-            ✓ {tx("কেস বন্ধ", "Case closed")} · {a.closedAt ? formatDateTime(a.closedAt, lang) : ""}
-          </div>
+          <AppealPanel applicationId={applicationId} ap={ap} closedAt={a.closedAt} note={decisionNote} setNote={setDecisionNote} run={run} />
           <TestimonialView t={flow.testimonial} />
         </>
       ) : null}
@@ -283,76 +301,75 @@ export function CloSettlementReview({ applicationId }: { applicationId: string }
   );
 }
 
-/* ------------------------------ the testimonial ------------------------------ */
+/* ------------------------------ citizen appeal (DLO side) ------------------------------ */
 
-const esc = (v: string) => v.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
-function testimonialHtml(t: SettlementTestimonial, matter: string) {
-  const d = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-GB") : "—");
-  const row = (k: string, v: string) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`;
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Settlement testimonial ${esc(t.testimonialId)}</title>
-<style>body{font-family:Georgia,serif;max-width:720px;margin:32px auto;padding:0 16px;color:#111}h1{font-size:22px;text-align:center;margin:0}h2{font-size:14px;text-align:center;font-weight:normal;margin:4px 0 24px}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid #ccc;font-size:14px}th{width:36%;color:#444;font-weight:normal}.demo{border:2px dashed #b45309;color:#b45309;padding:8px;text-align:center;font-family:sans-serif;font-size:12px;margin-bottom:24px}.sig{margin-top:40px;display:flex;justify-content:space-between;font-size:13px}</style></head><body>
-<div class="demo">DEMO / SIMULATED — prototype document, no official seal or e-signature is attached</div>
-<h1>Settlement Testimonial</h1><h2>নিষ্পত্তি প্রত্যয়নপত্র · District Legal Aid Office · ${esc(t.office)}</h2>
-<p>This is to certify that the dispute recorded under case <strong>${esc(t.caseRef)}</strong> was settled through mediation under the government legal aid programme. The settlement agreement was signed by both parties, confirmed by the mediator and verified by the Legal Aid Officer. The case is closed.</p>
-<table>${row("Testimonial no.", t.testimonialId)}${row("Case", t.caseRef)}${row("Agreement", t.agreementId)}${row("Matter", matter)}${row("Applicant", t.applicantName)}${row("Respondent", t.respondentName ?? "—")}${row("Mediator", t.mediatorName ?? "—")}${row("Agreed resolution", t.agreedResolution)}${row("Conditions", t.conditions)}${row("Deadline", t.deadline ?? "—")}${row("Verified outcome", t.outcome)}${row("Applicant signed", d(t.partiesSignedAt.APPLICANT))}${row("Respondent signed", d(t.partiesSignedAt.RESPONDENT))}${row("Mediator confirmed", d(t.mediatorConfirmedAt))}${row("Verified by the Legal Aid Officer", d(t.verifiedAt))}${row("Issued", d(t.issuedAt))}</table>
-<div class="sig"><span>${esc(t.issuedByName)}<br>Legal Aid Officer, ${esc(t.office)}</span><span>Issued ${esc(d(t.issuedAt))}</span></div>
-</body></html>`;
-}
-
-function TestimonialView({ t }: { t: SettlementTestimonial }) {
+function AppealPanel({ applicationId, ap, closedAt, note, setNote, run }: { applicationId: string; ap: SettlementAppeal | null; closedAt: string | null; note: string; setNote: (v: string) => void; run: (fn: () => unknown, ok: string) => void }) {
   const { lang, tx } = useTx();
-  const matter = label(MATTERS, t.matter as never, "en") || t.matter;
-  const open = (print: boolean) => {
-    const url = URL.createObjectURL(new Blob([testimonialHtml(t, matter)], { type: "text/html" }));
-    if (print) {
-      const w = window.open(url, "_blank");
-      w?.addEventListener("load", () => w.print());
-    } else {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `testimonial-${t.testimonialId}.html`;
-      link.click();
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  if (!ap) return closedAt ? <div className={`${ui.banner} ${ui.bannerOk}`}>✓ {tx("কেস বন্ধ", "Case closed")} · {formatDateTime(closedAt, lang)}</div> : null;
+  const WHY: Record<string, { bn: string; en: string }> = {
+    ACCEPTED_BY_CITIZEN: { bn: "নাগরিক নিষ্পত্তি মেনে নিয়েছেন", en: "the citizen accepted the settlement" },
+    LAPSED: { bn: `${APPEAL_WINDOW_DAYS} দিনে কোনো আপিল হয়নি — স্বয়ংক্রিয়ভাবে নিষ্পন্ন`, en: `no appeal within ${APPEAL_WINDOW_DAYS} days — resolved by default` },
+    REJECTED: { bn: "আপিল প্রত্যাখ্যাত — নিষ্পত্তি বহাল", en: "appeal rejected — the settlement stands" },
   };
+  if (ap.status === "WINDOW_OPEN")
+    return (
+      <div className={`${ui.banner} ${ui.bannerWarn}`} role="status">
+        <span className={ui.bannerIcon} aria-hidden>
+          ⏳
+        </span>
+        <div>
+          <strong>{tx("প্রত্যয়নপত্র নাগরিকের কাছে পাঠানো হয়েছে", "Testimonial sent to the citizen")}</strong> · {tx("আপিলের সময় শেষ", "appeal window ends")} {formatDateTime(ap.windowEndsAt, lang)}
+          <div>{tx("নাগরিক মেনে নিলে বা সময়ের মধ্যে আপিল না করলে কেস নিষ্পন্ন হিসেবে বন্ধ হবে।", "If the citizen accepts, or does not appeal in time, the case closes as resolved.")}</div>
+        </div>
+      </div>
+    );
+  if (ap.status === "FILED")
+    return (
+      <section className={`${ui.flowStep} ${ui.suggest}`} aria-label={tx("নাগরিকের আপিল", "Citizen's appeal")}>
+        <span className={ui.suggestBadge}>{tx("নাগরিক আপিল করেছেন — আপনার সিদ্ধান্ত", "CITIZEN APPEAL — YOUR DECISION")}</span>
+        <div className={ui.rows} style={{ marginTop: 8 }}>
+          <Row label={tx("আপিলের কারণ", "Reason given")}>“{ap.reason}”</Row>
+          <Row label={tx("দাখিল", "Filed")}>{ap.filedAt ? formatDateTime(ap.filedAt, lang) : "—"}</Row>
+        </div>
+        <label className={styles.field} style={{ marginTop: 8 }}>
+          <span className={styles.label}>{tx("আপনার সিদ্ধান্তের কারণ (কমপক্ষে ১০ অক্ষর; নাগরিক এসএমএসে পাবেন)", "Reason for your decision (at least 10 characters; the citizen gets it by SMS)")}</span>
+          <textarea className={styles.textarea} value={note} onChange={(e) => setNote(e.target.value)} />
+        </label>
+        <div className={styles.actions}>
+          <Button disabled={note.trim().length < 10} onClick={() => run(() => SettlementAppealService.decide(applicationId, "ACCEPTED", note), tx("আপিল গৃহীত — কেস আইনজীবী পথে গেছে। কেস পাতায় আইনজীবী নিয়োগ করুন।", "Appeal accepted — the case moved to the lawyer pathway. Assign a panel lawyer on the case page."))}>
+            {tx("আপিল গ্রহণ — আইনজীবী নিয়োগ", "Accept appeal — assign a lawyer")}
+          </Button>
+          <Button variant="secondary" disabled={note.trim().length < 10} onClick={() => run(() => SettlementAppealService.decide(applicationId, "REJECTED", note), tx("আপিল প্রত্যাখ্যাত — কেস নিষ্পন্ন হিসেবে বন্ধ।", "Appeal rejected — the case is closed as resolved."))}>
+            {tx("আপিল প্রত্যাখ্যান — কেস বন্ধ", "Reject appeal — close the case")}
+          </Button>
+        </div>
+      </section>
+    );
+  if (ap.status === "ACCEPTED")
+    return (
+      <div className={`${ui.banner} ${ui.bannerWarn}`} role="status">
+        <span className={ui.bannerIcon} aria-hidden>
+          ⚖
+        </span>
+        <div>
+          <strong>{tx("আপিল গৃহীত — আইনজীবী নিয়োগ করুন", "Appeal accepted — assign a panel lawyer")}</strong> · {ap.decision?.byName} · {ap.decision ? formatDateTime(ap.decision.at, lang) : ""}
+          <div>“{ap.decision?.reason}”</div>
+          <a className={ui.textBtn} href={`/dashboard/dlo#app/${encodeURIComponent(applicationId)}`}>
+            {tx("কেস খুলে আইনজীবী নিয়োগ করুন →", "Open the case to assign a lawyer →")}
+          </a>
+        </div>
+      </div>
+    );
   return (
-    <section className={`${ui.flowStep} ${ui.confirmed}`} aria-label={tx("নিষ্পত্তি প্রত্যয়নপত্র", "Settlement testimonial")}>
-      <span className={ui.confirmedBadge}>✓ {tx("নিষ্পত্তি প্রত্যয়নপত্র", "SETTLEMENT TESTIMONIAL")}</span>
-      <div className={`${ui.banner} ${ui.bannerWarn}`} style={{ marginTop: 8 }}>
-        {tx("DEMO / SIMULATED — প্রোটোটাইপ নথি; কোনো সরকারি সিল বা ই-স্বাক্ষর সংযুক্ত নেই।", "DEMO / SIMULATED — prototype document; no official seal or e-signature is attached.")}
+    <div className={`${ui.banner} ${ui.bannerOk}`} role="status">
+      <span className={ui.bannerIcon} aria-hidden>
+        ✓
+      </span>
+      <div>
+        <strong>{tx("কেস বন্ধ — নিষ্পন্ন", "Case closed — resolved")}</strong> · {WHY[ap.status]?.[lang] ?? ap.status} · {closedAt ? formatDateTime(closedAt, lang) : ""}
+        {ap.status === "REJECTED" && ap.decision ? <div>“{ap.decision.reason}” — {ap.decision.byName}</div> : null}
+        {ap.reason ? <div className={styles.hint}>{tx("নাগরিকের আপিল", "Citizen's appeal")}: “{ap.reason}”</div> : null}
       </div>
-      <p>
-        {tx(
-          `এই মর্মে প্রত্যয়ন করা যাচ্ছে যে ${t.caseRef} নম্বর কেসের বিরোধ সরকারি আইনগত সহায়তা কর্মসূচির অধীনে মধ্যস্থতার মাধ্যমে নিষ্পত্তি হয়েছে। দুই পক্ষ চুক্তিতে স্বাক্ষর করেছেন, মধ্যস্থতাকারী নিশ্চিত করেছেন এবং লিগ্যাল এইড অফিসার যাচাই করেছেন। কেসটি বন্ধ।`,
-          `This is to certify that the dispute in case ${t.caseRef} was settled through mediation under the government legal aid programme. Both parties signed the agreement, the mediator confirmed it and the Legal Aid Officer verified it. The case is closed.`,
-        )}
-      </p>
-      <div className={ui.rows}>
-        <Row label={tx("প্রত্যয়নপত্র নং", "Testimonial no.")}>
-          <code>{t.testimonialId}</code>
-        </Row>
-        <Row label={tx("কেস / চুক্তি", "Case / agreement")}>
-          {t.caseRef} · {t.agreementId}
-        </Row>
-        <Row label={tx("বিষয়", "Matter")}>{label(MATTERS, t.matter as never, lang) || t.matter}</Row>
-        <Row label={tx("পক্ষ", "Parties")}>
-          {t.applicantName} · {t.respondentName ?? "—"}
-        </Row>
-        <Row label={tx("মধ্যস্থতাকারী", "Mediator")}>{t.mediatorName ?? "—"}</Row>
-        <Row label={tx("সম্মত সমাধান", "Agreed resolution")}>{t.agreedResolution}</Row>
-        <Row label={tx("শর্তাবলি", "Conditions")}>{t.conditions}</Row>
-        <Row label={tx("যাচাইকৃত ফলাফল", "Verified outcome")}>{t.outcome}</Row>
-        <Row label={tx("ইস্যু করেছেন", "Issued by")}>
-          {t.issuedByName} · {t.office} · {formatDateTime(t.issuedAt, lang)}
-        </Row>
-      </div>
-      <div className={styles.actions} style={{ marginTop: "var(--s-3)" }}>
-        <Button onClick={() => open(true)}>{tx("প্রিন্ট", "Print")}</Button>
-        <Button variant="secondary" onClick={() => open(false)}>
-          {tx("ডাউনলোড (.html)", "Download (.html)")}
-        </Button>
-      </div>
-    </section>
+    </div>
   );
 }

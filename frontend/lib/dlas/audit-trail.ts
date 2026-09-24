@@ -130,7 +130,7 @@ export const ROLE_LABEL: Record<AuditEntry["role"], Bi> = {
 };
 
 /** Actions the system generates while a person triggered them: shown as "System", with who ran it. */
-const SYSTEM_ACTIONS = new Set(["mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
+const SYSTEM_ACTIONS = new Set(["settlement.testimonial_sent_to_citizen", "settlement.appeal_window_lapsed", "incident.red_flagged", "incident.classified", "mediation.auto_offered_next", "mediation.offer_expired", "mediation.offers_exhausted", "pathway.system_assessed", "mediation.eligibility_checked", "mediation.conflict_detected", "notice.sms_sent", "notice.not_sent", "task.created", "task.closed", "lawyer.shortlist_generated", "lawyer.auto_offered_next", "lawyer.offer_expired", "lawyer.update_overdue", "lawyer.inactivity_pattern", "lawyer.red_flagged"]);
 
 export type AuditCategory = "INTAKE" | "VERIFICATION" | "PATHWAY" | "MEDIATION" | "SETTLEMENT" | "FAILURE" | "LAWYER" | "NOTICE" | "ACCESS" | "OTHER";
 
@@ -151,6 +151,10 @@ const P = (cat: AuditCategory, text: (d: D) => Bi, key = true): Phrase => ({ cat
 const PHRASES: Record<string, Phrase> = {
   // intake & case
   "application.submitted": P("INTAKE", () => B("আবেদন জমা দেওয়া হয়েছে", "Application submitted")),
+  "incident.red_flagged": P("INTAKE", (d) => B(`লাল পতাকা (নিয়ম): ${str(d.category)}${d.subcategory ? ` › ${str(d.subcategory)}` : ""}`, `RED FLAG by rule: ${str(d.category)}${d.subcategory ? ` › ${str(d.subcategory)}` : ""}`)),
+  "incident.classified": P("INTAKE", (d) => B(`শ্রেণি (নিয়ম): ${str(d.category)}`, `Classified by rule: ${str(d.category)}`)),
+  "incident.red_flag_confirmed": P("INTAKE", () => B("অফিসার লাল পতাকা নিশ্চিত করেছেন", "Officer confirmed the red flag")),
+  "incident.red_flag_cleared": P("INTAKE", (d) => B(`অফিসার লাল পতাকা সরিয়েছেন — “${str(d.reason)}”`, `Officer cleared the red flag — “${str(d.reason)}”`)),
   "case.created": P("INTAKE", (d) => B(`কেস খোলা হয়েছে ${str(d.caseId)}`, `Case created ${str(d.caseId)}`)),
   "review.received": P("VERIFICATION", () => B("অফিসে আবেদন গ্রহণ", "Application received at the office")),
   "identity.verified": P("VERIFICATION", () => B("পরিচয় যাচাই করা হয়েছে", "Identity verified")),
@@ -206,6 +210,7 @@ const PHRASES: Record<string, Phrase> = {
   "mediation.attendance_respondent": P("MEDIATION", (d) => B(`উপস্থিতি রেকর্ড — প্রতিপক্ষ: ${words(d.status)}`, `Recorded attendance — respondent: ${words(d.status)}`)),
   "mediation.caucus_opened": P("MEDIATION", (d) => B(`একান্ত আলোচনা (ককাস) শুরু — ${side(d.side, true)}`, `Opened a private caucus — ${side(d.side, false)}`)),
   "mediation.caucus_note_added": P("MEDIATION", (d) => B(`গোপন ককাস নোট যোগ — ${side(d.side, true)} (বিষয়বস্তু দেখানো হয় না)`, `Added a confidential caucus note — ${side(d.side, false)} (content not shown)`), false),
+  "settlement.ai_draft_generated": P("SETTLEMENT", (d) => B(`সিমুলেটেড AI খসড়া ${str(d.draftId)} তৈরি — মধ্যস্থতাকারী সম্পাদনা করবেন`, `Simulated AI draft ${str(d.draftId)} generated — for the mediator to edit`)),
   "mediation.settlement_updated": P("SETTLEMENT", (d) => B(`নিষ্পত্তির আলোচনা সম্পাদনা${d.list ? ` — ${words(d.list)}` : ""}${d.op ? ` (${words(d.op)})` : ""}`, `Edited settlement terms${d.list ? ` — ${words(d.list)}` : ""}${d.op ? ` (${words(d.op)})` : ""}`)),
   "mediation.outcome_recorded": P("MEDIATION", (d) => { const o = OUTCOME[str(d.kind)]; return B(`ফলাফল রেকর্ড: ${o?.bn ?? words(d.kind)}`, `Recorded outcome: ${o?.en ?? words(d.kind)}`); }),
   "mediation.voice_call": P("MEDIATION", (d) => B(`পক্ষের সাথে ফোনে যোগাযোগ — ${side(d.side, true)}: ${words(d.state)} (সিমুলেটেড)`, `Party contacted by voice call — ${side(d.side, false)}: ${words(d.state)} (simulated)`)),
@@ -220,6 +225,16 @@ const PHRASES: Record<string, Phrase> = {
   "settlement.submitted_for_certification": P("SETTLEMENT", (d) => B(`চুক্তি ${str(d.agreementId)} অফিসারের যাচাইয়ের জন্য জমা`, `Agreement ${str(d.agreementId)} submitted for the officer's verification`)),
   "settlement.certified": P("SETTLEMENT", () => B("চুক্তি যাচাই করেছেন (লিগ্যাল এইড অফিসার)", "Verified the agreement (Legal Aid Officer)")),
   "settlement.testimonial_issued": P("SETTLEMENT", (d) => B(`নিষ্পত্তি প্রত্যয়নপত্র ${str(d.testimonialId)} ইস্যু করেছেন`, `Issued settlement testimonial ${str(d.testimonialId)}`)),
+  "settlement.testimonial_sent_to_citizen": P("SETTLEMENT", () => B("প্রত্যয়নপত্র নাগরিকের কাছে পাঠানো হয়েছে — আপিলের সময় শুরু", "Testimonial sent to the citizen — appeal window opened")),
+  "settlement.appeal_filed": P("SETTLEMENT", (d) => B(`নাগরিক আপিল করেছেন — “${str(d.reason)}”`, `Citizen appealed — “${str(d.reason)}”`)),
+  "settlement.accepted_by_citizen": P("SETTLEMENT", () => B("নাগরিক নিষ্পত্তি মেনে নিয়েছেন", "Citizen accepted the settlement")),
+  "settlement.appeal_accepted": P("SETTLEMENT", () => B("আপিল গৃহীত — আইনজীবী নিয়োগ হবে", "Appeal accepted — a panel lawyer will be assigned")),
+  "settlement.appeal_rejected": P("SETTLEMENT", (d) => B(`আপিল প্রত্যাখ্যাত — “${str(d.reason)}”`, `Appeal rejected — “${str(d.reason)}”`)),
+  "settlement.appeal_window_lapsed": P("SETTLEMENT", () => B("আপিলের সময় শেষ — আপিল হয়নি", "Appeal window ended with no appeal")),
+  "case.ai_summary_generated": P("ACCESS", (d) => B(`সিমুলেটেড AI সারসংক্ষেপ দেখেছেন (${str(d.forRole)})`, `Viewed a simulated AI summary (${str(d.forRole)})`)),
+  "incident_group.linked": P("OTHER", (d) => B(`একই ঘটনার গ্রুপে যুক্ত — ${str(d.title)}`, `Linked to same-incident group — ${str(d.title)}`)),
+  "incident_group.unlinked": P("OTHER", () => B("গ্রুপ থেকে আলাদা করা হয়েছে", "Unlinked from the group")),
+  "incident_group.shared_evidence_linked": P("OTHER", (d) => B(`গ্রুপের সাধারণ প্রমাণ যুক্ত — ${str(d.title)} (কপি নয়)`, `Group shared evidence linked — ${str(d.title)} (not copied)`)),
   "case.closed": P("SETTLEMENT", () => B("কেস বন্ধ করা হয়েছে", "Case closed")),
   "settlement.follow_up_completed": P("SETTLEMENT", (d) => B(`নিষ্পত্তির ফলো-আপ সম্পন্ন: ${words(d.kind)}`, `Settlement follow-up completed: ${words(d.kind)}`)),
   "settlement.returned_for_correction": P("SETTLEMENT", () => B("সংশোধনের জন্য ফেরত", "Returned for correction")),

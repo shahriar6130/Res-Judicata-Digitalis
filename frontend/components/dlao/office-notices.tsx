@@ -28,6 +28,7 @@ const TONE: Record<OfficeNotice["kind"], { icon: string; cls: "bannerWarn" | "ba
   MEDIATOR_ACCEPTED: { icon: "🤝", cls: "bannerOk" },
   MEDIATOR_DECLINED: { icon: "↻", cls: "bannerWarn" },
   MEDIATOR_NONE_LEFT: { icon: "!", cls: "bannerErr" },
+  SETTLEMENT_APPEAL_FILED: { icon: "⚖", cls: "bannerErr" },
 };
 
 export function OfficeNoticeBar() {
@@ -39,7 +40,7 @@ export function OfficeNoticeBar() {
   return (
     <div role="region" aria-label={tx("অফিসের বিজ্ঞপ্তি", "Office notifications")} aria-live="polite" style={{ display: "grid", gap: 8, marginBottom: "var(--s-4)" }}>
       {unread.slice(0, 4).map((n) => {
-        const href = n.kind === "TRANSFER_RECEIVED" ? "#transfers" : n.kind === "TRANSFER_ACCEPTED" ? "#transfers" : `#app/${encodeURIComponent(n.applicationId)}`;
+        const href = n.kind === "TRANSFER_RECEIVED" ? "#transfers" : n.kind === "TRANSFER_ACCEPTED" ? "#transfers" : n.kind === "SETTLEMENT_APPEAL_FILED" ? `/dashboard/dlo/settlements/${encodeURIComponent(n.applicationId)}` : `#app/${encodeURIComponent(n.applicationId)}`;
         return (
           <div key={n.noticeId} className={`${ui.banner} ${ui[TONE[n.kind].cls]}`}>
             <span className={ui.bannerIcon} aria-hidden>

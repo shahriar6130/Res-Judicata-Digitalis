@@ -10,6 +10,7 @@
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/button";
+import { AiSummary } from "@/components/dlas/ai-summary";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -304,6 +305,9 @@ function CaseCheck({ id }: { id: string }) {
         <span>{label(DISTRICTS, v.district, lang)}</span>
         <span>{v.channel}</span>
         <span>{formatDateTime(v.submittedAt, lang)}</span>
+      </div>
+      <div style={{ marginTop: "var(--s-3)" }}>
+        <AiSummary applicationId={v.applicationId} role="DLO_STAFF" />
       </div>
 
       {msg ? (

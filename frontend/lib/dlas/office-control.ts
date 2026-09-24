@@ -11,6 +11,7 @@
  *  mediator assignment, settlement verification + testimonial, failure review).
  * ------------------------------------------------------------------ */
 
+import { incidentOf, isRedFlagged } from "./incident-taxonomy";
 import { useMemo } from "react";
 import { useDlasDb } from "./store";
 import { applicationsForOffice, officerAuthorityRole, subStage, useCurrentOfficer } from "./dlao";
@@ -76,7 +77,9 @@ const HOUR = 3_600_000;
 const REFERRAL_TASKS = new Set(["POST_MEDIATION_REFERRAL", "GRAM_ADALAT_REFERRAL"]);
 
 export function isUrgent(a: ApplicationRecord): boolean {
+  if (isRedFlagged(a)) return true; // rule-based red flag (lib/dlas/incident-taxonomy.ts), unless an officer cleared it
   const p = a.routing.humanDecision?.priority ?? a.routing.recommendedPriority;
+  if (p === "URGENT" && incidentOf(a).officerReview?.decision === "CLEARED" && !a.routing.humanDecision) return false;
   return p === "URGENT" || a.pathwayClassification?.final?.status === "URGENT_ESCALATION";
 }
 
@@ -132,7 +135,9 @@ export function classifyCase(a: ApplicationRecord, tasks: Task[], o: Pick<DlaoOf
     else if (flow && flow.status !== "RESOLVED") {
       const owner: ActionOwner = flow.status === "AWAITING_MEDIATOR_CONFIRMATION" || flow.status === "RETURNED_FOR_CORRECTION" || flow.status === "CLARIFICATION_REQUESTED" ? "MEDIATOR" : "PARTY";
       s = row("MEDIATION", "SETTLEMENT_EXECUTION", owner, "REVIEW_AGREEMENT", owner === "MEDIATOR" ? L("মধ্যস্থতাকারীর নিশ্চিতকরণ / সংশোধনের অপেক্ষা", "Awaiting mediator confirmation / correction") : L("পক্ষদের স্বাক্ষরের অপেক্ষা", "Awaiting party signatures"), settlementHref(a));
-    } else if (flow && !flow.testimonial) s = row("MEDIATION", "AGREEMENT_AWAITING_CERTIFICATION", "OFFICER", "CERTIFY", L("প্রত্যয়নপত্র তৈরি করে কেস বন্ধ করুন", "Generate the testimonial & close the case"), settlementHref(a));
+    } else if (flow && !flow.testimonial) s = row("MEDIATION", "AGREEMENT_AWAITING_CERTIFICATION", "OFFICER", "CERTIFY", L("প্রত্যয়নপত্র তৈরি করে নাগরিককে পাঠান", "Generate the testimonial & send it to the citizen"), settlementHref(a));
+    else if (flow?.appeal?.status === "FILED") s = row("MEDIATION", "AGREEMENT_AWAITING_CERTIFICATION", "OFFICER", "REVIEW_AGREEMENT", L("নাগরিকের আপিল — গ্রহণ (আইনজীবী) বা প্রত্যাখ্যান", "Citizen appealed — accept (lawyer) or reject"), settlementHref(a));
+    else if (flow?.appeal?.status === "WINDOW_OPEN") s = row("MEDIATION", "RESOLVED", "PARTY", "REVIEW_AGREEMENT", L("প্রত্যয়নপত্র নাগরিকের কাছে — আপিলের সময় চলছে", "Testimonial with the citizen — appeal window open"), settlementHref(a));
     else if (flow) s = pendingDispatch ? row("MEDIATION", "REFERRAL_PENDING", "OFFICER", "REVIEW_AGREEMENT", L("কর্তৃপক্ষকে ফলাফল জানানো রেকর্ড করুন", "Record the outcome notice to the authority"), settlementHref(a)) : row("MEDIATION", "RESOLVED", "NONE", "REVIEW_AGREEMENT", L("বন্ধ — প্রত্যয়নপত্র ইস্যু হয়েছে", "Closed — testimonial issued"), settlementHref(a));
     else if (m.assignmentStatus === "AWAITING_OFFICER_CONFIRMATION") s = row("MEDIATION", "AWAITING_OFFICER_CONFIRMATION", "OFFICER", "ASSIGN_MEDIATOR", L("প্রস্তাবিত মধ্যস্থতাকারী নিশ্চিত করুন", "Confirm the recommended mediator"));
     else if (m.assignmentStatus === "AWAITING_MEDIATOR_ACCEPTANCE") {

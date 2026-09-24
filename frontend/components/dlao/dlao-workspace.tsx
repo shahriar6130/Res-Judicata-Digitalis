@@ -46,6 +46,10 @@ import {
   type DocumentRef,
   type FactStatus,
   type IdentityOutcome,
+  incidentLabel,
+  incidentOf,
+  isRedFlagged,
+  groupOf,
 } from "@/lib/dlas";
 import styles from "@/components/dlas/dlas.module.css";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
@@ -59,12 +63,15 @@ import { OfficeControlCenter } from "./office-control";
 import { CaseActivityTrail } from "./case-activity";
 import { CaseTransferPanel, CaseTransfers } from "./case-transfer";
 import { OfficeNoticeBar, TransferBanner, TransferTag } from "./office-notices";
+import { IncidentFlagBanner } from "./incident-flag";
+import { AiSummary } from "@/components/dlas/ai-summary";
+import { CaseGroupBanner, IncidentGroupDetail, IncidentGroups } from "./incident-groups";
 import { DistrictCases, UrgentCases } from "./district-cases";
 import { MediationLifecycleView } from "@/components/demo/lifecycle-timeline";
 import ui from "./dlao.module.css";
 
 type QueueView = "overview" | "new" | "review" | "decided" | "tasks";
-type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string } | { kind: "mediators" } | { kind: "mediationMonitor" } | { kind: "districtCases" } | { kind: "urgent" } | { kind: "transfers" } | { kind: "mediator"; id: string; tab: string };
+type View = { kind: "list"; bucket: QueueView } | { kind: "app"; id: string } | { kind: "lawyers" } | { kind: "lawyer"; id: string } | { kind: "mediators" } | { kind: "mediationMonitor" } | { kind: "districtCases" } | { kind: "urgent" } | { kind: "transfers" } | { kind: "groups" } | { kind: "group"; id: string } | { kind: "mediator"; id: string; tab: string };
 
 function parseHash(h: string): View {
   const raw = h.replace(/^#/, "");
@@ -75,6 +82,8 @@ function parseHash(h: string): View {
   if (raw === "cases") return { kind: "districtCases" };
   if (raw === "urgent") return { kind: "urgent" };
   if (raw === "transfers") return { kind: "transfers" };
+  if (raw === "groups") return { kind: "groups" };
+  if (raw.startsWith("group/")) return { kind: "group", id: decodeURIComponent(raw.slice(6)) };
   if (raw === "mediators/new") return { kind: "mediators" }; // adding mediators is self sign-up only
   if (raw.startsWith("mediator/")) {
     const [id, tab] = raw.slice(9).split("/");
@@ -256,7 +265,7 @@ export function DlaoWorkspace() {
         {tx("ধাপ ২ · যাচাই ও যোগ্যতা", "Step 2 · Verification & eligibility")} · {officeCode(o)}
       </p>
       <OfficeNoticeBar />
-      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : view.kind === "mediators" ? <MediatorsRegistry /> : view.kind === "mediationMonitor" ? <MediationMonitor /> : view.kind === "districtCases" ? <DistrictCases /> : view.kind === "urgent" ? <UrgentCases /> : view.kind === "transfers" ? <CaseTransfers /> : view.kind === "mediator" ? <MediatorDetail key={view.id} id={view.id} tab={view.tab} /> : <Queue bucket={view.bucket} />}
+      {view.kind === "app" ? <Review key={view.id} id={view.id} /> : view.kind === "lawyers" ? <LawyersMonitor /> : view.kind === "lawyer" ? <LawyerDetail key={view.id} id={view.id} /> : view.kind === "mediators" ? <MediatorsRegistry /> : view.kind === "mediationMonitor" ? <MediationMonitor /> : view.kind === "districtCases" ? <DistrictCases /> : view.kind === "urgent" ? <UrgentCases /> : view.kind === "transfers" ? <CaseTransfers /> : view.kind === "groups" ? <IncidentGroups /> : view.kind === "group" ? <IncidentGroupDetail key={view.id} id={view.id} /> : view.kind === "mediator" ? <MediatorDetail key={view.id} id={view.id} tab={view.tab} /> : <Queue bucket={view.bucket} />}
     </div>
   );
 }
@@ -348,6 +357,7 @@ function Queue({ bucket }: { bucket: QueueView }) {
                   <WorkFact name={tx("অপেক্ষা", "Waiting")}>{daysSince(a.submittedAt)} {tx("দিন", "d")}</WorkFact>
                   <WorkFact name={tx("প্রস্তাবিত অগ্রাধিকার", "Suggested priority")}>
                     <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
+                    {isRedFlagged(a) ? <Tag tone="err">⚑ {incidentLabel(incidentOf(a).category, incidentOf(a).subcategory, lang)}</Tag> : null}
                   </WorkFact>
                   <WorkFact name={tx("যাচাই", "Verification")}><VerifiedBadge a={a} /></WorkFact>
                   <WorkFact name={tx("স্টাফ প্রি-চেক", "Staff pre-check")}><StaffCheckTag a={a} /></WorkFact>
@@ -523,6 +533,9 @@ function Review({ id }: { id: string }) {
       </nav>
 
       <TransferBanner a={a} />
+      <IncidentFlagBanner a={a} />
+      <CaseGroupBanner a={a} group={groupOf(db, a)} />
+      <AiSummary applicationId={a.applicationId} role="DLO" />
       <div className={ui.layout}>
         <section className={ui.main}>
           {error ? (

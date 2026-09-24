@@ -611,3 +611,66 @@ Code: `lib/dlas/mediation-workspace.ts` `SettlementVerificationService` (old `Cl
 4. The testimonial is shown on the settlement page with **Print** and **Download (.html)**, marked DEMO / SIMULATED (no official seal or e-signature). The citizen timeline's *Closure* step shows the testimonial number and the office to collect it from.
 
 Lifecycle (Feature 12) settlement tail is now `mediator_confirmation → dlo_verification (OFFICER) → testimonial (OFFICER) → closed (SYSTEM)`; the CLO checkpoints and the settlement follow-up stage were removed. Office control: "Verify the agreement (final step)" → "Generate the testimonial & close the case" → "Closed — testimonial issued". `LEGAL_AID_OFFICER` now has the `AGREEMENT_CERTIFICATION` scope.
+
+## 22. Rule-based red flag (replaces the citizen's "Is this urgent?" question)
+
+Code: `lib/dlas/incident-taxonomy.ts` (pure rules), `lib/dlas/incident-flag.ts` (officer review), `components/dlao/incident-flag.tsx` (case-page banner). Test: `t35incident.js`.
+
+- The citizen web form no longer asks whether the case is urgent (only the "call 999 if a life is at risk" note remains).
+- **Taxonomy** (`IncidentCategory › IncidentSubcategory`): VIOLENT_CRIME (MURDER, ATTEMPTED_MURDER, ASSAULT, GRIEVOUS_BODILY_HARM, TORTURE) · SEXUAL_OFFENCE (RAPE, SEXUAL_ASSAULT, SEXUAL_HARASSMENT, CHILD_SEXUAL_ABUSE) · PERSONAL_SAFETY (KIDNAPPING, HUMAN_TRAFFICKING, DEATH_THREAT, STALKING, MISSING_PERSON) · DOMESTIC_VIOLENCE (PHYSICAL_ABUSE, PSYCHOLOGICAL_ABUSE, ECONOMIC_ABUSE, THREAT) · PROPERTY (LAND_DISPUTE, TENANCY, INHERITANCE, PROPERTY_DAMAGE) · FAMILY (DIVORCE, CHILD_CUSTODY, MAINTENANCE, FAMILY_DISPUTE) · LABOR (UNPAID_WAGES, WRONGFUL_TERMINATION, WORKPLACE_HARASSMENT) · CIVIL (CONTRACT, DEBT, COMPENSATION, OTHER_CIVIL_DISPUTE) · ADMINISTRATIVE (DOCUMENTATION, GOVERNMENT_SERVICE, OTHER) · OTHER.
+- **RED categories:** VIOLENT_CRIME, SEXUAL_OFFENCE, PERSONAL_SAFETY, DOMESTIC_VIOLENCE.
+- **Rules** (`classifyIncident({matter, summary})`, version `incident-rules-2026.09`): fixed Bangla + English keyword lists per subcategory over the applicant's own description; longest phrase first (so "খুনের হুমকি" = death threat, not murder); violence or a death threat in the family home (husband/wife/in-laws, or matter = FAMILY) → DOMESTIC_VIOLENCE; a bare threat outside the home → PERSONAL_SAFETY; if no words match, the matter type decides (VIOLENCE → VIOLENT_CRIME, LAND → PROPERTY, CYBER_HARASSMENT → PERSONAL_SAFETY, …). Primary = first match in taxonomy order (red first). No AI, no score.
+- **Record:** `application.incident: IncidentClassification` {category, subcategory, red, matched[{category, subcategory, keyword}], basis DESCRIPTION_KEYWORDS | MATTER_TYPE, rule (plain words), rulesVersion, at, advisoryOnly, officerReview}. Set by `IntakeGateway.submit` for every channel; older records are classified on read (`incidentOf`). Red → `routing.recommendedPriority = URGENT` with reason `RED FLAG (rule): …`; audit `incident.red_flagged` (or `incident.classified`).
+- **DLO:** red cases go to **Urgent cases** (`#urgent`), are marked red in the district register and office control (`isUrgent`), and the case page shows a red banner with the rule and the applicant's words. The officer can **confirm** the flag or **clear** it with a reason (≥ 10 chars) — `IncidentFlagService.review` → `officerReview`, audit `incident.red_flag_confirmed | incident.red_flag_cleared`. A cleared flag leaves the urgent list; "Flag red again" restores it.
+- `isCitizenUrgent(a)` now means `isRedFlagged(a)`. `data.urgency` (old self-reported flags, e.g. from IVR emergency) is kept but no longer drives the urgent list.
+
+## 23. Settlement discussion — SIMULATED AI draft the mediator edits
+
+Code: `lib/dlas/settlement-draft.ts` (pure template), `MediationWorkspaceService.draftSettlementWithAi` / `addItem(…, fromDraft)`, UI in the mediator workspace → case → *Settlement* tab. Test: `t36draft.js`.
+
+- **Draft with AI** (labelled SIMULATED AI) shows a short "reading the case record… / checking attendance… / drafting…" sequence, then pre-fills the five boxes (Issues, Discussion points, Proposed terms, Agreed terms, Outstanding). Nothing is saved: each box is marked "✨ AI draft — edit before adding" until the mediator edits it and presses **+**.
+- It is a deterministic template (`settlement-draft-sim-2026.09`) chosen by the mediation case type (or the rule-based incident subcategory): maintenance, dower, custody, divorce, land, inheritance, tenancy, wages, debt, or a neutral default. Inputs: the shared record only — matter, case type, the applicant's own description, party names, last session attendance, and points already written (not re-drafted). It **never reads caucus notes** and **never invents amounts**: those are `[bracketed]` placeholders, and a point that still contains `[…]` is refused.
+- Audit: `settlement.ai_draft_generated` {draftId AID-…, simulated, basis}; each added point records `source` = `MEDIATOR` | `AI_DRAFT_EDITED` | `AI_DRAFT_UNCHANGED` and `aiDraftId` (also on `mediation.settlement_updated`).
+
+## 24. Testimonial → citizen → appeal (DLO accepts → lawyer; otherwise resolved)
+
+Code: `lib/dlas/settlement-appeal.ts` (`SettlementAppealService`, `sweepSettlementAppeals`), UI: citizen case page + home banner (`components/dlas/citizen-settlement.tsx`), DLO settlement page (`AppealPanel`). Test: `t37appeal.js`. Replaces the "testimonial closes the case" step of §21.
+
+- `issueTestimonial` now **sends the testimonial to the citizen** (visible on their case page, SMS) and opens `settlementWorkflow.appeal = { windowEndsAt: +7 days, status: WINDOW_OPEN }`. `application.status = RESOLVED`, `stage = OUTCOME`, `closedAt` still null.
+- Citizen (`CitizenAuth`, own case only): **Accept the settlement** → `ACCEPTED_BY_CITIZEN` → closed; or **Appeal** with a reason (≥ 10 chars) → `FILED`, DLO task `SETTLEMENT_APPEAL_REVIEW` (HIGH), office notice `SETTLEMENT_APPEAL_FILED`.
+- No response before `windowEndsAt` → `sweepSettlementAppeals` (runs on the minute clock on citizen and DLO screens) → `LAPSED` → closed **as resolved by default**.
+- DLO `decide(appId, ACCEPTED | REJECTED, reason ≥ 10)`: **ACCEPTED** → `review.pathway = LAWYER`, pathway final `LAWYER_ASSISTANCE`, `application.status = ACCEPTED`, `stage = SERVICE_DELIVERY`, task `LAWYER_ASSIGNMENT` → the DLO assigns a panel lawyer through the existing shortlist/offer flow. **REJECTED** → closed as resolved. The citizen gets an SMS either way.
+- Closing = `stage CLOSURE`, `closedAt`, open tasks closed (except a pending court-authority notice), audit `case.closed {reason}`. Audit also: `settlement.testimonial_sent_to_citizen`, `settlement.appeal_filed`, `settlement.accepted_by_citizen`, `settlement.appeal_accepted`, `settlement.appeal_rejected`, `settlement.appeal_window_lapsed`.
+- Lifecycle tail: `testimonial → closed (CITIZEN)`; demo step "closed" = the citizen accepts.
+
+## 25. "Summarize" — SIMULATED AI case summary (DLO, DLO staff, mediator, lawyer)
+
+Code: `lib/dlas/case-summary.ts` (`buildCaseSummary` pure, `CaseSummaryService.generate(appId, role)`), UI `components/dlas/ai-summary.tsx` on the DLO case page, the staff story-check page, the mediator workspace and the lawyer case view. Test: `t38summary.js`.
+
+- Button **✨ Summarize** (tag SIMULATED AI) → 4-step "reading… / checking… / filtering to your role… / writing…" sequence → the summary appears section by section: headline, watch-outs (red flag, neutral wording, no SMS, child, accessibility, overdue report), What happened, Parties, Where it stands, Documents, Key dates, Suggested next step.
+- Deterministic template (`case-summary-sim-2026.09`) over the shared record. Access is checked per role (officer of the office · staff of the district · the assigned mediator · the offered/accepted lawyer). Never included for anyone: phone numbers, NID numbers, caucus notes. Mediator: also no income/eligibility or staff notes. Offered-only lawyer: no party names. Each summary lists what it left out.
+- Audit `case.ai_summary_generated {summaryId, forRole, simulated, withheld}` on the case.
+
+### 22.1 The category the citizen picks makes the case urgent
+
+- Citizen form (step 2) now has 8 cards: Family, Land, Civil, **Criminal**, **Sexual harassment / abuse** (new), **Security / threats** (new), Labour, Other. New `MatterCategory` codes `SEXUAL_HARASSMENT`, `SECURITY` (legacy door codes `sexual_harassment`, `security`), with document checklists and pathway subcategories.
+- `RED_MATTERS = CRIMINAL_DEFENCE, SEXUAL_HARASSMENT, SECURITY, VIOLENCE`: choosing one of these makes `incident.red = true` and routing priority **URGENT** at submission, **whatever the description says** (rule text starts `URGENT: applicant chose “…”`). Keyword rules (§22) still add the category and can also flag other matter types red. The DLO can still confirm or clear the flag with a reason. Test: `t40matter.js`.
+
+## 26. UDC light mode — text first, files later (simulated weak network)
+
+Code: `lib/shakkho/services/light-mode.service.ts` (`LightMode`, `installLightModeAutoFlush`, `useLightMode`), `UdcDoor.syncDocument(…, { heldOnDevice })` + `UdcDoor.completeHeldUpload` (`lib/dlas/door-bridges.ts`), UI `components/udc/primitives/light-mode-panel.tsx` (strip under the network bar on every UDC screen; full list in the Sync Centre). Network profiles come from `NetworkConditionService` (normal · slow · intermittent · offline · reconnected), all SIMULATED.
+
+- **Light mode is on** when the network is slow, intermittent or offline. A document captured in the intake workspace is then **not uploaded**: the record lists it with `status: WILL_SUBMIT_LATER`, `preview: NONE` and the note "Held on the UDC device — <kind> network…"; the bytes are kept in this browser's IndexedDB (`shakkho.udc.held.v1`) and a manifest entry in `localStorage["shakkho.udc.lightmode.v1"]` (`HeldUpload`: file name, size, SHA-256, heldAt, heldBecause, status HELD | UPLOADING | SENT | FAILED, progress).
+- **Save + queue** still sends the application **text** (a few KB — the size is shown as "TEXT SENT ✓ n KB"), so the Application ID is issued right away.
+- **When the network is normal / reconnected** the held files upload automatically (also "Send held files now"): simulated progress for ≈ size ÷ bandwidth (1.2–6 s), stops and keeps the file held if the link turns weak mid-upload. Then `completeHeldUpload` attaches it — to the intake session if not yet submitted, otherwise to the application (`status ATTACHED`, `uploadedVia UDC`, provenance "uploaded after reconnect (light mode)", audit `document.uploaded_after_reconnect {bytes, heldAt, heldBecause, sha256}`, DLAO task `DOCUMENT_REVIEW`).
+- Fix alongside: `offline-store.service.ts` `txAll` now returns the IndexedDB request's **result** (was the request object → `all.filter is not a function`), and re-opens the DB with a version bump if it exists without its stores.
+
+## 27. T3 — Multiple applicants, one incident ("Group cases") — linked, not merged
+
+Code: `lib/dlas/incident-groups.ts` (`IncidentGroupService`, `groupSuggestions`, `citizenGroupView`), DLO UI `components/dlao/incident-groups.tsx` (sidebar **Group cases (same incident)** → `#groups`, `#group/<GRP-ID>`, banner on the case page), citizen UI `components/dlas/citizen-group.tsx` (home banner + case page card) and citizen notifications. Test: `t41group.js`.
+
+- **Guardrail (case document T3):** "Link, do not merge. Confidentiality, instructions and outcomes remain case-specific." A group is `db.incidentGroups[]` (`IncidentGroup`: title, description, date, place, office, applicationIds, status ACTIVE | DISSOLVED, sharedEvidence[], audit[]); each case gets `application.incidentGroupId`. Nothing in the cases' own records is merged or copied.
+- **Suggestions (advisory):** among the office's open, ungrouped cases, pairs score on same matter type (20), same rule-based subcategory (15), same other party (30), similar descriptions (Jaccard word overlap, up to 35), filed within 14 days (5); ≥ 50 → suggested, joined into clusters, with the reasons shown. The DLO chooses.
+- **DLO actions** (office's own cases only; reasons required, ≥ 10 chars): `create` (≥ 2 cases), `addCase`, `removeCase` (the group dissolves when < 2 remain), `uploadSharedEvidence` — **one** file (FileStore key `SEV-…`, SHA-256; the same file twice is refused) visible to every linked case; each case gets an audit *reference* (`incident_group.shared_evidence_linked`, `copy: false`), not a copy.
+- **Applicants:** each is told by SMS on their safe channel (neutral wording where required) and sees on their dashboard/case page: the incident, how many *other* cases are linked, and the shared evidence — **never** the other applicants' names, phones or stories. Notifications: linked / new shared evidence / unlinked.
+- **Audit:** group `incident_group.created | case_added | case_removed | shared_evidence_added | dissolved`; case `incident_group.linked | unlinked | shared_evidence_linked` + `notice.sms_*`.

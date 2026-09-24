@@ -11,7 +11,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
-import { DISTRICTS, MATTERS, formatDateTime, label, useDistrictCases, useUrgentCases, type DistrictCaseRow } from "@/lib/dlas";
+import { DISTRICTS, MATTERS, formatDateTime, incidentLabel, label, useDistrictCases, useUrgentCases, type DistrictCaseRow } from "@/lib/dlas";
 import { STATUS } from "./office-control";
 import cc from "./office-control.module.css";
 import ui from "./dlao.module.css";
@@ -20,14 +20,6 @@ type Lang = "bn" | "en";
 type Tone = DistrictCaseRow["ageTone"];
 
 const COLOR: Record<Tone, string> = { ok: "var(--green)", warn: "var(--status-pending)", err: "var(--red)", neutral: "var(--dlo-muted)" };
-const FLAG: Record<string, { bn: string; en: string }> = {
-  IMMEDIATE_DANGER: { bn: "তাৎক্ষণিক বিপদ", en: "Immediate danger" },
-  VIOLENCE_OR_THREAT: { bn: "সহিংসতা / হুমকি", en: "Violence / threat" },
-  ONLINE_HARASSMENT: { bn: "অনলাইন হয়রানি", en: "Online harassment" },
-  EVICTION: { bn: "উচ্ছেদ", en: "Eviction" },
-  DETENTION: { bn: "আটক", en: "Detention" },
-  CHILD_INVOLVED: { bn: "শিশু জড়িত", en: "Child involved" },
-};
 const officeName = (office: string | null, lang: Lang) => {
   const d = DISTRICTS.find((x) => `DLAO-${x.code}` === office);
   return d ? `${d.label[lang]} DLAO` : office ?? "—";
@@ -71,7 +63,7 @@ function CaseTable({ rows, showUrgency }: { rows: DistrictCaseRow[]; showUrgency
           <tr>
             <th>{tx("কেস", "Case")}</th>
             <th>{tx("আবেদনকারী · বিষয়", "Applicant · matter")}</th>
-            {showUrgency ? <th>{tx("নাগরিকের জরুরি তথ্য", "Citizen urgency")}</th> : null}
+            {showUrgency ? <th>{tx("লাল পতাকা (নিয়ম)", "Red flag (rule)")}</th> : null}
             <th>{tx("অবস্থা", "State")}</th>
             <th>{tx("চলমান", "Running")}</th>
             <th>{tx("শেষ হালনাগাদ", "Last update")}</th>
@@ -84,7 +76,7 @@ function CaseTable({ rows, showUrgency }: { rows: DistrictCaseRow[]; showUrgency
             const s = STATUS[r.control.status];
             const href = `#app/${encodeURIComponent(r.a.applicationId)}`;
             return (
-              <tr key={r.a.applicationId} className={r.control.urgent || (r.urgent.self && !r.closed) ? cc.rowUrgent : undefined}>
+              <tr key={r.a.applicationId} className={r.control.urgent || (r.urgent.red && !r.closed) ? cc.rowUrgent : undefined}>
                 <td>
                   <a href={href} style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                     {r.control.caseRef}
@@ -96,15 +88,15 @@ function CaseTable({ rows, showUrgency }: { rows: DistrictCaseRow[]; showUrgency
                 <td>
                   {r.a.data.applicant.fullName ?? "—"}
                   <span className={cc.sub}>{label(MATTERS, r.a.data.matter.category, lang)}</span>
+                  {r.urgent.red && !showUrgency ? <span className={cc.sub} style={{ color: "var(--red)", fontWeight: 700 }}>⚑ {incidentLabel(r.urgent.incident.category, r.urgent.incident.subcategory, lang)}</span> : null}
                 </td>
                 {showUrgency ? (
                   <td>
-                    {r.urgent.self ? <strong style={{ color: "var(--red)" }}>{tx("আবেদনকারী বলেছেন জরুরি", "Applicant said urgent")}</strong> : null}
-                    {r.urgent.flags.map((f) => (
-                      <span key={f} className={ui.tag} style={{ marginTop: 2, marginRight: 4, borderColor: "var(--red)", color: "var(--red)" }}>
-                        {FLAG[f]?.[lang] ?? f}
-                      </span>
-                    ))}
+                    <strong style={{ color: r.urgent.red ? "var(--red)" : undefined }}>⚑ {incidentLabel(r.urgent.incident.category, r.urgent.incident.subcategory, lang)}</strong>
+                    <span className={cc.sub}>
+                      {r.urgent.incident.basis === "DESCRIPTION_KEYWORDS" ? tx("শব্দ", "words") : tx("বিষয়ের ধরন", "matter type")}: {r.urgent.incident.matched.length ? r.urgent.incident.matched.slice(0, 3).map((m) => `“${m.keyword}”`).join(", ") : label(MATTERS, r.a.data.matter.category, lang)}
+                    </span>
+                    {r.urgent.incident.officerReview ? <span className={cc.sub}>{r.urgent.incident.officerReview.decision === "CONFIRMED" ? tx("অফিসার নিশ্চিত করেছেন", "confirmed by officer") : tx("অফিসার সরিয়েছেন", "cleared by officer")}</span> : <span className={cc.sub}>{tx("অফিসারের পর্যালোচনা বাকি", "awaiting officer review")}</span>}
                   </td>
                 ) : null}
                 <td>
@@ -231,7 +223,7 @@ export function DistrictCases() {
             [open.filter((r) => r.staleTone === "err").length, tx("১৪+ দিন নীরব", "Silent 14+ days"), "err"],
             [open.filter((r) => r.a.review?.pathway?.type === "LAWYER").length, tx("আইনজীবীর কেস", "Lawyer cases"), "neutral"],
             [open.filter((r) => (r.lawyer?.overdueReports ?? 0) > 0).length, tx("আইনজীবীর প্রতিবেদন দেরি", "Lawyer reports overdue"), "err"],
-            [open.filter((r) => r.urgent.self || r.urgent.flags.length).length, tx("নাগরিক-জরুরি", "Citizen-urgent"), "warn"],
+            [open.filter((r) => r.urgent.red).length, tx("লাল পতাকা", "Red-flagged"), "err"],
           ] as [number, string, Tone][]
         ).map(([n, l, tone]) => (
           <div key={l} className={cc.lane} style={{ padding: "10px 14px" }}>
@@ -268,11 +260,11 @@ export function UrgentCases() {
       <header className={ui.queuePlainHead}>
         <div className={ui.queueHeroCopy}>
           <span className={ui.heroKicker} style={{ color: "var(--red)" }}>
-            {tx("নাগরিক-চিহ্নিত জরুরি", "MARKED URGENT BY THE CITIZEN")}
+            {tx("নিয়মভিত্তিক লাল পতাকা", "RED FLAG — BY RULE")}
           </span>
           <h1 className={ui.queueTitle}>{tx("জরুরি কেস", "Urgent cases")}</h1>
           <p className={ui.heroDescription}>
-            {tx("আবেদনের সময় নাগরিক যেগুলো জরুরি বলেছেন বা বিপদের ঘর চিহ্নিত করেছেন। অগ্রাধিকার ও পথের সিদ্ধান্ত অফিসারের।", "Cases where the citizen said it is urgent or ticked a danger box when filing. Priority and pathway remain the officer's decision.")}
+            {tx("আবেদনকারীর বর্ণনা ও বিষয়ের ধরন থেকে নির্দিষ্ট নিয়মে লাল পতাকা: সহিংস অপরাধ, যৌন অপরাধ, ব্যক্তিগত নিরাপত্তা, পারিবারিক সহিংসতা। প্রতিটি পতাকায় কোন শব্দে নিয়ম চলেছে তা দেখানো হয়; অফিসার নিশ্চিত করেন বা কারণসহ সরান।", "Flagged red by fixed rules from the applicant's description and matter type: violent crime, sexual offence, personal safety, domestic violence. Each flag shows the words that triggered it; the officer confirms it or clears it with a reason.")}
           </p>
         </div>
         <div className={ui.heroMetric}>

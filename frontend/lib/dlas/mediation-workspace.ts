@@ -31,6 +31,7 @@ import { DlaoAuth, officerAuthorityRole, openOfficeTask, useCurrentOfficer } fro
 import { pathwayRulesOf, statusLabel } from "./pathway-rules";
 import { confidentialCaucusNotes, mediatorCanAccessCase, officerCanAccessMediationCase } from "./mediation-access";
 import { mediationOriginOf } from "./mediator-assignment";
+import { draftSettlementPoints } from "./settlement-draft";
 import type {
   ApplicationRecord,
   AuditEntry,
@@ -642,14 +643,25 @@ export const MediationWorkspaceService = {
     });
   },
 
-  addItem(applicationId: string, list: SettlementList, text: string) {
+  addItem(applicationId: string, list: SettlementList, text: string, fromDraft?: { draftId: string; draftText: string } | null) {
     return withMyCase(applicationId, (c) => {
       if (text.trim().length < 3) throw new Error("Write the point first");
+      if (fromDraft && /\[[^\]]*\]/.test(text)) throw new Error("Replace the [bracketed] parts of the draft with what the parties actually said");
       const t = now();
-      const it: SettlementItem = { itemId: rid("STI"), list, text: text.trim(), status: "ACTIVE", at: t, updatedAt: t, by: c.m.mediatorId, history: [] };
+      const source: SettlementItem["source"] = !fromDraft ? "MEDIATOR" : fromDraft.draftText.trim() === text.trim() ? "AI_DRAFT_UNCHANGED" : "AI_DRAFT_EDITED";
+      const it: SettlementItem = { itemId: rid("STI"), list, text: text.trim(), status: "ACTIVE", at: t, updatedAt: t, by: c.m.mediatorId, history: [], source, aiDraftId: fromDraft?.draftId ?? null };
       c.ws.settlement.push(it);
-      log(c, "mediation.settlement_updated", { op: "added", list, itemId: it.itemId });
+      log(c, "mediation.settlement_updated", { op: "added", list, itemId: it.itemId, source, aiDraftId: fromDraft?.draftId ?? null });
       return it;
+    });
+  },
+
+  /** SIMULATED AI draft of the five discussion boxes (template over the shared record — no caucus notes, no amounts). Saves no points; audited. */
+  draftSettlementWithAi(applicationId: string) {
+    return withMyCase(applicationId, (c) => {
+      const d = draftSettlementPoints(c.a, c.ws, rid("AID"));
+      log(c, "settlement.ai_draft_generated", { draftId: d.draftId, simulated: true, version: d.version, filled: Object.entries(d.texts).filter(([, v]) => v).map(([k]) => k), basis: d.basis });
+      return d;
     });
   },
 
@@ -990,11 +1002,11 @@ export const SettlementVerificationService = {
     });
   },
 
-  /** Step 2 — the officer generates the settlement testimonial. Issuing it CLOSES the case. */
+  /** Step 2 — the officer generates the settlement testimonial; it is sent to the citizen and the appeal window opens (lib/dlas/settlement-appeal.ts). */
   issueTestimonial(applicationId: string) {
     return withCloSettlement(applicationId, (db, a, flow, officer) => {
       if (!flow.resolution) throw new Error("Verify the settlement first");
-      if (flow.testimonial) throw new Error("The testimonial has already been issued — the case is closed");
+      if (flow.testimonial) throw new Error("The testimonial has already been issued");
       const at = now();
       const t: SettlementTestimonial = {
         testimonialId: rid("TST"),
@@ -1018,22 +1030,21 @@ export const SettlementVerificationService = {
         simulated: true,
       };
       flow.testimonial = t;
-      // the case ends here
+      // sent to the citizen; the appeal window opens — no appeal → resolved and closed by default
       a.status = "RESOLVED";
-      a.stage = "CLOSURE";
-      a.closedAt = at;
-      const kept: string[] = [];
+      a.stage = "OUTCOME";
+      flow.appeal = { windowEndsAt: new Date(Date.now() + APPEAL_WINDOW_DAYS * 86_400_000).toISOString(), status: "WINDOW_OPEN", filedAt: null, filedBy: null, reason: null, taskId: null, decision: null, closedAt: null };
       for (const task of db.tasks) {
         if (task.applicationId !== a.applicationId || task.status === "DONE") continue;
-        if (task.type === "COURT_AUTHORITY_NOTIFICATION") { kept.push(task.taskId); continue; } // the outcome notice to a referring court still has to be recorded
+        if (task.type === "COURT_AUTHORITY_NOTIFICATION") continue; // the outcome notice to a referring court still has to be recorded
         task.status = "DONE";
       }
       audit(db, a.audit, { actor: officer.officerId, role: roleOf(officer), caseId: t.caseRef, action: "settlement.testimonial_issued", detail: { testimonialId: t.testimonialId, agreementId: t.agreementId, officer: officer.name, simulated: true } });
-      audit(db, a.audit, { actor: officer.officerId, role: roleOf(officer), caseId: t.caseRef, action: "case.closed", detail: { reason: "Settled through mediation — testimonial issued", testimonialId: t.testimonialId, openTasksKept: kept } });
+      audit(db, a.audit, { actor: "system", role: "system", caseId: t.caseRef, action: "settlement.testimonial_sent_to_citizen", detail: { testimonialId: t.testimonialId, appealWindowEndsAt: flow.appeal.windowEndsAt, days: APPEAL_WINDOW_DAYS } });
       const to = normalizePhone(a.data.safeContact.phone) ?? normalizePhone(a.data.applicant.phone);
       if (to) {
         const allowed = a.data.safeContact.smsAllowed;
-        db.outbox.push({ msgId: rid("SMS"), kind: "SMS_CONFIRMATION", to, body: a.data.safeContact.neutralWordingRequired ? `Update on your reference ${t.caseRef}. The office will contact you at your safe time.` : `DLAS legal aid (${t.caseRef}): your mediated settlement has been verified and your case is closed. Settlement testimonial ${t.testimonialId} is available from the ${a.routing.office} office.`, sessionId: a.channel.sessionId, applicationId: a.applicationId, simulated: true, status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE", at: now() });
+        db.outbox.push({ msgId: rid("SMS"), kind: "SMS_CONFIRMATION", to, body: a.data.safeContact.neutralWordingRequired ? `Update on your reference ${t.caseRef}. Please check your DLAS page or the office will contact you at your safe time.` : `DLAS legal aid (${t.caseRef}): your mediated settlement is verified — testimonial ${t.testimonialId} is on your DLAS page. If you disagree you can appeal within ${APPEAL_WINDOW_DAYS} days; otherwise the case is closed as resolved.`, sessionId: a.channel.sessionId, applicationId: a.applicationId, simulated: true, status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE", at: now() });
         audit(db, a.audit, { actor: "system", role: "system", caseId: t.caseRef, action: allowed ? "notice.sms_sent" : "notice.sms_suppressed", detail: { to, neutral: a.data.safeContact.neutralWordingRequired } });
       }
       return t;
@@ -1043,6 +1054,8 @@ export const SettlementVerificationService = {
 
 /** @deprecated kept for older callers — certification is now the Legal Aid Officer's verification. */
 export const CloSettlementService = { review: SettlementVerificationService.review, certify: SettlementVerificationService.verify };
+
+export const APPEAL_WINDOW_DAYS = 7;
 
 const roleOf = (o: NonNullable<ReturnType<typeof DlaoAuth.current>>) => (officerAuthorityRole(o) === "CHIEF_LEGAL_AID_OFFICER" ? "clo" : "dlao");
 

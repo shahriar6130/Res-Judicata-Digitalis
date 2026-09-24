@@ -14,6 +14,7 @@ import {
   OfflineStore,
   SyncQueueService,
   NetworkConditionService,
+  LightMode,
   UdcAuthorizationService,
   type AssistedIntake,
   type LanguageCode,
@@ -185,6 +186,13 @@ function UdcIntakeWorkspaceBody({
     const confirmed = DocumentCaptureService.confirmByApplicant(updated);
     const next = AssistedIntakeService.attachDocument(intake, confirmed);
     setIntake(next);
+    const net = NetworkConditionService.current();
+    if (LightMode.active(net)) {
+      // LIGHT MODE: weak link → list the document on the record, keep the bytes on this device, send later.
+      UdcDoor.syncDocument(next.temporaryId, confirmed, { name: file.name, type: file.type }, "NONE", { heldOnDevice: `${net.kind} network` });
+      await LightMode.hold({ temporaryId: next.temporaryId, docId: `DOC-${confirmed.id}`, checklistItemId, label, sensitive: confirmed.sensitivity === "restricted", file });
+      return;
+    }
     const preview = await FileStore.put(`DOC-${confirmed.id}`, file, file.type || "application/octet-stream");
     UdcDoor.syncDocument(next.temporaryId, confirmed, { name: file.name, type: file.type }, preview);
   }
@@ -204,7 +212,8 @@ function UdcIntakeWorkspaceBody({
     const authz = UdcAuthorizationService.authorize("submission.queue");
     if (!authz.allowed) return;
     // Submit to the shared record FIRST so the offline sync reuses the same Application ID.
-    UdcDoor.submit(intake.temporaryId, {
+    // In light mode this is the only thing that travels now: the text (a few KB); held files follow on reconnect.
+    const textBody = {
       temporaryId: intake.temporaryId,
       operatorId: me?.operatorId ?? "udc-unknown",
       centre: me?.centre ?? "",
@@ -220,7 +229,9 @@ function UdcIntakeWorkspaceBody({
       summaryBangla: "",
       freeNoticeAck: intake.freeServiceNoticeAcknowledged,
       lang,
-    });
+    } as const;
+    UdcDoor.submit(intake.temporaryId, textBody);
+    LightMode.noteTextSent(intake.temporaryId, textBody);
     const draft = await AssistedIntakeService.saveAndQueue(intake);
     setDraftStatus(draft.syncStatus);
   }

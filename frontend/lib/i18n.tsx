@@ -73,6 +73,7 @@ export type MessageKey =
   | "dlaoNavDistrictCases"
   | "dlaoNavUrgent"
   | "dlaoNavTransfers"
+  | "dlaoNavGroups"
   | "dlaoNavMediationOutcomes"
   | "navMyMediations"
   | "navAssignedCases"
@@ -726,6 +727,12 @@ export type MessageKey =
   | "intakeMatterCriminal"
   | "intakeMatterCriminalEyebrow"
   | "intakeMatterCriminalSub"
+  | "intakeMatterSexualHarassment"
+  | "intakeMatterSexualHarassmentEyebrow"
+  | "intakeMatterSexualHarassmentSub"
+  | "intakeMatterSecurity"
+  | "intakeMatterSecurityEyebrow"
+  | "intakeMatterSecuritySub"
   | "intakeMatterLabour"
   | "intakeMatterLabourEyebrow"
   | "intakeMatterLabourSub"
@@ -1266,6 +1273,7 @@ export const messages: Messages = {
     dlaoNavDistrictCases: "জেলার সব কেস",
     dlaoNavUrgent: "জরুরি কেস",
     dlaoNavTransfers: "কেস স্থানান্তর",
+    dlaoNavGroups: "কেস গ্রুপ (একই ঘটনা)",
     dlaoNavMediationOutcomes: "ব্যর্থ মধ্যস্থতা",
     navMyMediations: "আমার মধ্যস্থতা",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
@@ -1983,6 +1991,12 @@ export const messages: Messages = {
     intakeMatterCriminal: "ফৌজদারি অভিযোগ",
     intakeMatterCriminalEyebrow: "ফৌজদারি",
     intakeMatterCriminalSub: "চুরি, প্রতারণা, হয়রানি",
+    intakeMatterSexualHarassment: "যৌন হয়রানি / নিপীড়ন",
+    intakeMatterSexualHarassmentEyebrow: "জরুরি",
+    intakeMatterSexualHarassmentSub: "যৌন হয়রানি, নিপীড়ন, ধর্ষণ",
+    intakeMatterSecurity: "নিরাপত্তা / হুমকি",
+    intakeMatterSecurityEyebrow: "জরুরি",
+    intakeMatterSecuritySub: "প্রাণনাশের হুমকি, অপহরণ, নিখোঁজ",
     intakeMatterLabour: "শ্রম বিরোধ",
     intakeMatterLabourEyebrow: "শ্রম",
     intakeMatterLabourSub: "বেতন, চাকরি থেকে অব্যাহতি",
@@ -2549,6 +2563,7 @@ export const messages: Messages = {
     dlaoNavDistrictCases: "All district cases",
     dlaoNavUrgent: "Urgent cases",
     dlaoNavTransfers: "Case transfers",
+    dlaoNavGroups: "Group cases (same incident)",
     dlaoNavMediationOutcomes: "Failed mediation reviews",
     navMyMediations: "My mediations",
     navAssignedCases: "Assigned Cases",
@@ -3280,6 +3295,12 @@ export const messages: Messages = {
     intakeMatterCriminal: "Criminal complaint",
     intakeMatterCriminalEyebrow: "Criminal",
     intakeMatterCriminalSub: "Theft, fraud, harassment",
+    intakeMatterSexualHarassment: "Sexual harassment / abuse",
+    intakeMatterSexualHarassmentEyebrow: "Urgent",
+    intakeMatterSexualHarassmentSub: "Harassment, sexual assault, rape",
+    intakeMatterSecurity: "Security / threats",
+    intakeMatterSecurityEyebrow: "Urgent",
+    intakeMatterSecuritySub: "Death threats, kidnapping, missing person",
     intakeMatterLabour: "Labour dispute",
     intakeMatterLabourEyebrow: "Labour",
     intakeMatterLabourSub: "Wages, unfair dismissal",

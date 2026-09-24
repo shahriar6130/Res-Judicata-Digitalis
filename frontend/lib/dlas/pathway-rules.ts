@@ -167,6 +167,14 @@ export const DEFAULT_PATHWAY_RULES: PathwayRuleset = {
       { code: "BAIL", label: { bn: "জামিন", en: "Bail" } },
     ],
     CYBER_HARASSMENT: [{ code: "ONLINE_HARASSMENT", label: { bn: "অনলাইন হয়রানি", en: "Online harassment" } }],
+    SEXUAL_HARASSMENT: [
+      { code: "SEXUAL_HARASSMENT", label: { bn: "যৌন হয়রানি", en: "Sexual harassment" } },
+      { code: "SEXUAL_ASSAULT", label: { bn: "যৌন নিপীড়ন / ধর্ষণ", en: "Sexual assault / rape" } },
+    ],
+    SECURITY: [
+      { code: "THREAT", label: { bn: "হুমকি / প্রাণনাশের ভয়", en: "Threats / fear for life" } },
+      { code: "MISSING_OR_KIDNAPPED", label: { bn: "নিখোঁজ / অপহরণ", en: "Missing / kidnapped" } },
+    ],
     OTHER: [{ code: "OTHER", label: { bn: "অন্যান্য", en: "Other" } }],
   },
   rules: [

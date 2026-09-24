@@ -84,8 +84,35 @@ export type MatterCategory =
   | "CYBER_HARASSMENT"
   | "LABOUR"
   | "CRIMINAL_DEFENCE"
+  | "SEXUAL_HARASSMENT" // chosen by the applicant → always urgent (red)
+  | "SECURITY" // personal safety / threats → always urgent (red)
   | "CIVIL_MONEY"
   | "OTHER";
+
+/* ---------- Incident taxonomy (rule-based red flag) ---------- */
+export type IncidentCategory = "VIOLENT_CRIME" | "SEXUAL_OFFENCE" | "PERSONAL_SAFETY" | "DOMESTIC_VIOLENCE" | "PROPERTY" | "FAMILY" | "LABOR" | "CIVIL" | "ADMINISTRATIVE" | "OTHER";
+export type IncidentSubcategory =
+  | "MURDER" | "ATTEMPTED_MURDER" | "ASSAULT" | "GRIEVOUS_BODILY_HARM" | "TORTURE"
+  | "RAPE" | "SEXUAL_ASSAULT" | "SEXUAL_HARASSMENT" | "CHILD_SEXUAL_ABUSE"
+  | "KIDNAPPING" | "HUMAN_TRAFFICKING" | "DEATH_THREAT" | "STALKING" | "MISSING_PERSON"
+  | "PHYSICAL_ABUSE" | "PSYCHOLOGICAL_ABUSE" | "ECONOMIC_ABUSE" | "THREAT"
+  | "LAND_DISPUTE" | "TENANCY" | "INHERITANCE" | "PROPERTY_DAMAGE"
+  | "DIVORCE" | "CHILD_CUSTODY" | "MAINTENANCE" | "FAMILY_DISPUTE"
+  | "UNPAID_WAGES" | "WRONGFUL_TERMINATION" | "WORKPLACE_HARASSMENT"
+  | "CONTRACT" | "DEBT" | "COMPENSATION" | "OTHER_CIVIL_DISPUTE"
+  | "DOCUMENTATION" | "GOVERNMENT_SERVICE" | "OTHER_ADMINISTRATIVE";
+export interface IncidentClassification {
+  category: IncidentCategory;
+  subcategory: IncidentSubcategory | null;
+  red: boolean; // VIOLENT_CRIME · SEXUAL_OFFENCE · PERSONAL_SAFETY · DOMESTIC_VIOLENCE
+  matched: { category: IncidentCategory; subcategory: IncidentSubcategory | null; keyword: string }[];
+  basis: "DESCRIPTION_KEYWORDS" | "MATTER_TYPE";
+  rule: string; // plain words: which rule fired on which words
+  rulesVersion: string;
+  at: string;
+  advisoryOnly: true;
+  officerReview: { decision: "CONFIRMED" | "CLEARED"; reason: string | null; by: string; byName: string; at: string } | null;
+}
 
 export type Gender = "FEMALE" | "MALE" | "OTHER" | "UNDISCLOSED";
 export type LanguageCode = "bn" | "en" | "marma" | "other";
@@ -366,6 +393,8 @@ export interface ApplicationRecord {
   agentHandoff?: AgentHandoff | null; // carried from the intake session (IVR → call-centre agent)
   transfers?: CaseTransfer[]; // DLAO → DLAO transfer requests; the latest ACCEPTED one decides the handling office (lib/dlas/case-transfer.ts)
   mediation: MediationMatter | null; // Feature 3 — mediator assignment (separate from lawyer); later: sessions, outcome
+  incident?: IncidentClassification | null;
+  incidentGroupId?: string | null; // T3 — linked related-incident group (lib/dlas/incident-groups.ts) // rule-based category + red flag (lib/dlas/incident-taxonomy.ts); replaces the citizen's "is this urgent?" question
   pathwayClassification: PathwayClassification | null; // Feature 2 — rule-based system assessment + officer decisions (lib/dlas/pathway.ts)
   closedAt: string | null;
   version: number;
@@ -747,6 +776,7 @@ export type TaskType =
   | "CASE_TRANSFER_REVIEW" // receiving DLAO: accept or reject a case transferred from another DLAO
   | "CASE_TRANSFER_REJECTED" // sending DLAO: see below
   | "MEDIATOR_CASE_OFFER" // mediator: a mediation case is offered to you — accept or decline
+  | "SETTLEMENT_APPEAL_REVIEW" // DLO: the citizen appealed the settlement testimonial — accept (→ lawyer) or reject (→ closed)
   | "AGENT_LIVE_TRANSFER" // 16699 agent: the IVR assistant found the story critical or too complex — take the call
   | "EMERGENCY_CALL"; // 16699 agent: the caller pressed the IVR emergency button — sending DLAO: the receiving office rejected the transfer (with its message)
 
@@ -837,7 +867,42 @@ export interface DlasDb {
   adminAudit: AuditEntry[];
   helplineAgents?: HelplineAgentAccount[]; // 16699 call-centre agents (created on first sign-up)
   officeNotices?: OfficeNotice[]; // office-wide notifications (DLAO case transfers) — lib/dlas/case-transfer.ts
+  incidentGroups?: IncidentGroup[]; // T3 — related-incident groups (linked, not merged) — lib/dlas/incident-groups.ts
   updatedAt: string | null;
+}
+
+/** T3 — several applicants, one incident. The cases are LINKED (each keeps its own record,
+ *  confidentiality, instructions and outcome); shared evidence is uploaded once for the group. */
+export interface IncidentGroup {
+  groupId: string; // GRP-XXXXXX
+  title: string; // e.g. "Tazreen factory fire, 12 March 2026"
+  description: string;
+  incidentDate: string | null;
+  place: string | null;
+  office: string; // DLAO-<DISTRICT>
+  applicationIds: string[];
+  status: "ACTIVE" | "DISSOLVED";
+  sharedEvidence: SharedEvidence[];
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+  updatedAt: string;
+  audit: AuditEntry[];
+}
+
+export interface SharedEvidence {
+  evidenceId: string; // SEV-XXXXXX (also the FileStore key)
+  docType: DocType;
+  title: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  sha256: string | null;
+  preview: "STORED" | "TOO_LARGE" | "NONE";
+  note: string | null;
+  uploadedBy: string;
+  uploadedByName: string;
+  uploadedAt: string;
 }
 
 /* ---------- Helpers ---------- */
@@ -1288,6 +1353,9 @@ export interface SettlementItem {
   updatedAt: string;
   by: string;
   history: { list: SettlementList; text: string; at: string }[]; // every edit / move is kept
+  /** Where the text came from: typed by the mediator, or started from the SIMULATED AI draft (edited or unchanged). */
+  source?: "MEDIATOR" | "AI_DRAFT_EDITED" | "AI_DRAFT_UNCHANGED";
+  aiDraftId?: string | null;
 }
 
 export interface MediationOutcome {
@@ -1355,6 +1423,19 @@ export interface SettlementWorkflow {
   } | null;
   /** Issued by the Legal Aid Officer (DLO) after verifying the settlement; issuing it CLOSES the case. Snapshot of what it certifies. */
   testimonial?: SettlementTestimonial | null;
+  /** The citizen may appeal the testimonial within the window; no appeal → resolved and closed by default. */
+  appeal?: SettlementAppeal | null;
+}
+
+export interface SettlementAppeal {
+  windowEndsAt: string;
+  status: "WINDOW_OPEN" | "FILED" | "ACCEPTED" | "REJECTED" | "ACCEPTED_BY_CITIZEN" | "LAPSED";
+  filedAt: string | null;
+  filedBy: string | null; // citizenId
+  reason: string | null;
+  taskId: string | null; // SETTLEMENT_APPEAL_REVIEW
+  decision: { outcome: "ACCEPTED" | "REJECTED"; reason: string; by: string; byName: string; at: string; lawyerTaskId: string | null } | null;
+  closedAt: string | null;
 }
 
 export interface SettlementTestimonial {
@@ -1527,7 +1608,7 @@ export interface HelplineAgentAccount {
 export interface OfficeNotice {
   noticeId: string; // NTC-XXXXXX
   office: string; // DLAO-<DISTRICT> — every officer of the office sees it
-  kind: "TRANSFER_RECEIVED" | "TRANSFER_ACCEPTED" | "TRANSFER_REJECTED" | "TRANSFER_CANCELLED" | "MEDIATOR_ACCEPTED" | "MEDIATOR_DECLINED" | "MEDIATOR_NONE_LEFT";
+  kind: "TRANSFER_RECEIVED" | "TRANSFER_ACCEPTED" | "TRANSFER_REJECTED" | "TRANSFER_CANCELLED" | "MEDIATOR_ACCEPTED" | "MEDIATOR_DECLINED" | "MEDIATOR_NONE_LEFT" | "SETTLEMENT_APPEAL_FILED";
   applicationId: string;
   caseRef: string;
   transferId: string | null;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { NetworkBar } from "./primitives/network-bar";
+import { LightModeStrip } from "./primitives/light-mode-panel";
 import { useI18n } from "@/lib/i18n";
 import { UdcDashboardPanel } from "./panels/dashboard.panel";
 import { UdcNewIntakePanel } from "./panels/new-intake.panel";
@@ -159,6 +160,7 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
     <div className={styles.udcShell}>
       <div className={styles.udcStickyTop}>
         <NetworkBar lang={lang} />
+        <LightModeStrip lang={lang} />
       </div>
       <div className={styles.udcShellBody}>
         {renderPanel()}

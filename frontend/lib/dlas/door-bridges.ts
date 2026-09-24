@@ -27,8 +27,10 @@ import type {
   LanguageCode,
   Relation,
   SafeTime,
+  Task,
   UrgencyFlag,
 } from "./schema";
+import { mutate } from "./store";
 
 const URGENCY_FLAGS = ["IMMEDIATE_DANGER", "VIOLENCE_OR_THREAT", "ONLINE_HARASSMENT", "EVICTION", "DETENTION", "CHILD_INVOLVED"] as const;
 
@@ -407,28 +409,65 @@ export const UdcDoor = {
   },
 
   /** Document captured by the UDC camera flow. */
-  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }, preview?: "STORED" | "TOO_LARGE" | "NONE") {
+  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }, preview?: "STORED" | "TOO_LARGE" | "NONE", opts?: { heldOnDevice?: string }) {
     const s = IntakeGateway.findSessionByClientRef(temporaryId);
     if (!s || s.step === "SUBMITTED") return;
     const type = CHECKLIST_TO_DOC[c.checklistItemId] ?? "OTHER";
     const quality = c.qualityFindings.map((f) => `${f.severity}: ${f.message.en}`).join("; ");
+    const held = opts?.heldOnDevice ? `Held on the UDC device — ${opts.heldOnDevice}. Uploads automatically when the connection is good.` : null;
     IntakeGateway.attachDocument(
       s.sessionId,
       {
         docId: `DOC-${c.id}`,
         type,
-        status: "ATTACHED",
+        // light mode (slow network): the record lists the document, the bytes follow on reconnect
+        status: held ? "WILL_SUBMIT_LATER" : "ATTACHED",
         fileName: file?.name ?? c.documentType.en,
         mimeType: file?.type || null,
         sizeBytes: c.bytes,
         sha256: null,
         sensitive: c.sensitivity === "restricted" || SENSITIVE_DOC_TYPES.includes(type),
-        qualityNote: quality || null,
-        preview: preview ?? "NONE",
+        qualityNote: [held, quality].filter(Boolean).join(" · ") || null,
+        preview: held ? "NONE" : preview ?? "NONE",
       },
-      udcTag(s.meta.operatorId ?? "udc"),
+      udcTag(s.meta.operatorId ?? "udc", held ? "light mode — text first, file held on device" : undefined),
     );
     IntakeGateway.setStep(s.sessionId, "DOCUMENTS_ATTACHED");
+  },
+
+  /**
+   * Light mode: a file held on the UDC device during a slow network is uploaded now.
+   * Before submission → attached to the intake session; after → attached to the application
+   * (audit "document.uploaded_after_reconnect", DOCUMENT_REVIEW task for the DLAO).
+   */
+  completeHeldUpload(temporaryId: string, c: { docId: string; checklistItemId: string; label: string; sensitive: boolean }, file: { name: string; type: string; size: number; sha256: string | null; heldAt: string; heldBecause: string }, preview: "STORED" | "TOO_LARGE" | "NONE"): "SESSION" | "APPLICATION" {
+    const type = CHECKLIST_TO_DOC[c.checklistItemId] ?? "OTHER";
+    const appId = IntakeGateway.applicationIdForClientRef(temporaryId);
+    const s = IntakeGateway.findSessionByClientRef(temporaryId);
+    const operator = s?.meta.operatorId ?? "udc";
+    const doc = { docId: c.docId, type, status: "ATTACHED" as const, fileName: file.name, mimeType: file.type || null, sizeBytes: file.size, sha256: file.sha256, sensitive: c.sensitive || SENSITIVE_DOC_TYPES.includes(type), qualityNote: null, preview };
+    if (!appId) {
+      if (!s) throw new Error("The intake for this file was not found");
+      IntakeGateway.attachDocument(s.sessionId, doc, udcTag(operator, "uploaded after reconnect (light mode)"));
+      return "SESSION";
+    }
+    mutate((db) => {
+      const a = db.applications.find((x) => x.applicationId === appId)!;
+      const t = new Date().toISOString();
+      const i = a.data.documents.findIndex((d) => d.docId === c.docId);
+      const next = { ...(i >= 0 ? a.data.documents[i] : {}), ...doc, uploadedAt: t, uploadedVia: "UDC" as const };
+      if (i >= 0) a.data.documents[i] = next;
+      else a.data.documents.push(next);
+      a.provenance[`documents.${c.docId}`] = { source: "OPERATOR_ENTERED", method: "OPERATOR_FORM", confidence: "STATED", by: `udc:${operator}`, at: t, note: "uploaded after reconnect (light mode)" };
+      db.counters.auditSeq += 1;
+      a.audit.push({ seq: db.counters.auditSeq, at: t, actor: `udc:${operator}`, role: "udc_operator", caseId: a.caseId ?? a.applicationId, action: "document.uploaded_after_reconnect", detail: { docId: c.docId, type, bytes: file.size, heldAt: file.heldAt, heldBecause: file.heldBecause, sha256: file.sha256 } });
+      const review: Task = { taskId: `TSK-${Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0")}`, type: "DOCUMENT_REVIEW", applicationId: a.applicationId, sessionId: a.channel.sessionId, assignedRole: "DLAO", office: a.routing.office, status: "OPEN", priority: a.routing.recommendedPriority, reason: `UDC uploaded ${c.label} after the connection came back — review it in step 3`, dueAt: new Date(Date.now() + 48 * 3600_000).toISOString(), createdAt: t, context: { docId: c.docId } };
+      db.tasks.push(review);
+      a.taskIds.push(review.taskId);
+      a.version += 1;
+      a.updatedAt = t;
+    });
+    return "APPLICATION";
   },
 
   /**

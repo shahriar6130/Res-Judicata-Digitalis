@@ -77,6 +77,8 @@ export type MatterCategory =
   | "land"
   | "civil"
   | "criminal"
+  | "sexual_harassment"
+  | "security"
   | "labour"
   | "other";
 

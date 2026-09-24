@@ -2,7 +2,7 @@
 
 /* ------------------------------------------------------------------ *
  *  District case register for the DLAO (/dashboard/dlo#cases) and the
- *  citizen-urgent list (#urgent). Read-only view over the shared record:
+ *  red-flagged list (#urgent — rule-based, lib/dlas/incident-taxonomy.ts). Read-only view over the shared record:
  *  every case the office handles, how long it has been running (age
  *  colour), when it was last updated (staleness colour), its state, and
  *  — for lawyer cases — the panel lawyer's hearings and overdue reports,
@@ -17,14 +17,16 @@ import { useClock } from "./lawyer";
 import { classifyCase, type ControlRow } from "./office-control";
 import { describeAudit, actorNames } from "./audit-trail";
 import { pendingTransfer, acceptedTransfer } from "./case-handling";
-import type { ApplicationRecord, UrgencyFlag } from "./schema";
+import { incidentOf, isRedFlagged } from "./incident-taxonomy";
+import type { ApplicationRecord, IncidentClassification, UrgencyFlag } from "./schema";
 
 export type Tone = "ok" | "warn" | "err" | "neutral";
 const DAY = 86_400_000;
 
-/** The citizen said it is urgent, or ticked an urgency flag, when filing. */
-export function isCitizenUrgent(a: Pick<ApplicationRecord, "data">): boolean {
-  return a.data.urgency.selfReportedUrgent || a.data.urgency.flags.length > 0;
+/** RED FLAG by rule (violent crime · sexual offence · personal safety · domestic violence), unless an officer cleared it.
+ *  Replaces the citizen's own "is this urgent?" answer. */
+export function isCitizenUrgent(a: ApplicationRecord): boolean {
+  return isRedFlagged(a);
 }
 
 export type DistrictCaseRow = {
@@ -38,7 +40,7 @@ export type DistrictCaseRow = {
   staleTone: Tone; // green ≤ 7 days · amber 8–14 · red > 14 without any update (closed = neutral)
   handler: { kind: "LAWYER" | "MEDIATOR"; id: string; name: string; status: string } | null;
   lawyer: { hearings: number; nextHearing: string | null; overdueReports: number; missed: number; lastReportAt: string | null } | null;
-  urgent: { self: boolean; flags: UrgencyFlag[] };
+  urgent: { red: boolean; cleared: boolean; incident: IncidentClassification; flags: UrgencyFlag[] };
   transfer: { pendingTo: string | null; receivedFrom: string | null };
 };
 
@@ -73,7 +75,7 @@ export function districtCaseRow(a: ApplicationRecord, tasks: Parameters<typeof c
           lastReportAt: [...(a.lawyer.updates ?? [])].sort((x, y) => y.at.localeCompare(x.at))[0]?.at ?? null,
         }
       : null,
-    urgent: { self: a.data.urgency.selfReportedUrgent, flags: a.data.urgency.flags },
+    urgent: { red: isRedFlagged(a), cleared: incidentOf(a).officerReview?.decision === "CLEARED", incident: incidentOf(a), flags: a.data.urgency.flags },
     transfer: { pendingTo: pendingTransfer(a)?.toOffice ?? null, receivedFrom: acceptedTransfer(a)?.fromOffice ?? null },
   };
 }
@@ -92,7 +94,7 @@ export function useDistrictCases() {
   }, [db, o, t]);
 }
 
-/** Cases the citizen marked urgent when filing, newest first; open ones before closed. */
+/** Red-flagged cases (rule-based), newest first; open ones before closed. */
 export function useUrgentCases() {
   const v = useDistrictCases();
   return useMemo(() => ({ ...v, rows: v.rows.filter((r) => isCitizenUrgent(r.a)).sort((x, y) => Number(x.closed) - Number(y.closed) || y.a.submittedAt.localeCompare(x.a.submittedAt)) }), [v]);

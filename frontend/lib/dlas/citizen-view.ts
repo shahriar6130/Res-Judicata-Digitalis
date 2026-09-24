@@ -170,7 +170,10 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
   const tst = a.mediation?.workspace?.settlementWorkflow?.testimonial;
   if (tst) {
     const c = base.find((x) => x.id === "CLOSURE");
-    if (c) Object.assign(c, { descriptionBn: `মধ্যস্থতায় নিষ্পত্তি যাচাই হয়েছে — প্রত্যয়নপত্র ${tst.testimonialId} (${tst.office} অফিস থেকে সংগ্রহ করুন) · কেস বন্ধ`, descriptionEn: `Mediated settlement verified — testimonial ${tst.testimonialId} (collect it from the ${tst.office} office) · case closed`, dateBn: fmt(tst.issuedAt, "bn"), dateEn: fmt(tst.issuedAt, "en"), state: "completed" as const });
+    const ap = a.mediation?.workspace?.settlementWorkflow?.appeal ?? null;
+    const closed = !!a.closedAt;
+    const tail = ap?.status === "FILED" ? { bn: "আপনার আপিল অফিসে আছে", en: "your appeal is with the office" } : ap?.status === "ACCEPTED" ? { bn: "আপিল গৃহীত — আইনজীবী নিয়োগ হবে", en: "appeal accepted — a lawyer will be assigned" } : closed ? { bn: "কেস বন্ধ", en: "case closed" } : { bn: "মেনে নিন বা ৭ দিনের মধ্যে আপিল করুন", en: "accept it or appeal within 7 days" };
+    if (c) Object.assign(c, { descriptionBn: `মধ্যস্থতায় নিষ্পত্তি যাচাই হয়েছে — প্রত্যয়নপত্র ${tst.testimonialId} · ${tail.bn}`, descriptionEn: `Mediated settlement verified — testimonial ${tst.testimonialId} · ${tail.en}`, dateBn: fmt(tst.issuedAt, "bn"), dateEn: fmt(tst.issuedAt, "en"), state: closed ? ("completed" as const) : ("current" as const) });
   }
   const failure = a.mediation?.workspace?.failureRecord;
   if (!failure) return base;
@@ -312,6 +315,12 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
       body: { bn: `${label(MATTERS, a.data.matter.category, "bn")} — ${a.routing.office}`, en: `${label(MATTERS, a.data.matter.category, "en")} — ${a.routing.office}` },
       href: `cases/${a.applicationId}`,
     });
+    for (const e of a.audit) {
+      const d = (e.detail ?? {}) as { title?: string; groupId?: string };
+      if (e.action === "incident_group.linked") out.push({ id: `grp-${e.seq}`, at: e.at, icon: "bell", title: { bn: `আপনার কেস একটি গ্রুপে যুক্ত · ${d.title ?? ""}`, en: `Your case was linked to a group · ${d.title ?? ""}` }, body: { bn: "একই ঘটনার অন্য কেসের সাথে — আপনার তথ্য গোপন থাকে", en: "With other cases from the same incident — your details stay private" }, href: `cases/${a.applicationId}` });
+      if (e.action === "incident_group.shared_evidence_linked") out.push({ id: `sev-${e.seq}`, at: e.at, icon: "bell", title: { bn: `গ্রুপে নতুন সাধারণ প্রমাণ · ${d.title ?? ""}`, en: `New shared evidence in your group · ${d.title ?? ""}` }, body: { bn: "আপনার কেসের পাতায় দেখুন", en: "See it on your case page" }, href: `cases/${a.applicationId}` });
+      if (e.action === "incident_group.unlinked") out.push({ id: `ugrp-${e.seq}`, at: e.at, icon: "bell", title: { bn: "আপনার কেস গ্রুপ থেকে আলাদা করা হয়েছে", en: "Your case is no longer in the group" }, body: { bn: "আপনার কেস আগের মতোই চলবে", en: "Your case continues as before" }, href: `cases/${a.applicationId}` });
+    }
     for (const t of db.tasks.filter((x) => x.applicationId === a.applicationId && x.status !== "DONE")) {
       const map: Partial<Record<string, { icon: CitizenNotification["icon"]; bn: string; en: string }>> = {
         ELIGIBILITY_REVIEW: { icon: "shield", bn: "অফিসারের পর্যালোচনার অপেক্ষায়", en: "Waiting for officer review" },

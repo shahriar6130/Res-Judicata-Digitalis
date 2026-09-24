@@ -78,7 +78,7 @@ function openDb(): Promise<IDBDatabase | null> {
   dbPromise = new Promise((resolve) => {
     let req: IDBOpenDBRequest;
     try {
-      req = indexedDB.open(OFFLINE_DB_NAME, 1);
+      req = indexedDB.open(OFFLINE_DB_NAME);
     } catch {
       resolve(null);
       return;
@@ -96,7 +96,26 @@ function openDb(): Promise<IDBDatabase | null> {
         // ignore
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (db.objectStoreNames.contains(DRAFT_STORE) && db.objectStoreNames.contains(BLOB_STORE)) return resolve(db);
+      // The database exists but without its stores (e.g. created by another tab or tool before this code ran):
+      // re-open with the next version so onupgradeneeded creates them, instead of silently losing drafts.
+      const next = db.version + 1;
+      db.close();
+      try {
+        const again = indexedDB.open(OFFLINE_DB_NAME, next);
+        again.onupgradeneeded = () => {
+          const d = again.result;
+          if (!d.objectStoreNames.contains(DRAFT_STORE)) d.createObjectStore(DRAFT_STORE, { keyPath: "id" });
+          if (!d.objectStoreNames.contains(BLOB_STORE)) d.createObjectStore(BLOB_STORE);
+        };
+        again.onsuccess = () => resolve(again.result);
+        again.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    };
     req.onerror = () => resolve(null);
     req.onblocked = () => resolve(null);
   });
@@ -127,7 +146,8 @@ async function txAll<T>(
       .catch(() => {
         result = null;
       });
-    transaction.oncomplete = () => resolve(result);
+    // fn may return an IDBRequest (e.g. store.getAll()); its value is only ready once the transaction completes.
+    transaction.oncomplete = () => resolve(typeof IDBRequest !== "undefined" && (result as unknown) instanceof IDBRequest ? ((result as unknown as IDBRequest).result as T) : result);
     transaction.onerror = () => resolve(null);
     transaction.onabort = () => resolve(null);
   });
@@ -143,7 +163,7 @@ async function bootstrap(): Promise<void> {
   bootstrapped = true;
   const all = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
   // Drop drafts from the retired UDC demo seed so only real work shows.
-  const drafts = all ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : all;
+  const drafts = Array.isArray(all) ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : null;
   if (drafts && drafts.length) {
     memFallback.drafts = drafts;
   }
@@ -165,7 +185,7 @@ export const OfflineStore = {
     if (!isBrowser()) return [];
     const all = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
   // Drop drafts from the retired UDC demo seed so only real work shows.
-  const drafts = all ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : all;
+  const drafts = Array.isArray(all) ? all.filter((d) => !["OFF-NUCH-01", "OFF-RANG-02", "OFF-BAND-03"].includes(d.temporaryId)) : null;
     if (!drafts) return memFallback.drafts;
     const next = { ...snap, drafts };
     if (!sameSnap(snap, next)) {
@@ -199,7 +219,8 @@ export const OfflineStore = {
       return;
     }
     await txAll(DRAFT_STORE, "readwrite", (s) => s.put(draft));
-    const drafts = ((await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null) ?? memFallback.drafts;
+    const got = (await txAll(DRAFT_STORE, "readonly", (s) => s.getAll())) as OfflineDraft[] | null;
+    const drafts = Array.isArray(got) ? got : memFallback.drafts;
     memFallback.drafts = drafts;
     snap = { ...snap, drafts };
     notify();

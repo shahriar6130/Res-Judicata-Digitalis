@@ -41,6 +41,8 @@ export const MATTERS: Option<MatterCategory>[] = [
   { code: "CYBER_HARASSMENT", label: { bn: "অনলাইন হয়রানি", en: "Online harassment" } },
   { code: "LABOUR", label: { bn: "শ্রম / মজুরি", en: "Labour / wages" } },
   { code: "CRIMINAL_DEFENCE", label: { bn: "ফৌজদারি মামলা", en: "Criminal case" } },
+  { code: "SEXUAL_HARASSMENT", label: { bn: "যৌন হয়রানি", en: "Sexual harassment" } },
+  { code: "SECURITY", label: { bn: "নিরাপত্তা / হুমকি", en: "Security / threats" } },
   { code: "CIVIL_MONEY", label: { bn: "দেওয়ানি / টাকা-পয়সা", en: "Civil / money" } },
   { code: "OTHER", label: { bn: "অন্যান্য", en: "Other" } },
 ];
@@ -119,6 +121,8 @@ export const REQUIRED_DOCS: Record<MatterCategory, DocType[]> = {
   CYBER_HARASSMENT: ["NID", "EVIDENCE_SCREENSHOT"],
   LABOUR: ["NID", "EMPLOYMENT_PROOF"],
   CRIMINAL_DEFENCE: ["NID", "POLICE_REPORT"],
+  SEXUAL_HARASSMENT: ["NID", "EVIDENCE_SCREENSHOT"],
+  SECURITY: ["NID", "POLICE_REPORT"],
   CIVIL_MONEY: ["NID"],
   OTHER: ["NID"],
 };

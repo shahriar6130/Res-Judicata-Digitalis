@@ -187,3 +187,4 @@ export function ensureSeeded(): void {
   if (envelope.seededAt) return;
   write(seedDemoData(envelope));
 }
+export { LightMode, installLightModeAutoFlush, useLightMode, type HeldUpload, type TextSend } from "./services/light-mode.service";

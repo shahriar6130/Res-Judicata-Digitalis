@@ -27,6 +27,7 @@ import { PathwayService } from "./pathway";
 import { MediatorRegistry } from "./mediators";
 import { MediatorAssignmentService, evaluateMediator } from "./mediator-assignment";
 import { MediatorOfferService, rankCandidates } from "./mediator-offers";
+import { SettlementAppealService } from "./settlement-appeal";
 import { SettlementVerificationService, MediationFailureReviewService, MediationWorkspaceService, MediatorAuth } from "./mediation-workspace";
 import { DlaoLawyerService, LawyerAuth, LawyerService } from "./lawyer";
 import { mediationLifecycle, type LifecycleBranch, type StageKey } from "./mediation-lifecycle";
@@ -150,7 +151,8 @@ export const DEMO_STEPS: Partial<Record<StageKey, Omit<DemoStep, "stage">>> = {
   execution: { actor: "Parties", action: { bn: "দুই পক্ষের স্বাক্ষর (সিমুলেটেড)", en: "Both parties sign (simulated)" } },
   mediator_confirmation: { actor: "Mediator", action: { bn: "মধ্যস্থতাকারী হিসেবে নিশ্চিত করে অফিসারের কাছে যাচাইয়ের জন্য পাঠান", en: "Confirm and submit to the Legal Aid Officer as the mediator" } },
   dlo_verification: { actor: "Legal Aid Officer", action: { bn: "অফিসার (DLO) হিসেবে চুক্তি যাচাই করুন", en: "Verify the agreement as the Legal Aid Officer (DLO)" }, note: "Settled by mediation — maintenance agreement verified." },
-  testimonial: { actor: "Legal Aid Officer", action: { bn: "অফিসার হিসেবে নিষ্পত্তি প্রত্যয়নপত্র তৈরি করুন (কেস বন্ধ হবে)", en: "Generate the settlement testimonial as the officer (closes the case)" } },
+  testimonial: { actor: "Legal Aid Officer", action: { bn: "অফিসার হিসেবে নিষ্পত্তি প্রত্যয়নপত্র তৈরি করে নাগরিককে পাঠান", en: "Generate the settlement testimonial and send it to the citizen as the officer" } },
+  closed: { actor: "Citizen", action: { bn: "নাগরিক হিসেবে নিষ্পত্তি মেনে নিন (আপিল নয়) — কেস বন্ধ", en: "Accept the settlement as the citizen (no appeal) — the case closes" } },
   failed: { actor: "Mediator", action: { bn: "মধ্যস্থতাকারী হিসেবে ব্যর্থতার আনুষ্ঠানিক রেকর্ড করুন", en: "Record the formal failure record as the mediator" }, note: "No agreement — the respondent disputes the applicant's share of the land." },
   failure_review: { actor: "Legal Aid Officer", action: { bn: "অফিসার হিসেবে রেফারেল পর্যালোচনা ও নিশ্চিত করুন", en: "Review and confirm the referral as the officer" }, note: "Title is contested; the applicant needs representation to file a partition suit." },
   shortlist: { actor: "System", action: { bn: "প্যানেল আইনজীবী শর্টলিস্ট তৈরি", en: "Generate the panel lawyer shortlist" } },
@@ -290,6 +292,9 @@ export async function runDemoStep(k: DemoCaseKey, note?: string, newRun = false)
       break;
     case "testimonial":
       await officer(() => SettlementVerificationService.issueTestimonial(id));
+      break;
+    case "closed":
+      await as(() => signIn.citizen(k), () => SettlementAppealService.acceptSettlement(id));
       break;
     case "failed":
       await mediator(() =>

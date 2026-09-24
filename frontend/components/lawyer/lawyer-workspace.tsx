@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/button";
+import { AiSummary } from "@/components/dlas/ai-summary";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -947,6 +948,9 @@ function CaseView({ id, embedded = false }: { id: string; embedded?: boolean }) 
         </div>
       </header>
       )}
+      <div style={{ marginTop: "var(--s-3)" }}>
+        <AiSummary applicationId={a.applicationId} role="LAWYER" />
+      </div>
 
       {offered ? (
         <OfferCard a={a} s={s!} />

@@ -32,6 +32,8 @@ import {
 import type { CaseRecord, CaseStatus } from "@/lib/case-demo";
 import { useCitizenCase } from "@/lib/dlas/citizen-view";
 import { CitizenDocuments } from "@/components/dlas/citizen-documents";
+import { CitizenSettlementCard } from "@/components/dlas/citizen-settlement";
+import { CitizenGroupCard } from "@/components/dlas/citizen-group";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import styles from "./case-detail.module.css";
 
@@ -82,6 +84,8 @@ export function CaseDetail({ caseId, onBack }: Props) {
           <CaseIdCard caseRecord={caseRecord} t={t} />
           <CurrentStatus caseRecord={caseRecord} t={t} />
         </div>
+        <CitizenSettlementCard applicationId={caseRecord.id} />
+        <CitizenGroupCard applicationId={caseRecord.id} />
         <CitizenDocuments applicationId={caseRecord.id} />
         <NextActionCard caseRecord={caseRecord} t={t} onConfirmSafeTime={() => {}} />
         <CaseTimeline caseRecord={caseRecord} t={t} />

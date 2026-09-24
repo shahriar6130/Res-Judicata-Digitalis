@@ -380,6 +380,7 @@ const LEGACY_NAV: Record<string, LegacyNavItem[]> = {
     { href: "/dashboard/dlo#transfers", label: "dlaoNavTransfers", key: "transfers", Icon: FileText },
     { href: "/dashboard/dlo#groups", label: "dlaoNavGroups", key: "groups", Icon: Users },
     { href: "/dashboard/dlo#duplicates", label: "dlaoNavDuplicates", key: "duplicates", Icon: AlertCircle },
+    { href: "/dashboard/dlo#udcs", label: "dlaoNavUdcs", key: "udcs", Icon: Users },
     { href: "/dashboard/dlo#lawyers", label: "dlaoNavLawyers", key: "lawyers", Icon: Scale },
     { href: "/dashboard/dlo#mediators", label: "dlaoNavMediators", key: "mediators", Icon: HelpingHand },
     { href: "/dashboard/dlo#mediation-monitor", label: "dlaoNavMediationMonitor", key: "mediation-monitor", Icon: Scale },
@@ -681,17 +682,15 @@ function renderLegacyItem(
 /* ------------------------------------------------------------------ *
  *  UDC sidebar — 4 sections:
  *
- *    1. Intake (collapsible, 5 sub-items)
+ *    1. Intake (shared complaint flow + translation support)
  *    2. Sync Center (flat link)
  *    3. Conflict Review (flat link)
  *    4. Application List (flat link)
  *
  *  Reuses the legacy surface, wordmark, and profile panel from
- *  LegacySidebar. Sub-items live under #intake-new, #intake/<id>,
- *  #intake/<id>/documents, #intake/<id>/consent, #sync-centre,
- *  #conflict, and #applications. Resume / Consent / Document Capture
- *  resolve to the most recent assisted intake, falling back to
- *  #intake-new when none exists.
+ *  LegacySidebar. UDC intake now uses the same five-step complaint
+ *  wizard as citizens. Evidence is sealed and forward-only, so there
+ *  is no UDC document-preview destination.
  *
  *  Section expand/collapse state is persisted to
  *  `shakkho.udc.sidebar.v1` and seeded with Intake open by default.
@@ -729,9 +728,6 @@ const UDC_NAV: UdcSection[] = [
     Icon: HelpingHand,
     children: [
       { id: "new",       labelKey: "udcNavIntakeNew",         hrefFor: () => "/dashboard/udc#intake-new" },
-      { id: "resume",    labelKey: "udcNavIntakeResume",      hrefFor: (id) => id ? `/dashboard/udc#intake/${id}` : "/dashboard/udc#intake-new" },
-      { id: "consent",   labelKey: "udcNavIntakeConsent",     hrefFor: (id) => id ? `/dashboard/udc#intake/${id}/consent` : "/dashboard/udc#intake-new" },
-      { id: "documents", labelKey: "udcNavIntakeDocuments",   hrefFor: (id) => id ? `/dashboard/udc#intake/${id}/documents` : "/dashboard/udc#intake-new" },
       { id: "translation", labelKey: "udcNavIntakeTranslation", hrefFor: () => "/dashboard/udc#translation" },
     ],
   },

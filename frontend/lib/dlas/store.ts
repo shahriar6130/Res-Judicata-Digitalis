@@ -78,7 +78,13 @@ function parse(raw: string | null): DlasDb {
       ...p,
       counters: { ...base.counters, ...(p.counters ?? {}) },
       citizens: Array.isArray(p.citizens) ? p.citizens : [],
-      udcOperators: Array.isArray(p.udcOperators) ? p.udcOperators : [],
+      udcOperators: Array.isArray(p.udcOperators)
+        ? p.udcOperators.map((operator) => ({
+            ...operator,
+            approval: operator.approval ?? { status: "PENDING", by: null, byName: null, at: null, reason: null },
+            audit: operator.audit ?? [],
+          }))
+        : [],
       officers: Array.isArray(p.officers) ? p.officers : [],
       lawyers: Array.isArray(p.lawyers) ? p.lawyers.map((l) => ({ ...l, attendance: l.attendance ?? [], notificationsReadAt: l.notificationsReadAt ?? null, contacts: l.contacts ?? [], redFlags: l.redFlags ?? [] })) : [],
       lawyerRules: p.lawyerRules ?? null,

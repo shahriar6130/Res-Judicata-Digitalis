@@ -100,6 +100,10 @@ figures come from `dlas.db.v1` and follow the selected Bangla or English languag
 The open-application review form uses the full workspace width and has no separate audit-trail
 sidebar. Audit entries are still persisted and remain available through the existing activity and
 debug views.
+The DLO sidebar's **District UDC approvals** view (`#udcs`) lists only UDC operators registered in
+the officer's district. The DLO can approve one account, approve all pending district accounts, or
+reject an account with a required reason. The state, deciding officer, timestamp, reason, and audit
+event persist in `dlas.db.v1`; pending and rejected UDC accounts cannot enter assisted intake.
 For lawyer-path cases, the Panel lawyer section provides the complete ending flow: record the
 representation outcome, review the payable-hearing count, use **Pay lawyer (simulated)**, and enter
 a closing note to enable **Close case**. Closure is blocked until every recorded lawyer payment is
@@ -111,10 +115,14 @@ required decline reason. The hearing report collects attendance, outcome, and ne
 Its sample case data and action feedback are labelled simulated and remain in the current session.
 
 The UDC dashboard opens with a new assisted application action, operator-scoped work counts and
-recent intakes. The sidebar groups Overview, application work and support destinations. Consent
-and document links open their dedicated intake panels. Connection diagnostics are available in an
-expandable strip, and the global header provides the language toggle. The `/udc` sign-in page
-uses the existing mobile login and operator registration flow with UDC-specific art and copy.
+recent intakes. Assisted intake reuses the citizen **Lodge a complaint** component, including its
+five steps, validation, safe-contact and consent controls, while `UdcDoor` records operator
+provenance and in-person identity attestation. Evidence is a sealed, forward-only transfer: UDC can
+add it to the shared case record but cannot see its contents, preview, filename, or quality-review
+screen. Legacy intake/document hashes also resolve to the shared wizard. The sidebar groups
+Overview, application work and support destinations. Connection diagnostics are available in an
+expandable strip, and the global header provides the language toggle. The `/udc` sign-in page uses
+the existing mobile login and operator registration flow with UDC-specific art and copy.
 
 The `/device/ivr` and `/device/ussd` simulators share a guided phone workspace. A mode switch,
 three-step introduction, handset, conversation, and live-record panel make the active task clearer.

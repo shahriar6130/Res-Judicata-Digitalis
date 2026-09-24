@@ -847,6 +847,13 @@ export interface UdcOperatorAccount {
   district: DistrictCode;
   createdAt: string;
   lastLoginAt: string | null;
+  approval?: {
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    by: string | null;
+    byName: string | null;
+    at: string | null;
+    reason: string | null;
+  };
   audit: AuditEntry[];
 }
 

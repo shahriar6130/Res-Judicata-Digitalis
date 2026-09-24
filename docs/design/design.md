@@ -76,6 +76,14 @@ The worklist uses stacked, hairline-separated records instead of a wide table. D
 fewer columns as the viewport narrows, so the page needs no horizontal scrolling; opening an
 application keeps the existing review workspace.
 
+The DLO sidebar also opens `#udcs`, a district-scoped UDC approval worklist. It shows pending,
+approved, and rejected totals plus the registered operator, centre, mobile, registration date, and
+last login. The officer may approve one operator, approve every pending operator in the district,
+or reject one with a required reason. Operators from another district never appear. Decisions use
+token-based status treatments, remain readable on narrow screens, and are recorded in the UDC
+account audit history. Pending or rejected operators can sign in to see their status but cannot
+enter the assisted-intake workspace.
+
 For a lawyer-path case, the DLO workspace ends with a visible three-step sequence: complete the
 representation, approve and send the clearly labelled simulated lawyer payment, then close the
 case with a required note. The Close case control remains disabled until every recorded lawyer
@@ -95,7 +103,7 @@ metrics, detail fields, and hearing rows stack without horizontal page scrolling
 
 ### UDC operator
 
-`/dashboard/udc` leads with a new assisted application action, operator-scoped work counts, recent intakes, and a short service tool list. Submitted records open the operator's applications list; unfinished intakes return to their workspace. The sidebar groups Overview, application work, and support destinations. Connection status stays visible as a compact strip while its diagnostic and simulation controls expand on request. Consent and document destinations open their dedicated intake panels. The global dashboard header owns the Bangla/English toggle, so UDC does not repeat it in the content area. On smaller screens, the hero, counts, and records wrap into columns without horizontal page scrolling.
+`/dashboard/udc` leads with a new assisted application action, operator-scoped work counts, recent intakes, and a short service tool list. UDC assisted intake uses the same five-step layout, fields, validation, safe-contact choice, consent, and submission result as the citizen **Lodge a complaint** flow; only identity verification differs, because the logged-in operator attests that the applicant or representative is present. The UDC document step is a sealed, forward-only hand-off: it displays only an opaque transfer count and readiness status, never evidence contents, thumbnails, filenames, file size, or document-quality inspection. Legacy UDC intake, consent, and document URLs resolve to this shared wizard so they cannot reopen the former evidence viewer. Submitted records open the operator's applications list; unfinished entries return to the shared wizard. The sidebar groups Overview, application work, and support destinations. Connection status stays visible as a compact strip while its diagnostic and simulation controls expand on request. The global dashboard header owns the Bangla/English toggle, so UDC does not repeat it in the content area. On smaller screens, the hero, counts, and records wrap into columns without horizontal page scrolling.
 UDC subpages share a white, amber-edged heading surface, serif titles, and clear keyboard focus. Their queue rows and form grids stack at narrow widths.
 
 ### Administrator

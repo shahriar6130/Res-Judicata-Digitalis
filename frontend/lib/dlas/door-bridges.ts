@@ -28,6 +28,7 @@ import type {
   Relation,
   SafeTime,
   Task,
+  UdcOperatorAccount,
   UrgencyFlag,
 } from "./schema";
 import { mutate } from "./store";
@@ -46,6 +47,7 @@ export interface CitizenDraftLike {
   proxyRel: string;
   proxyName: string;
   proxyPhone: string;
+  district?: string;
   nidNumber?: string;
   matter: string | null;
   partyName: string;
@@ -244,6 +246,7 @@ export const CitizenDoor = {
  * ================================================================== */
 
 const UDC_ENTRY = "/dashboard/udc/intake";
+const UDC_WIZARD_KEY = "dlas.active.UDC_ASSISTED.wizard";
 
 const CONTACT_KIND_TO_METHOD: Record<string, ContactMethod> = {
   applicant_controlled_phone: "CALL",
@@ -308,6 +311,138 @@ function udcTag(operatorId: string, note?: string): CaptureTag {
 }
 
 export const UdcDoor = {
+  /** Active shared complaint-wizard session for one logged-in operator. */
+  currentWizard(operatorId: string) {
+    const id = readKey(`${UDC_WIZARD_KEY}.${operatorId}`);
+    const session = id ? IntakeGateway.getSession(id) : undefined;
+    return session?.meta.operatorId === operatorId ? session : undefined;
+  },
+
+  resetWizard(operatorId: string) {
+    const session = UdcDoor.currentWizard(operatorId);
+    if (session && session.step !== "SUBMITTED") IntakeGateway.abandon(session.sessionId);
+    writeKey(`${UDC_WIZARD_KEY}.${operatorId}`, null);
+  },
+
+  /**
+   * Shared five-step complaint wizard adapter. Evidence is written straight to
+   * the sealed file store and only an opaque transfer status returns to the UDC UI.
+   */
+  async syncWizard(d: CitizenDraftLike, operator: UdcOperatorAccount, lang: "bn" | "en", completedStep: number): Promise<string> {
+    const key = `${UDC_WIZARD_KEY}.${operator.operatorId}`;
+    let session = UdcDoor.currentWizard(operator.operatorId);
+    if (!session || session.step === "SUBMITTED" || session.step === "ABANDONED") {
+      session = IntakeGateway.startSession({
+        channel: "UDC_ASSISTED",
+        entryPoint: `${UDC_ENTRY}/new`,
+        meta: { operatorId: operator.operatorId, centre: operator.centre, clientRef: `UDC-${Date.now()}`, lang },
+        actor: `udc:${operator.operatorId}`,
+      });
+      IntakeGateway.attestIdentity(session.sessionId, operator.operatorId, "Applicant present at UDC; identity attested by operator");
+      writeKey(key, session.sessionId);
+    }
+
+    const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+    const statedApplicantPhone = normalizePhone(rep ? d.proxyPhone : d.phone);
+    const applicantPhone = statedApplicantPhone ?? normalizePhone(d.phone);
+    const contactPhone = normalizePhone(d.phone) ?? applicantPhone;
+    const safeTime = d.contactSlot === "anytime"
+      ? "ANYTIME"
+      : d.contactSlot === "custom" && d.contactTime
+        ? bucketForTime(d.contactTime)
+        : null;
+    const tag = udcTag(operator.operatorId, rep ? `applicant assisted through ${d.actingFor}` : "applicant present at UDC");
+
+    IntakeGateway.capture(
+      session.sessionId,
+      {
+        applicant: {
+          fullName: (rep ? d.proxyName : d.name).trim() || null,
+          phone: applicantPhone,
+          phoneOwnedByApplicant: applicantPhone ? (!rep || !!statedApplicantPhone) : null,
+          district: mapLegacyDistrict(d.district ?? operator.district),
+          nidNumber: d.nidNumber?.trim() || null,
+          preferredLanguage: "bn",
+        },
+        filedBy: {
+          kind: "UDC_OPERATOR",
+          name: null,
+          phone: null,
+          relation: null,
+          operatorId: operator.operatorId,
+          centre: operator.centre,
+        },
+        matter: {
+          category: mapLegacyMatter(d.matter),
+          summary: d.description.trim() || null,
+          opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+        },
+        urgency: {
+          selfReportedUrgent: !!d.urgent,
+          flags: d.urgent ? (d.urgencyFlags ?? []).filter((f): f is UrgencyFlag => (URGENCY_FLAGS as readonly string[]).includes(f)) : [],
+        },
+        safeContact: {
+          method: "CALL",
+          phone: contactPhone,
+          safeTime,
+          window: d.contactSlot === "custom" && d.contactDay && d.contactTime ? { day: d.contactDay, time: d.contactTime } : null,
+          smsAllowed: true,
+          voicemailAllowed: false,
+          neutralWordingRequired: true,
+          notes: d.specialInstructions.trim() || null,
+        },
+        freeServiceNoticeAcknowledged: completedStep >= 5 && d.consentOk,
+      },
+      tag,
+      { step: completedStep >= 4 ? "DOCUMENTS_ATTACHED" : completedStep >= 3 ? "DETAILS_CAPTURED" : undefined },
+    );
+
+    if (completedStep >= 4) {
+      const current = IntakeGateway.getSession(session.sessionId);
+      for (const doc of d.documents) {
+        const docId = `DOC-${doc.id}`;
+        if (current?.draft.documents.some((item) => item.docId === docId)) continue;
+        const stored = await FileStore.put(docId, doc.dataUrl, doc.mimeType || "application/octet-stream");
+        IntakeGateway.attachDocument(session.sessionId, {
+          docId,
+          type: "OTHER",
+          status: "ATTACHED",
+          fileName: doc.name,
+          mimeType: doc.mimeType || null,
+          sizeBytes: doc.size,
+          sha256: await hashDataUrl(doc.dataUrl),
+          sensitive: true,
+          qualityNote: "Sealed forward-only UDC transfer; operator preview disabled",
+          preview: stored,
+        }, tag);
+      }
+    }
+
+    if (completedStep >= 5) {
+      IntakeGateway.capture(session.sessionId, {
+        consent: {
+          dataProcessing: d.consentOk,
+          contactOnSafeChannel: d.consentOk,
+          shareWithAssignedProviders: d.consentOk,
+          method: d.consentOk ? "UDC_VERBAL_READBACK" : null,
+          readBackConfirmed: d.consentOk,
+          recordedAt: new Date().toISOString(),
+        },
+      }, tag);
+    }
+    return session.sessionId;
+  },
+
+  async submitWizard(d: CitizenDraftLike, operator: UdcOperatorAccount, lang: "bn" | "en"): Promise<SubmitResult> {
+    const sessionId = await UdcDoor.syncWizard(d, operator, lang, 5);
+    const by = `udc:${operator.operatorId}`;
+    IntakeGateway.ensureChecklist(sessionId, { source: "SYSTEM_DERIVED", method: "SYSTEM", by: "system", note: "checklist for matter" });
+    IntakeGateway.setStep(sessionId, "REVIEWED", by);
+    const result = IntakeGateway.submit(sessionId, by);
+    if (result.ok) writeKey(`${UDC_WIZARD_KEY}.${operator.operatorId}`, null);
+    return result;
+  },
+
   /** "Start intake" on /dashboard/udc/intake/new. Idempotent per temporaryId. */
   start(i: UdcStartInput): string {
     let s = IntakeGateway.findSessionByClientRef(i.temporaryId);

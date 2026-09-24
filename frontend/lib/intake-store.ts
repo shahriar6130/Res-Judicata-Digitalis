@@ -158,6 +158,11 @@ export type IntakeSubmission = {
 const DRAFTS_KEY = "rjd.intake.drafts";
 const PENDING_KEY = "rjd.intake.pending";
 
+/** Keep assisted UDC drafts separate from a citizen draft on the same device. */
+function scopedKey(base: string, scope?: string): string {
+  return scope ? `${base}.${scope.replace(/[^a-zA-Z0-9_-]/g, "_")}` : base;
+}
+
 /* ------------------------------------------------------------------ *
  *  Browser-safe accessors. All reads/writes are wrapped so SSR
  *  (Next.js static rendering) and storage-disabled browsers don't
@@ -202,11 +207,11 @@ export function emptyDraft(): IntakeDraft {
  *  draft exists at a time per device; saving overwrites it.
  * ------------------------------------------------------------------ */
 
-export function loadDraft(): IntakeDraft | null {
+export function loadDraft(scope?: string): IntakeDraft | null {
   const store = safeStorage();
   if (!store) return null;
   try {
-    const raw = store.getItem(DRAFTS_KEY);
+    const raw = store.getItem(scopedKey(DRAFTS_KEY, scope));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<IntakeDraft>;
     const d = { ...emptyDraft(), ...parsed };
@@ -218,11 +223,11 @@ export function loadDraft(): IntakeDraft | null {
   }
 }
 
-export function saveDraft(draft: IntakeDraft): boolean {
+export function saveDraft(draft: IntakeDraft, scope?: string): boolean {
   const store = safeStorage();
   if (!store) return false;
   try {
-    store.setItem(DRAFTS_KEY, JSON.stringify(draft));
+    store.setItem(scopedKey(DRAFTS_KEY, scope), JSON.stringify(draft));
     return true;
   } catch (err) {
     // Most likely QuotaExceededError. The wizard surfaces this with
@@ -232,11 +237,11 @@ export function saveDraft(draft: IntakeDraft): boolean {
   }
 }
 
-export function clearDraft(): void {
+export function clearDraft(scope?: string): void {
   const store = safeStorage();
   if (!store) return;
   try {
-    store.removeItem(DRAFTS_KEY);
+    store.removeItem(scopedKey(DRAFTS_KEY, scope));
   } catch {
     /* ignore */
   }
@@ -248,11 +253,11 @@ export function clearDraft(): void {
  *  receipt the citizen was shown.
  * ------------------------------------------------------------------ */
 
-export function loadPending(): IntakeSubmission[] {
+export function loadPending(scope?: string): IntakeSubmission[] {
   const store = safeStorage();
   if (!store) return [];
   try {
-    const raw = store.getItem(PENDING_KEY);
+    const raw = store.getItem(scopedKey(PENDING_KEY, scope));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as IntakeSubmission[];
     if (!Array.isArray(parsed)) return [];
@@ -262,11 +267,11 @@ export function loadPending(): IntakeSubmission[] {
   }
 }
 
-function writePending(list: IntakeSubmission[]): boolean {
+function writePending(list: IntakeSubmission[], scope?: string): boolean {
   const store = safeStorage();
   if (!store) return false;
   try {
-    store.setItem(PENDING_KEY, JSON.stringify(list));
+    store.setItem(scopedKey(PENDING_KEY, scope), JSON.stringify(list));
     return true;
   } catch {
     return false;
@@ -275,14 +280,15 @@ function writePending(list: IntakeSubmission[]): boolean {
 
 export function enqueueSubmission(
   submission: IntakeSubmission,
+  scope?: string,
 ): IntakeSubmission[] {
-  const next = [submission, ...loadPending()];
-  return writePending(next) ? next : loadPending();
+  const next = [submission, ...loadPending(scope)];
+  return writePending(next, scope) ? next : loadPending(scope);
 }
 
-export function removeSubmission(tempReceipt: string): IntakeSubmission[] {
-  const next = loadPending().filter((s) => s.tempReceipt !== tempReceipt);
-  return writePending(next) ? next : loadPending();
+export function removeSubmission(tempReceipt: string, scope?: string): IntakeSubmission[] {
+  const next = loadPending(scope).filter((s) => s.tempReceipt !== tempReceipt);
+  return writePending(next, scope) ? next : loadPending(scope);
 }
 
 /* ------------------------------------------------------------------ *
@@ -351,24 +357,24 @@ export async function pushIntakeToBackend(
  *  wizard's `useEffect` can `await` it without race conditions.
  * ------------------------------------------------------------------ */
 
-export async function syncPending(): Promise<{
+export async function syncPending(scope?: string): Promise<{
   pushed: number;
   remaining: number;
 }> {
   if (!isOnline()) {
-    return { pushed: 0, remaining: loadPending().length };
+    return { pushed: 0, remaining: loadPending(scope).length };
   }
-  const queue = loadPending();
+  const queue = loadPending(scope);
   let pushed = 0;
   for (const submission of queue) {
     try {
       await pushIntakeToBackend(submission);
-      removeSubmission(submission.tempReceipt);
+      removeSubmission(submission.tempReceipt, scope);
       pushed += 1;
     } catch {
       // Stop on first failure so order is preserved.
       break;
     }
   }
-  return { pushed, remaining: loadPending().length };
+  return { pushed, remaining: loadPending(scope).length };
 }

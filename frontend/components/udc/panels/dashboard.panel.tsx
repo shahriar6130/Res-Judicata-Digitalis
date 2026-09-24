@@ -40,7 +40,6 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
   const drafts: OfflineDraft[] = Array.isArray(offline.drafts) ? offline.drafts : [];
   const mine = drafts.filter((d) => sessions.some((s) => s.meta.clientRef === d.temporaryId));
   const pending = mine.filter((d) => d.syncStatus !== "synced");
-  const latest = sessions.find((s) => !s.applicationId)?.meta.clientRef;
 
   return <>
     <SkipLink targetId="udc-main" />
@@ -52,12 +51,12 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
           <p>{tx(`${me?.name ?? "উদ্যোক্তা"} · ${me?.centre ?? "ইউডিসি"} — আপনার সহায়তায় করা আবেদন ও চলমান কাজ এক জায়গায়।`, `${me?.name ?? "Operator"} · ${me?.centre ?? "UDC"} — your assisted applications and ongoing work in one place.`)}</p>
           <div className={ui.heroActions}>
             <Link className={ui.primaryAction} href={`${base}#intake-new`}>{tx("নতুন আবেদন শুরু করুন", "Start an application")} <span aria-hidden>↗</span></Link>
-            <Link className={ui.secondaryAction} href={latest ? `${base}#intake/${latest}` : `${base}#offline-queue`}>{tx("চলমান কাজ দেখুন", "View in-progress work")} <span aria-hidden>→</span></Link>
+            <Link className={ui.secondaryAction} href={`${base}#intake-new`}>{tx("চলমান আবেদন খুলুন", "Open in-progress application")} <span aria-hidden>→</span></Link>
           </div>
         </div>
         <div className={ui.heroAside}>
           <span>{tx("আজকের কাজের পথ", "YOUR WORKFLOW")}</span>
-          <ol><li><b>01</b> {tx("আবেদনকারীর তথ্য", "Applicant details")}</li><li><b>02</b> {tx("সম্মতি ও নথি", "Consent and documents")}</li><li><b>03</b> {tx("সংরক্ষণ ও সিঙ্ক", "Save and sync")}</li></ol>
+          <ol><li><b>01</b> {tx("অভিযোগের তথ্য", "Complaint details")}</li><li><b>02</b> {tx("সিল করা প্রমাণ পাঠানো", "Forward sealed evidence")}</li><li><b>03</b> {tx("সম্মতি ও জমা", "Consent and submit")}</li></ol>
         </div>
       </header>
 
@@ -77,7 +76,7 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
             return <li key={s.sessionId}>
               <div className={ui.recordLead}><span className={ui.recordMark} aria-hidden>↗</span><div><strong>{s.draft.applicant.fullName || tx("নাম যোগ করা হয়নি", "Name not added")}</strong><small>{app?.applicationId ?? ref} · {app ? label(MATTERS, app.data.matter.category, lang) : tx("খসড়া", "Draft")}</small></div></div>
               <span className={ui.recordState}>{app ? tx("জমা হয়েছে", "Submitted") : tx("চলমান", "In progress")}</span>
-              <Link href={app ? `${base}#applications` : `${base}#intake/${ref}`}>{tx("খুলুন", "Open")} <span aria-hidden>→</span></Link>
+              <Link href={app ? `${base}#applications` : `${base}#intake-new`}>{tx("খুলুন", "Open")} <span aria-hidden>→</span></Link>
             </li>;
           })}</ul> : <div className={ui.empty}><strong>{tx("এখনো কোনো ইনটেক নেই", "No intakes yet")}</strong><p>{tx("প্রথম আবেদনকারীর জন্য নতুন সহায়তাপ্রাপ্ত ইনটেক শুরু করুন।", "Start a new assisted intake for your first applicant.")}</p><Link href={`${base}#intake-new`}>{tx("ইনটেক শুরু করুন", "Start intake")} →</Link></div>}
         </section>
@@ -85,8 +84,8 @@ export function UdcDashboardPanel({ role = "udc" }: { role?: string }) {
         <section className={ui.toolsSection}>
           <div className={ui.sectionHeading}><div><span>{tx("দ্রুত প্রবেশ", "QUICK ACCESS")}</span><h2>{tx("সেবার সরঞ্জাম", "Service tools")}</h2></div></div>
           <div className={ui.toolList}>
-            <Link href={latest ? `${base}#intake/${latest}/consent` : `${base}#intake-new`}><b>01</b><span><strong>{tx("সম্মতি রেকর্ড", "Consent record")}</strong><small>{tx("আবেদনকারীর সম্মতি নিশ্চিত করুন", "Confirm applicant consent")}</small></span><i aria-hidden>↗</i></Link>
-            <Link href={latest ? `${base}#intake/${latest}/documents` : `${base}#intake-new`}><b>02</b><span><strong>{tx("নথি ক্যাপচার", "Document capture")}</strong><small>{tx("নথি সংগ্রহ ও মান পরীক্ষা", "Collect and check documents")}</small></span><i aria-hidden>↗</i></Link>
+            <Link href={`${base}#intake-new`}><b>01</b><span><strong>{tx("অভিযোগ দায়ের", "Lodge a complaint")}</strong><small>{tx("নাগরিকের মতো একই পাঁচ ধাপ পূরণ করুন", "Complete the same five steps as the citizen")}</small></span><i aria-hidden>↗</i></Link>
+            <Link href={`${base}#intake-new`}><b>02</b><span><strong>{tx("সিল করা প্রমাণ পাঠান", "Forward sealed evidence")}</strong><small>{tx("প্রিভিউ ছাড়াই মামলার রেকর্ডে পাঠান", "Pass it to the case record without preview")}</small></span><i aria-hidden>↗</i></Link>
             <Link href={`${base}#status-visit`}><b>03</b><span><strong>{tx("অবস্থা জানার পরিদর্শন", "Status visit")}</strong><small>{tx("আবেদনকারী উপস্থিত থাকলে দেখুন", "View with the applicant present")}</small></span><i aria-hidden>↗</i></Link>
             <Link href={`${base}#sync-centre`}><b>04</b><span><strong>{tx("সিঙ্ক সেন্টার", "Sync centre")}</strong><small>{tx("অফলাইন কাজ ও সমস্যা দেখুন", "Check offline work and issues")}</small></span><i aria-hidden>↗</i></Link>
           </div>

@@ -52,6 +52,7 @@ export const UdcAuth = {
         district: input.district as DistrictCode,
         createdAt: now,
         lastLoginAt: now,
+        approval: { status: "PENDING", by: null, byName: null, at: null, reason: null },
         audit: [{ seq: db.counters.auditSeq, at: now, actor: "udc_operator", role: "udc_operator", action: "udc.signed_up", detail: { phone } }],
       };
       db.udcOperators.push(a);

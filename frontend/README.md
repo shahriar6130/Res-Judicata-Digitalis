@@ -41,10 +41,13 @@ first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/das
 
 ## Upstash JSON persistence on Vercel
 
-The app now hydrates `dlas.db.v1` from `/api/dlas-store` and mirrors debounced writes back through
-that server-only Route Handler. The browser never receives an Upstash credential. When storage is
-not configured or the network is down, the existing local record remains usable and the newest
-write retries after reconnecting.
+The app hydrates `dlas.db.v1` from `/api/dlas-store` and mirrors debounced writes back through that
+server-only Route Handler. Admin create, edit, delete, hearing, JSON export, and backup-restore
+actions also reconcile with Upstash before reporting success. Export downloads the reconciled
+current snapshot, while import immediately flushes the restored snapshot online. Their bilingual status message explicitly
+distinguishes an online database save from a browser-only save when Upstash is unconfigured or
+unreachable. The browser never receives an Upstash credential; failed remote writes remain queued
+for a foreground reconnect retry.
 
 In Vercel, add these Environment Variables for Development, Preview, and Production as needed:
 
@@ -88,7 +91,7 @@ Each role signs in from its own URL; after sign-in the app lands directly on tha
 | District Legal Aid Officer (জেলা আইনি সহায়তা কর্মকর্তা) | `/dlo` | `/dashboard/dlo` | `/dashboard/dlo` |
 | Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/dashboard/lawyer` | `/dashboard/lawyer` |
 | UDC operator (ইউডিসি উদ্যোক্তা) | `/udc` (also `/portal/udc`) | `/dashboard/udc` | `/dashboard/udc` |
-| Administrator (প্রশাসক) | `/admin` | `/dashboard/admin` | `/dashboard/admin` |
+| Administrator (প্রশাসক) | `/admin` (automatic redirect; no credentials) | `/dashboard/admin` | `/dashboard/admin` |
 
 Citizen notifications at `/dashboard/citizen#notifications` group new and earlier updates, show
 readable details and timestamps, and open the related case or dashboard view. The unread count and

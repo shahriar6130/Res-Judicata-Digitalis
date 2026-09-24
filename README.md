@@ -48,6 +48,12 @@ npm run dev
 
 Visit `http://localhost:3000` for the Citizen portal: **Sign up** with name + mobile number, then **Log in** with the mobile number only (no password in the prototype). Accounts are cached in `localStorage["dlas.db.v1"].citizens`; when the server-only Upstash REST variables are configured, the complete shared JSON is also hydrated and mirrored through `/api/dlas-store` (see `frontend/README.md`).
 
+The prototype administrator entry at `/admin` requires no credentials and redirects directly to
+`/dashboard/admin`. Admin mutations are saved to the browser first, then immediately flushed to
+Upstash; the dashboard confirms whether the online save succeeded or only the browser copy exists.
+Admin JSON export reconciles before downloading, and JSON import flushes the restored snapshot to
+the same online store before reporting completion.
+
 ## Step 1 — Access & Application (shared record)
 
 Every intake door writes the same JSON record to the local offline cache and optional Upstash JSON mirror, and mints one Application ID:

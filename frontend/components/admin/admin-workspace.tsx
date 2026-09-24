@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useI18n } from "@/lib/i18n";
-import { useDlasDb } from "@/lib/dlas/store";
+import { syncRemoteDbNow, useDlasDb, type RemoteSyncResult } from "@/lib/dlas/store";
 import { DISTRICTS, MATTERS, label } from "@/lib/dlas/reference";
 import { AdminService, type AdminHearingInput, type ManagedInput, type ManagedRole } from "@/lib/dlas/admin";
 import { MEDIATION_CASE_TYPES, MEDIATION_TRACKS } from "@/lib/dlas/mediators";
@@ -49,6 +49,7 @@ export function AdminWorkspace() {
   const [notice, setNotice] = useState("");
   const [backup, setBackup] = useState<BackupPreview | null>(null);
   const [backupError, setBackupError] = useState("");
+  const [saving, setSaving] = useState(false);
   const tx = (bn: string, en: string) => lang === "bn" ? bn : en;
   const count = db.citizens.length + db.lawyers.length + db.officers.length + db.mediators.length + db.udcOperators.length;
   const openTasks = db.tasks.filter((t) => t.status !== "DONE").length;
@@ -80,13 +81,21 @@ export function AdminWorkspace() {
       },
     });
   }
-  function save() {
+  function syncedNotice(result: RemoteSyncResult, saved: [string, string]) {
+    if (result === "saved") return tx(`${saved[0]} অনলাইন ডেটাবেসে সংরক্ষিত হয়েছে।`, `${saved[1]} Saved to the online database.`);
+    if (result === "unconfigured") return tx(`${saved[0]} শুধু এই ব্রাউজারে সংরক্ষিত হয়েছে—অনলাইন ডেটাবেস কনফিগার করা নেই।`, `${saved[1]} Saved only in this browser—the online database is not configured.`);
+    return tx(`${saved[0]} এই ব্রাউজারে সংরক্ষিত হয়েছে; অনলাইন ডেটাবেসে এখন পৌঁছানো যায়নি।`, `${saved[1]} Saved in this browser; the online database could not be reached.`);
+  }
+  async function save() {
     if (!editing) return;
     try {
+      setSaving(true);
       AdminService.saveAccount(editing.role, editing.id, editing.input);
+      const remote = await syncRemoteDbNow();
       setEditing(null); setError("");
-      setNotice(tx("পরিবর্তন সংরক্ষিত হয়েছে।", "Changes saved."));
+      setNotice(syncedNotice(remote, ["পরিবর্তন", "Changes"]));
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
   function editHearing(applicationId: string, hearing?: Hearing) {
     setError(""); setNotice("");
@@ -100,24 +109,32 @@ export function AdminWorkspace() {
       },
     });
   }
-  function saveHearing() {
+  async function saveHearing() {
     if (!hearingEditing) return;
     try {
+      setSaving(true);
       AdminService.saveHearing(hearingEditing.applicationId, hearingEditing.hearingId, hearingEditing.input);
+      const remote = await syncRemoteDbNow();
       setHearingEditing(null); setError("");
-      setNotice(tx("শুনানির তথ্য সংরক্ষিত হয়েছে।", "Hearing information saved."));
+      setNotice(syncedNotice(remote, ["শুনানির তথ্য", "Hearing information"]));
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
-  function remove() {
+  async function remove() {
     if (!deleting) return;
     try {
+      setSaving(true);
       AdminService.deleteAccount(deleting.role, deleting.id);
+      const remote = await syncRemoteDbNow();
       setDeleting(null); setDeleteError("");
-      setNotice(tx("অ্যাকাউন্ট মুছে ফেলা হয়েছে।", "Account deleted."));
+      setNotice(syncedNotice(remote, ["অ্যাকাউন্ট মোছা", "Account deletion"]));
     } catch (e) { setDeleteError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
-  function downloadBackup() {
+  async function downloadBackup() {
     try {
+      setSaving(true); setBackupError("");
+      const remote = await syncRemoteDbNow();
       const blob = new Blob([exportBackup()], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -127,14 +144,26 @@ export function AdminWorkspace() {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 0);
-      setBackupError("");
+      setNotice(syncedNotice(remote, ["ব্যাকআপ রপ্তানি", "Backup export"]));
     } catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
   async function chooseBackup(file: File | undefined) {
     setBackup(null); setBackupError("");
     if (!file) return;
     try { setBackup(previewBackup(await file.text())); }
     catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); }
+  }
+  async function restoreBackup() {
+    if (!backup) return;
+    try {
+      setSaving(true); setBackupError("");
+      importBackup(backup);
+      const remote = await syncRemoteDbNow();
+      setBackup(null);
+      setNotice(syncedNotice(remote, ["ব্যাকআপ", "Backup"]));
+    } catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
   const items = displayRecord(db, role).filter((r) => [r.name, recordPhone(role, r), String(r.centre ?? ""), String(r.district ?? ""), String(r.status ?? "")].some((s) => s.toLowerCase().includes(query.toLowerCase())));
   const roleName = roles.find((x) => x.key === role)!;
@@ -193,10 +222,10 @@ export function AdminWorkspace() {
     {section === "mediation" ? <AdminMediationOversight /> : null}
     {section === "audit" ? <section className={css.panel}><p className={css.kicker}>{tx("সংরক্ষিত ইতিহাস", "PERSISTED HISTORY")}</p><h2>{tx("সাম্প্রতিক অডিট ঘটনা", "Recent audit events")}</h2>{audit.map((e: AuditEntry) => <div className={css.line} key={e.seq}><span><strong>{e.action}</strong><small>{e.actor} · {e.role}</small></span><time>{new Date(e.at).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB")}</time></div>)}{!audit.length ? <p className={css.empty}>{tx("এখনো কোনো অডিট ঘটনা নেই।", "No audit events yet.")}</p> : null}</section> : null}
     {section === "backup" ? <div className={css.grid}>
-      <section className={css.panel}><p className={css.kicker}>{tx("সম্পূর্ণ তথ্য", "COMPLETE DATA")}</p><h2>{tx("JSON এক্সপোর্ট", "Export JSON")}</h2><p>{tx("আবেদন, অ্যাকাউন্ট, কাজ, অডিট, সংরক্ষিত নথির কপি এবং অন্যান্য অ্যাপ ডেটা একটি ফাইলে ডাউনলোড করুন।", "Download applications, accounts, tasks, audits, stored document copies and other app data in one file.")}</p><button type="button" className={css.primary} onClick={downloadBackup}>{tx("JSON ডাউনলোড করুন", "Download JSON")}</button><p className={css.subtle}>{tx("ফাইলে ব্যক্তিগত তথ্য ও সংরক্ষিত নথি থাকতে পারে।", "This file may contain personal information and stored documents.")}</p></section>
+      <section className={css.panel}><p className={css.kicker}>{tx("সম্পূর্ণ তথ্য", "COMPLETE DATA")}</p><h2>{tx("JSON এক্সপোর্ট", "Export JSON")}</h2><p>{tx("আবেদন, অ্যাকাউন্ট, কাজ, অডিট, সংরক্ষিত নথির কপি এবং অন্যান্য অ্যাপ ডেটা একটি ফাইলে ডাউনলোড করুন।", "Download applications, accounts, tasks, audits, stored document copies and other app data in one file.")}</p><button type="button" className={css.primary} disabled={saving} onClick={() => void downloadBackup()}>{saving ? tx("অনলাইন তথ্য মিলছে…", "Syncing online data…") : tx("JSON ডাউনলোড করুন", "Download JSON")}</button><p className={css.subtle}>{tx("ফাইলে ব্যক্তিগত তথ্য ও সংরক্ষিত নথি থাকতে পারে।", "This file may contain personal information and stored documents.")}</p></section>
       <section className={css.panel}><p className={css.kicker}>{tx("পুনরুদ্ধার", "RESTORE")}</p><h2>{tx("JSON ইমপোর্ট", "Import JSON")}</h2><p>{tx("একটি ব্যাকআপ ফাইল বেছে নিন। আমদানির আগে তথ্যের সারাংশ দেখানো হবে।", "Choose a backup file. Review its contents before importing.")}</p><label className={css.importField}>{tx("ব্যাকআপ ফাইল", "Backup file")}<input type="file" accept=".json,application/json" onChange={(e) => { void chooseBackup(e.target.files?.[0]); e.target.value = ""; }} /></label>
         {backupError ? <p className={css.error} role="alert">{tx("ফাইল পড়া যায়নি: ", "Could not read file: ")}{backupError}</p> : null}
-        {backup ? <div className={css.preview}><h3>{tx("ইমপোর্টের সারাংশ", "Import preview")}</h3><p>{backup.exportedAt ? new Date(backup.exportedAt).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB") : tx("পুরোনো রেকর্ড ফরম্যাট", "Older record format")}</p><div className={css.line}><span>{tx("আবেদন", "Applications")}</span><strong>{backup.applications}</strong></div><div className={css.line}><span>{tx("অ্যাকাউন্ট", "Accounts")}</span><strong>{backup.people}</strong></div><div className={css.line}><span>{tx("সংরক্ষিত নথি", "Stored documents")}</span><strong>{backup.documents}</strong></div><p className={css.subtle}>{tx("ইমপোর্ট করলে এই ব্রাউজারের বর্তমান অ্যাপ তথ্য বদলে যাবে।", "Import replaces this browser's current app data.")}</p><button type="button" className={css.primary} onClick={() => { try { importBackup(backup); } catch (e) { setBackupError(e instanceof Error ? e.message : String(e)); } }}>{tx("বর্তমান তথ্য বদলে ইমপোর্ট করুন", "Replace current data and import")}</button></div> : null}
+        {backup ? <div className={css.preview}><h3>{tx("ইমপোর্টের সারাংশ", "Import preview")}</h3><p>{backup.exportedAt ? new Date(backup.exportedAt).toLocaleString(lang === "bn" ? "bn-BD" : "en-GB") : tx("পুরোনো রেকর্ড ফরম্যাট", "Older record format")}</p><div className={css.line}><span>{tx("আবেদন", "Applications")}</span><strong>{backup.applications}</strong></div><div className={css.line}><span>{tx("অ্যাকাউন্ট", "Accounts")}</span><strong>{backup.people}</strong></div><div className={css.line}><span>{tx("সংরক্ষিত নথি", "Stored documents")}</span><strong>{backup.documents}</strong></div><p className={css.subtle}>{tx("ইমপোর্ট করলে এই ব্রাউজারের বর্তমান অ্যাপ তথ্য বদলে যাবে।", "Import replaces this browser's current app data.")}</p><button type="button" className={css.primary} disabled={saving} onClick={() => void restoreBackup()}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("বর্তমান তথ্য বদলে ইমপোর্ট করুন", "Replace current data and import")}</button></div> : null}
       </section>
     </div> : null}
     {hearingEditing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-hearing-title"><div className={css.panelHead}><div><p className={css.kicker}>{hearingEditing.applicationId}</p><h2 id="admin-hearing-title">{hearingEditing.hearingId ? tx("শুনানি সম্পাদনা", "Edit hearing") : tx("শুনানি যোগ করুন", "Add hearing")}</h2></div><button type="button" className={css.secondary} onClick={() => { setHearingEditing(null); setError(""); }}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); saveHearing(); }} className={css.form}>
@@ -204,7 +233,7 @@ export function AdminWorkspace() {
       <label>{tx("আদালত", "Court")}<input required minLength={2} value={hearingEditing.input.court} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, court: e.target.value } })} /></label>
       <label className={css.fullField}>{tx("শুনানির উদ্দেশ্য", "Purpose")}<input value={hearingEditing.input.purpose} onChange={(e) => setHearingEditing({ ...hearingEditing, input: { ...hearingEditing.input, purpose: e.target.value } })} /></label>
       <p className={`${css.subtle} ${css.fullField}`}>{tx("উপস্থিতি বা ফলাফল এখানে বদলানো হয় না; সেগুলো আইনজীবীর প্রতিবেদন হিসেবে সংরক্ষিত থাকে।", "Attendance and outcome are not changed here; they remain preserved as lawyer-reported evidence.")}</p>
-      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit">{tx("শুনানি সংরক্ষণ করুন", "Save hearing")}</button>
+      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit" disabled={saving}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("শুনানি সংরক্ষণ করুন", "Save hearing")}</button>
     </form></section></div> : null}
     {editing ? <div className={css.backdrop}><section className={css.dialog} role="dialog" aria-modal="true" aria-labelledby="admin-edit-title"><div className={css.panelHead}><div><p className={css.kicker}>{roles.find((r) => r.key === editing.role)?.[lang]}</p><h2 id="admin-edit-title">{editing.id ? tx("অ্যাকাউন্ট সম্পাদনা", "Edit account") : tx("অ্যাকাউন্ট যোগ করুন", "Add account")}</h2></div><button className={css.secondary} onClick={() => setEditing(null)}>{tx("বন্ধ", "Close")}</button></div><form onSubmit={(e) => { e.preventDefault(); save(); }} className={css.form}>
       <label>{tx("নাম", "Name")}<input required minLength={2} value={editing.input.name} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, name: e.target.value } })} /></label>
@@ -220,8 +249,8 @@ export function AdminWorkspace() {
         <fieldset><legend>{tx("মধ্যস্থতার ধারা", "Mediation tracks")}</legend><div className={css.checks}>{MEDIATION_TRACKS.map((m) => <label key={m.code}><input type="checkbox" checked={editing.input.tracks?.includes(m.code) ?? false} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, tracks: e.target.checked ? [...(editing.input.tracks ?? []), m.code] : (editing.input.tracks ?? []).filter((x) => x !== m.code) } })} />{m.label[lang]}</label>)}</div></fieldset>
         <fieldset><legend>{tx("মামলার ধরন", "Case types")}</legend><div className={css.checks}>{MEDIATION_CASE_TYPES.map((m) => <label key={m.code}><input type="checkbox" checked={editing.input.caseTypes?.includes(m.code) ?? false} onChange={(e) => setEditing({ ...editing, input: { ...editing.input, caseTypes: e.target.checked ? [...(editing.input.caseTypes ?? []), m.code] : (editing.input.caseTypes ?? []).filter((x) => x !== m.code) } })} />{m.label[lang]}</label>)}</div></fieldset>
       </> : null}
-      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit">{tx("সংরক্ষণ করুন", "Save account")}</button>
+      {error ? <p role="alert" className={css.error}>{error}</p> : null}<button className={css.primary} type="submit" disabled={saving}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("সংরক্ষণ করুন", "Save account")}</button>
     </form></section></div> : null}
-    {deleting ? <div className={css.backdrop}><section className={`${css.dialog} ${css.deleteDialog}`} role="alertdialog" aria-modal="true" aria-labelledby="admin-delete-title" aria-describedby="admin-delete-description"><p className={css.kicker}>{roles.find((r) => r.key === deleting.role)?.[lang]}</p><h2 id="admin-delete-title">{tx("অ্যাকাউন্ট মুছে ফেলবেন?", "Delete this account?")}</h2><p id="admin-delete-description"><strong>{deleting.name}</strong><br /><span className={css.subtle}>{deleting.id}</span></p><p className={css.deleteWarning}>{tx("এই ব্যক্তির প্রবেশাধিকার বাতিল হবে। বিদ্যমান আবেদন ও অডিট ইতিহাস সংরক্ষিত থাকবে। সক্রিয় নিয়োগ থাকলে মধ্যস্থতাকারী বা আইনজীবীর অ্যাকাউন্ট মোছা যাবে না।", "This removes the person's access. Existing applications and audit history remain. Mediator or lawyer accounts with active assignments cannot be deleted.")}</p>{deleteError ? <p role="alert" className={css.error}>{deleteError}</p> : null}<div className={css.dialogActions}><button type="button" className={css.secondary} onClick={() => { setDeleting(null); setDeleteError(""); }}>{tx("বাতিল", "Cancel")}</button><button type="button" className={css.danger} onClick={remove}>{tx("অ্যাকাউন্ট মুছুন", "Delete account")}</button></div></section></div> : null}
+    {deleting ? <div className={css.backdrop}><section className={`${css.dialog} ${css.deleteDialog}`} role="alertdialog" aria-modal="true" aria-labelledby="admin-delete-title" aria-describedby="admin-delete-description"><p className={css.kicker}>{roles.find((r) => r.key === deleting.role)?.[lang]}</p><h2 id="admin-delete-title">{tx("অ্যাকাউন্ট মুছে ফেলবেন?", "Delete this account?")}</h2><p id="admin-delete-description"><strong>{deleting.name}</strong><br /><span className={css.subtle}>{deleting.id}</span></p><p className={css.deleteWarning}>{tx("এই ব্যক্তির প্রবেশাধিকার বাতিল হবে। বিদ্যমান আবেদন ও অডিট ইতিহাস সংরক্ষিত থাকবে। সক্রিয় নিয়োগ থাকলে মধ্যস্থতাকারী বা আইনজীবীর অ্যাকাউন্ট মোছা যাবে না।", "This removes the person's access. Existing applications and audit history remain. Mediator or lawyer accounts with active assignments cannot be deleted.")}</p>{deleteError ? <p role="alert" className={css.error}>{deleteError}</p> : null}<div className={css.dialogActions}><button type="button" className={css.secondary} disabled={saving} onClick={() => { setDeleting(null); setDeleteError(""); }}>{tx("বাতিল", "Cancel")}</button><button type="button" className={css.danger} disabled={saving} onClick={() => void remove()}>{saving ? tx("সংরক্ষণ হচ্ছে…", "Saving…") : tx("অ্যাকাউন্ট মুছুন", "Delete account")}</button></div></section></div> : null}
   </main>;
 }

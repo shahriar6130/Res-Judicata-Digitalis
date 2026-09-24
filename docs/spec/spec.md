@@ -10,9 +10,12 @@ flows remain governed by `docs/PRD/PRD.md`.
 | Citizen | `/` | `/dashboard/citizen` | Understand and respond to the safe next action |
 | DLAO | `/dlo` | `/dashboard/dlo` | Find the oldest or most urgent unresolved promise/evidence exception |
 | Panel lawyer | `/lawyer` | `/dashboard/lawyer` | Accept work and submit the next structured update |
-| Administrator | `/admin` | `/dashboard/admin` | Inspect operations and draft versioned policy changes |
+| Administrator | `/admin` (automatic, no credentials) | `/dashboard/admin` | Inspect operations and draft versioned policy changes |
 
-Successful prototype sign-in routes directly to the matching dashboard. For citizen evaluation, the prototype provides quick test credentials (mobile: `a`, password: `a`) with one-click **Auto-fill** and direct **Quick enter** actions.
+Successful prototype sign-in routes directly to the matching dashboard. `/admin` is the exception:
+it has no credential form and redirects directly to the administrator dashboard. For citizen
+evaluation, the prototype provides quick test credentials (mobile: `a`, password: `a`) with
+one-click **Auto-fill** and direct **Quick enter** actions.
 
 ## Functional requirements
 
@@ -117,7 +120,7 @@ previous keys where possible.
 - One validator for all doors (`lib/dlas/validate.ts`); every field carries provenance; every session and record carries `audit[]`. Application ID `APP-YYYY-NNNNN` is minted only by the gateway (helpline agent submit and UDC offline sync reuse it).
 - Submit opens human tasks (eligibility review, urgent safety review, document follow-up, missing info, representative call-back). Routing priority is advisory; `humanDecision` stays null.
 - `/debug` shows every session/application, its intake step and backbone stage, JSON, provenance, audit, tasks, messages and transcript; export/import/reset.
-- The browser keeps `localStorage["dlas.db.v1"]` as the synchronous offline cache. `RemoteStoreBootstrap` hydrates the newest snapshot from `GET /api/dlas-store` and debounced local writes mirror through `PUT /api/dlas-store` to one environment-scoped Upstash Redis JSON key. The Route Handler validates `v` and `schemaVersion`, rejects payloads above 4 MiB, prevents a clearly older snapshot from replacing a newer one, and keeps all REST tokens server-only. If Upstash is absent or temporarily unavailable, the existing local workflow continues and the newest queued snapshot retries on reconnect. Full record contract: `docs/architecture/DATA-CONTRACTS.md`.
+- The browser keeps `localStorage["dlas.db.v1"]` as the synchronous offline cache. `RemoteStoreBootstrap` hydrates the newest snapshot from `GET /api/dlas-store` and debounced local writes mirror through `PUT /api/dlas-store` to one environment-scoped Upstash Redis JSON key. Admin create/edit/delete, hearing, JSON export, and backup-restore actions reconcile with Upstash before showing a result: export downloads the reconciled current snapshot and import immediately flushes the restored snapshot online. Success names the online database, while an unavailable or unconfigured service is clearly reported as a browser-only operation. The Route Handler validates `v` and `schemaVersion`, rejects payloads above 4 MiB, prevents a clearly older snapshot from replacing a newer one, and keeps all REST tokens server-only. Failed remote writes remain queued for reconnect. Full record contract: `docs/architecture/DATA-CONTRACTS.md`.
 
 
 ## Step 2 — Verification & Eligibility (DLAO / SCLAC / LLAC)

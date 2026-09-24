@@ -26,6 +26,8 @@ the text toggle changes the entire visible interface to English and persists the
 - On desktop, the Lawyer art and form columns each occupy the viewport height. The longer sign-up form scrolls within its column, leaving no gap below the image and keeping the image crop and form starting position steady. Tablet and mobile use a stacked image with fixed responsive heights and normal page scrolling.
 - On `/dlo`, the rotated **DLO** image label uses the larger `--t-portal-dlo-role` type token and sits close to the image's left edge. Its anchor accounts for the rotated text width so it stays visible; tablet and mobile sizes step down with the existing type scale.
 - `/udc` is the dedicated operator entry page; `/portal/udc` remains available. It places the alternate justice image on the right and pairs a token-based amber seam with UDC-specific service copy. The existing mobile-only login and operator registration fields are unchanged.
+- `/admin` has no sign-in form in this prototype. It immediately enters `/dashboard/admin`, avoiding
+  a credential step for the simulated administrator workspace.
 - For testing convenience, the Citizen sign-in portal (`/`) provides a quick-test credential prompt (`mobile: "a"`, `password: "a"`) with **Auto-fill** and **Quick enter** buttons that immediately navigate to `/dashboard/citizen`.
 
 ## Shared dashboard shell
@@ -41,6 +43,10 @@ the text toggle changes the entire visible interface to English and persists the
   from the local offline cache, then update through the existing reactive record store when a newer
   Upstash snapshot arrives. Loss of the remote connection leaves the current interface usable and
   queues the newest snapshot for a foreground reconnect retry.
+- Admin mutation dialogs and JSON backup actions keep their action busy until online reconciliation
+  finishes. Export downloads the reconciled snapshot; import immediately flushes its restored data.
+  The resulting bilingual status line says whether the record reached the online database or is
+  currently saved only in the browser, so local fallback is never presented as online success.
 
 ## Role views
 

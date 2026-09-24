@@ -24,8 +24,10 @@ const EVENT = "dlas:db-changed";
 const REMOTE_ENDPOINT = "/api/dlas-store";
 
 type RemotePhase = "idle" | "loading" | "ready" | "syncing" | "error" | "disabled";
+export type RemoteSyncResult = "saved" | "unavailable" | "unconfigured";
 let remotePhase: RemotePhase = "idle";
 let remoteHydration: Promise<void> | null = null;
+let remoteFlush: Promise<void> | null = null;
 let pendingRemoteRaw: string | null = null;
 let remoteTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -207,38 +209,58 @@ function queueRemoteWrite(raw: string) {
  * Writes stay queued after network errors and retry when the browser reconnects.
  */
 export async function flushRemoteDb(): Promise<void> {
-  if (!isBrowser() || !pendingRemoteRaw || remotePhase === "disabled" || remotePhase === "loading" || remotePhase === "syncing") return;
+  if (!isBrowser() || !pendingRemoteRaw || remotePhase === "disabled" || remotePhase === "loading") return;
+  if (remotePhase === "syncing") {
+    await remoteFlush;
+    if (pendingRemoteRaw) await flushRemoteDb();
+    return;
+  }
   const raw = pendingRemoteRaw;
   pendingRemoteRaw = null;
   remotePhase = "syncing";
-  try {
-    const response = await fetch(REMOTE_ENDPOINT, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: raw,
-      cache: "no-store",
-    });
-    const payload = await response.json() as { configured?: boolean; conflict?: boolean; data?: DlasDb; error?: string };
-    if (response.status === 503 && payload.configured === false) {
-      remotePhase = "disabled";
-      return;
-    }
-    if (response.status === 409 && payload.conflict && payload.data) {
-      // If nothing newer was typed while this request was running, accept the
-      // newer remote snapshot. Otherwise the newest local write gets another try.
-      if (!pendingRemoteRaw) persistLocal(parse(JSON.stringify(payload.data)), false);
+  remoteFlush = (async () => {
+    try {
+      const response = await fetch(REMOTE_ENDPOINT, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: raw,
+        cache: "no-store",
+      });
+      const payload = await response.json() as { configured?: boolean; conflict?: boolean; data?: DlasDb; error?: string };
+      if (response.status === 503 && payload.configured === false) {
+        remotePhase = "disabled";
+        return;
+      }
+      if (response.status === 409 && payload.conflict && payload.data) {
+        // If nothing newer was typed while this request was running, accept the
+        // newer remote snapshot. Otherwise the newest local write gets another try.
+        if (!pendingRemoteRaw) persistLocal(parse(JSON.stringify(payload.data)), false);
+        remotePhase = "ready";
+        if (pendingRemoteRaw) scheduleRemoteFlush(0);
+        return;
+      }
+      if (!response.ok) throw new Error(payload.error ?? `Remote save failed (${response.status})`);
       remotePhase = "ready";
       if (pendingRemoteRaw) scheduleRemoteFlush(0);
-      return;
+    } catch {
+      // Preserve a newer queued write if one exists; otherwise retry this snapshot.
+      pendingRemoteRaw = pendingRemoteRaw ?? raw;
+      remotePhase = "error";
     }
-    if (!response.ok) throw new Error(payload.error ?? `Remote save failed (${response.status})`);
-    remotePhase = "ready";
-    if (pendingRemoteRaw) scheduleRemoteFlush(0);
-  } catch {
-    // Preserve a newer queued write if one exists; otherwise retry this snapshot.
-    pendingRemoteRaw = pendingRemoteRaw ?? raw;
-    remotePhase = "error";
-  }
+  })();
+  await remoteFlush;
+  remoteFlush = null;
+}
+
+/** Flushes the current browser snapshot now and reports whether it reached Upstash. */
+export async function syncRemoteDbNow(): Promise<RemoteSyncResult> {
+  if (!isBrowser()) return "unavailable";
+  await hydrateRemoteDb();
+  if ((remotePhase as RemotePhase) === "disabled") return "unconfigured";
+  pendingRemoteRaw = JSON.stringify(readDb());
+  await flushRemoteDb();
+  if (remotePhase === "disabled") return "unconfigured";
+  return remotePhase === "ready" && !pendingRemoteRaw ? "saved" : "unavailable";
 }
 
 /**

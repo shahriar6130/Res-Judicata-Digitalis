@@ -73,9 +73,9 @@ the repository's row-scoped database architecture.
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
-app/themes/black_theme.css   active original black theme
+app/themes/blue_white.css   active theme implementing the role-based color system (#003366, #0076D6, #F8F9FA, #1A202C, #E2E8F0)
+app/themes/black_theme.css   saved original black theme
 app/themes/red_white.css   saved courthouse image theme overrides
-app/themes/blue_white.css   saved blue and white theme overrides
 components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
               Button, Field, Sidebar, LawMark
 lib/          i18n context + dictionary, roles, brand, portal-art
@@ -213,7 +213,7 @@ Nothing hardcodes a color or font family outside `app/tokens.css` and
 
 ### Saved theme
 
-The active theme is app/themes/black_theme.css, imported after app/tokens.css in app/globals.css. This restores the original black and off-white appearance and red admin palette. The blue_white.css and red_white.css alternatives remain saved.
+The active theme is app/themes/blue_white.css, imported after app/tokens.css in app/globals.css. This applies the role-based system: Primary Brand Authority (#003366), Action Accent (#0076D6), Light Neutral (#F8F9FA), Dark Neutral (#1A202C), and Muted Neutral (#E2E8F0). The black_theme.css and red_white.css alternatives remain saved.
 
 To switch themes, change the active theme import in `app/globals.css` among `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
 
@@ -255,6 +255,6 @@ The admin sidebar links to Overview, People, Mediator training, Applications, Po
 The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one burgundy visual identity.
 
 
-### Blue White visual refresh
+### Blue White theme with role-based color system
 
-The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+The active CSS-only theme in `frontend/app/themes/blue_white.css` implements the role-based color system: Primary Brand Authority (`#003366`) for sidebars, header bars, and container boundaries, Action Accent (`#0076D6`) for primary buttons, active tabs, and hypertext links, Light Neutral (`#F8F9FA`) for page backgrounds and card containers, Dark Neutral (`#1A202C`) for high-contrast body copy and form labels, and Muted Neutral (`#E2E8F0`) for dividers and borders. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes remain available without a theme button.

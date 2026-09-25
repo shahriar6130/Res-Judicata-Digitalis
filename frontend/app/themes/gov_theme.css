@@ -1,0 +1,221 @@
+/*
+ * Bangladesh Government Portal Theme (সাক্ষ্য)
+ *
+ * Inspired by the official Bangladesh National Web Portal (bangladesh.gov.bd)
+ * design system:
+ * - Primary Brand Green: #00A63E (Dark: #008532, Light: #2DAB5B)
+ * - Secondary National Red: #DC2626 (Light: #FEF2F2, Dark: #ED3131)
+ * - Portal Link Blue: #1568b2 (Dark/Hover: #1b81dd)
+ * - Neutral Borders & Dividers: #d0d0d0 / #e0e0e0
+ * - Neutral Canvas: #f8faf8 / #ffffff
+ * - Dark Charcoal Text: #111827 / #1f2937
+ * - Warning Orange: #FF6600
+ */
+
+:root {
+  /* Typography & Core Ink */
+  --black: #111827;
+  --ink: #1f2937;
+  --white: #ffffff;
+  --off-white: #f8faf8;
+  --gray: #6b7280;
+  --line: #d0d0d0;
+  --overlay: rgba(20, 35, 25, 0.65);
+
+  /* National Green Brand Actions */
+  --primary-action: #00A63E;
+  --primary-action-hover: #008532;
+  --selection-bg: #00A63E;
+  --selection-fg: #ffffff;
+  --focus-color: #00A63E;
+
+  /* National Alerts & Accents */
+  --red: #DC2626;
+  --yellow: #FF6600;
+  --green: #00A63E;
+
+  /* Portal Links */
+  --color-link-normal: #1568b2;
+  --color-link-dark: #1b81dd;
+
+  /* Navigation Sidebar (Deep Government Green) */
+  --sidebar-bg: #0d3a1f;
+  --sidebar-fg: #ffffff;
+  --sidebar-muted: #b9dec4;
+  --sidebar-border: #144e2b;
+  --sidebar-hover-bg: #144e2b;
+  --sidebar-active-bg: #00A63E;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-accent: #2DAB5B;
+
+  --sidebar-dark-bg: #0d3a1f;
+  --sidebar-dark-fg: #ffffff;
+  --sidebar-dark-muted: #b9dec4;
+  --sidebar-dark-border: #144e2b;
+  --sidebar-dark-hover: #144e2b;
+  --sidebar-dark-active-bg: #00A63E;
+  --sidebar-dark-active-fg: #ffffff;
+  --sidebar-dark-accent: #2DAB5B;
+
+  /* Status Tokens */
+  --status-active: #00A63E;
+  --status-review: #FF6600;
+  --status-needs-action: #DC2626;
+  --status-resolved: #6b7280;
+  --status-pending: #d97706;
+
+  /* Surfaces & Containers */
+  --surface-card: #ffffff;
+  --surface-card-border: #d0d0d0;
+  --surface-card-lodge: #00A63E;
+  --surface-card-lodge-fg: #ffffff;
+  --surface-card-lodge-accent: #008532;
+
+  --on-black: #ffffff;
+  --on-black-muted: #b9dec4;
+  --line-on-black: #00A63E;
+  --lawmark-opacity: 0.75;
+  --grid-line: rgba(255, 255, 255, 0.12);
+
+  /* Role Accents */
+  --accent-citizen: #00A63E;
+  --accent-dlo: #DC2626;
+  --accent-lawyer: #008532;
+  --accent-udc: #FF6600;
+  --accent-admin: #0d3a1f;
+
+  /* DLO & Charts */
+  --dlo-muted: #4b5563;
+  --dlo-line: #d0d0d0;
+  --dlo-hero-muted: #b9dec4;
+  --dlo-positive-ink: #008532;
+  --dlo-danger-ink: #DC2626;
+  --dlo-warning-ink: #b45309;
+  --dlo-disabled-ink: #9ca3af;
+  --dlo-chart-purple: #0d3a1f;
+  --dlo-chart-blue: #1568b2;
+  --dlo-chart-rose: #DC2626;
+  --dlo-chart-olive: #008532;
+  --dlo-chart-muted: #9ca3af;
+
+  --udc-warning-ink: #b45309;
+  --udc-danger-ink: #DC2626;
+
+  /* Administration Workspace */
+  --admin-sidebar-bg: #0d3a1f;
+  --admin-sidebar-fg: #ffffff;
+  --admin-sidebar-muted: #b9dec4;
+  --admin-sidebar-border: #144e2b;
+  --admin-sidebar-hover: #144e2b;
+  --admin-sidebar-active-bg: #00A63E;
+  --admin-sidebar-active-fg: #ffffff;
+  --admin-page-bg: #f8faf8;
+  --admin-panel-bg: #ffffff;
+  --admin-soft-bg: #edf5ef;
+  --admin-hero-bg: #008532;
+  --admin-hero-muted: #e6f4ea;
+  --admin-ink: #111827;
+  --admin-muted: #4b5563;
+  --admin-line: #d0d0d0;
+  --admin-accent: #00A63E;
+  --admin-accent-hover: #008532;
+  --admin-danger: #DC2626;
+
+  /* Emblem */
+  --gavel-head: #2DAB5B;
+  --gavel-top: #ffffff;
+  --gavel-band: #00A63E;
+  --gavel-shadow: #0d3a1f;
+  --gavel-handle: #008532;
+
+  --bottom-nav-bg: #ffffff;
+  --bottom-nav-border: #d0d0d0;
+  --control-radius: 6px;
+  --motion-base: 200ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --theme-hero-start: #008532;
+  --theme-hero-end: #0d3a1f;
+  --theme-hero-fill: linear-gradient(120deg, var(--theme-hero-start), var(--theme-hero-end));
+  --theme-shadow: 0 4px 12px rgba(0, 80, 35, .08);
+
+  /* Portal widget overlay gradient token */
+  --portal-slider-overlay: linear-gradient(90deg, #3c3939c0 27.88%, rgba(217, 217, 217, 0.1) 100%);
+}
+
+/* Green header rule carrying the national government identity */
+body {
+  border-top: var(--s-1) solid var(--primary-action);
+  background-color: var(--off-white);
+  color: var(--ink);
+}
+
+/* Hypertext links use the gov link blue (#1568b2) */
+a {
+  color: var(--color-link-normal);
+}
+
+a:hover {
+  color: var(--color-link-dark);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary-action);
+}
+
+/* Active navigation item styling for dark sidebar */
+:root .dark [class*="navItemActive"],
+:root [class*="dark"] [class*="navItemActive"] {
+  color: var(--sidebar-active-bg) !important;
+}
+:root .dark [class*="navItemActive"]::before,
+:root [class*="dark"] [class*="navItemActive"]::before {
+  background: var(--sidebar-active-bg) !important;
+}
+:root .dark [class*="navItemProminent"],
+:root [class*="dark"] [class*="navItemProminent"] {
+  background: var(--sidebar-active-bg) !important;
+  color: var(--sidebar-active-fg) !important;
+}
+
+/* Semantic selectors */
+:root body main > header {
+  border-bottom: 2px solid var(--line);
+  background: var(--surface-card);
+}
+:root body main > section {
+  border-radius: var(--r-4);
+}
+:root body button,
+:root body a,
+:root body input,
+:root body select,
+:root body textarea {
+  transition: background-color var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease),
+    color var(--motion-base) var(--ease),
+    box-shadow var(--motion-base) var(--ease);
+}
+:root body input:focus-visible,
+:root body select:focus-visible,
+:root body textarea:focus-visible {
+  border-color: var(--primary-action);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root body main {
+    animation: gov-theme-reveal 350ms var(--ease) both;
+  }
+  :root body [role="dialog"],
+  :root body [role="alertdialog"] {
+    animation: gov-theme-reveal 200ms var(--ease) both;
+  }
+  @media (hover: hover) {
+    :root body button:enabled:hover {
+      box-shadow: var(--theme-shadow);
+    }
+  }
+}
+@keyframes gov-theme-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,6 +1,6 @@
 @import "./tokens.css";
 /* Active theme: swap this path with another file in app/themes to change themes. */
-@import "./themes/black_theme.css";
+@import "./themes/gov_theme.css";
 
 * {
   box-sizing: border-box;

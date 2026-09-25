@@ -11,7 +11,7 @@ The interface combines an editorial legal publication with a restrained operatio
 an off-white canvas, black navigation, hairline divisions, large serif headings, and clear reasons
 before actions. The saved Blue White theme permits subtle gradients on featured panels and restrained hover shadows. It does not use unexplained scores or colour as the sole signal.
 
-All colours, type sizes, spacing, radii, and motion values come from frontend/app/tokens.css and the selected theme. The active theme is frontend/app/themes/black_theme.css, restoring the original black navigation, off-white surfaces, role accents, and red administrator palette. The saved red_white.css and blue_white.css alternatives can be selected through the theme import in globals.css; there is no product theme switch.
+All colours, type sizes, spacing, radii, and motion values come from frontend/app/tokens.css and the selected theme. The active theme is frontend/app/themes/blue_white.css, implementing the defined role-based color system: Primary Brand Authority deep navy blue (#003366) for header bars, headlines, and boundaries; Action Accent accessible blue (#0076D6) for primary buttons, active tabs, and links; Light Neutral (#F8F9FA) for page background and card containers; Dark Neutral (#1A202C) for high-contrast text and labels; and Muted Neutral border gray (#E2E8F0) for subtle dividers, borders, and disabled states. The saved black_theme.css and red_white.css alternatives can be selected through the theme import in globals.css; there is no product theme switch.
 Playfair Display and Noto Serif Bengali form the one permitted font stack. Bangla is the default;
 the text toggle changes the entire visible interface to English and persists the choice.
 
@@ -240,9 +240,16 @@ The admin dashboard uses the selected theme's dedicated admin palette across the
 Under the image theme, the same admin variables resolve to its saved courthouse treatment. Restoring the black theme restores the burgundy administrator palette and original role colors.
 
 
-### Blue White visual refresh
+### Blue White theme with role-based color system
 
-The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+The active CSS theme in `frontend/app/themes/blue_white.css` implements the role-based color system:
+- **Primary (Brand Authority)** `#003366` (Deep Navy Blue): Header bars, primary headlines, strong container boundaries, sidebars, and hero surfaces.
+- **Action Accent** `#0076D6` (Accessible Blue): Primary buttons (`Button-Filled`), active tabs, hypertext links, and active selection markers.
+- **Light Neutral (60% Space)** `#F8F9FA` (Off-White / Soft Gray): Overall page background, body card containers, and surfaces.
+- **Dark Neutral (Text)** `#1A202C` (Charcoal Black): Main body copy, data text, form labels (ensures high contrast).
+- **Muted Neutral** `#E2E8F0` (Border Gray): Subtle dividers, form field borders, and disabled states.
+
+Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, accessible blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes (`black_theme.css`, `red_white.css`) remain available without a theme button.
 
 ## Multi-party service actions
 

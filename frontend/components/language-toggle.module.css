@@ -30,15 +30,15 @@
 }
 
 .onDark .item {
-  color: var(--on-black-muted);
+  color: var(--theme-art-muted, var(--on-black-muted));
 }
 
 .onDark .item:hover {
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
 }
 
 .onDark .active {
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
 }
 
 .onDark .item + .item {

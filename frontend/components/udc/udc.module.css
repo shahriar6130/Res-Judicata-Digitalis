@@ -50,7 +50,7 @@
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-3) var(--s-4);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   font-size: var(--t-small);
 }
@@ -368,7 +368,7 @@
 .provenanceList li span:first-child { color: var(--gray); }
 
 .readback {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   padding: var(--s-4);
   border: 1px solid var(--black);
@@ -500,13 +500,13 @@
 }
 
 .btnPrimary {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
 }
 
 .btnPrimary:hover {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -581,7 +581,7 @@
 .turn.caller { background: var(--white); border-color: var(--black); }
 .turn.udc { background: var(--yellow); border-color: var(--black); }
 .turn.interpreter { background: var(--off-white); border-color: var(--gray); }
-.turn.system { background: var(--ink); color: var(--white); border-color: var(--black); }
+.turn.system { background: var(--theme-solid-fill, var(--ink)); color: var(--white); border-color: var(--black); }
 
 .turnHead {
   display: flex;
@@ -687,14 +687,14 @@
   gap: var(--s-2);
   padding: var(--s-2);
   border: 1px solid var(--line);
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   border-radius: var(--r-2);
 }
 .consentCameraPreview {
   width: 100%;
   max-width: 480px;
   aspect-ratio: 4 / 3;
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   border-radius: var(--r-2);
   object-fit: cover;
 }
@@ -760,7 +760,7 @@
   object-fit: cover;
   border-radius: var(--r-2);
   border: 1px solid var(--line);
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
 }
 .docUploadFileChip {
   display: flex;
@@ -889,7 +889,7 @@
   align-items: center;
   gap: var(--s-3);
   padding: var(--s-3) var(--s-4);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   font-size: var(--t-small);
   border: 1px solid var(--black);
@@ -939,7 +939,7 @@
 .queueRow > * { min-width: 0; overflow-wrap: anywhere; }
 .udcShell :is(a, button, input, select, textarea, summary):focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: 2px; }
 .networkBar { flex-wrap: wrap; min-height: 52px; padding-inline: var(--page-pad); }
-.networkBarNormal, .networkBarReconnected { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.networkBarNormal, .networkBarReconnected { background: var(--theme-solid-fill, var(--ink)); color: var(--white); border-color: var(--ink); }
 .networkBarWarn { background: var(--udc-warning-ink); color: var(--white); border-color: var(--udc-warning-ink); }
 .networkBarOffline { background: var(--udc-danger-ink); color: var(--white); border-color: var(--udc-danger-ink); }
 .networkDetails { position: relative; }
@@ -966,7 +966,7 @@
   flex-direction: column;
   gap: var(--s-3);
   border: 1px solid var(--line);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   padding: var(--s-4);
   min-height: 320px;
@@ -1048,7 +1048,7 @@
 .thumb {
   width: 100px; height: 75px;
   border: 2px solid var(--line);
-  background: var(--ink); color: var(--white);
+  background: var(--theme-solid-fill, var(--ink)); color: var(--white);
   display: flex; align-items: center; justify-content: center;
   font-size: var(--t-label); font-family: monospace;
   cursor: pointer;
@@ -1077,10 +1077,10 @@
   border: 1px solid var(--line); background: var(--white); cursor: pointer;
 }
 .dialPad button:hover { background: var(--off-white); }
-.dialPad button:active { background: var(--ink); color: var(--white); }
+.dialPad button:active { background: var(--theme-solid-fill, var(--ink)); color: var(--white); }
 .dialDisplay {
   font-family: monospace; font-size: 22px; letter-spacing: 0.5em;
   padding: var(--s-3); border: 1px solid var(--line); min-height: 44px;
-  background: var(--black); color: var(--yellow);
+  background: var(--theme-solid-fill, var(--black)); color: var(--yellow);
   display: flex; align-items: center; justify-content: center;
 }

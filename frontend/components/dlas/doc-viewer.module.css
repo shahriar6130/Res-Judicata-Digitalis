@@ -13,7 +13,7 @@
 }
 
 .viewBtn:hover {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
 }
 

@@ -9,7 +9,7 @@
 .modeNav { display: inline-grid; grid-template-columns: repeat(2, minmax(210px, 1fr)); margin: var(--s-6) 0; border: 1px solid var(--line); background: var(--white); }
 .modeNav a { display: flex; align-items: center; gap: var(--s-3); min-width: 0; min-height: 62px; padding: var(--s-3) var(--s-4); color: var(--ink); text-decoration: none; }
 .modeNav a + a { border-left: 1px solid var(--line); }
-.modeNav a.modeActive { background: var(--ink); color: var(--white); }
+.modeNav a.modeActive { background: var(--theme-solid-fill, var(--ink)); color: var(--white); }
 .modeNav a > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: var(--s-1); min-width: 0; }
 .modeNav strong { font-size: var(--t-small); }
 .modeNav small { color: inherit; font-size: var(--t-label); opacity: .72; }

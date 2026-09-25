@@ -191,7 +191,7 @@
   align-items: center;
   gap: var(--s-2);
   padding: var(--s-3);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   font-size: var(--t-label);
   letter-spacing: 0.04em;
@@ -290,13 +290,13 @@
 }
 
 .callerSendBtn {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
 }
 
 .callerSendBtn:hover {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -333,14 +333,14 @@
 }
 
 .dashboardPrimaryBtn {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
   padding: var(--s-2) var(--s-6);
 }
 
 .dashboardPrimaryBtn:hover {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -459,7 +459,7 @@
 .auditList li time { color: var(--gray); }
 
 .readback {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   padding: var(--s-4);
   border: 1px solid var(--black);
@@ -496,7 +496,7 @@
   min-height: 48px;
   padding: var(--s-2) var(--s-6);
   font: inherit;
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border: 0;
   cursor: pointer;
@@ -552,7 +552,7 @@
   grid-template-columns: 1fr;
   gap: var(--s-3);
   padding: var(--s-6);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
 }
 
@@ -571,7 +571,7 @@
   align-items: center;
   gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-top: 1px solid var(--black);
   font-size: var(--t-small);

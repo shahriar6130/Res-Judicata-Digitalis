@@ -28,7 +28,7 @@
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   margin-top: 6px;
   flex: 0 0 auto;
 }
@@ -168,7 +168,7 @@
 }
 
 .stepDotActive {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   border-color: var(--black);
   color: var(--white);
 }
@@ -348,7 +348,7 @@
   width: 64px;
   height: 64px;
   border-radius: 999px;
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border: 0;
   cursor: pointer;
@@ -435,7 +435,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
 }
 
 .voiceStatusListening {
@@ -497,7 +497,7 @@
 }
 
 .actingPillActive {
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
 }
@@ -612,7 +612,7 @@
 
 .matterCardActive .matterCheck {
   opacity: 1;
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
 }
@@ -688,7 +688,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .browseBtn:hover {
-    background: var(--ink);
+    background: var(--theme-solid-fill, var(--ink));
     color: var(--white);
   }
 }
@@ -886,7 +886,7 @@
 
 .slotCardActive .slotCheck {
   opacity: 1;
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   border-color: var(--black);
 }
@@ -1094,7 +1094,7 @@
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   display: inline-flex;
   align-items: center;

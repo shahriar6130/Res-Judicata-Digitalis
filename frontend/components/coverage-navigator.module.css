@@ -1,4 +1,4 @@
-.coverage { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-8); padding: var(--s-6); background: var(--black); color: var(--white); }
+.coverage { --on-black-muted: var(--theme-hero-muted, var(--white)); display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-8); padding: var(--s-6); background: var(--theme-hero-fill, var(--black)); color: var(--theme-hero-fg, var(--white)); }
 .coverage p { color: var(--on-black-muted); font-size: var(--t-label); text-transform: uppercase; letter-spacing: .06em; }
 .coverage h2 { margin: var(--s-2) 0; font-size: var(--t-section); }
 .coverage span { color: var(--on-black-muted); }

@@ -58,7 +58,7 @@
 }
 
 .langBtnActive {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--off-white);
   border-color: var(--ink);
 }
@@ -448,7 +448,7 @@
   font: inherit;
   font-size: var(--t-button);
   font-weight: var(--weight-medium);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--off-white);
   border: 1px solid var(--ink);
   border-radius: var(--control-radius);
@@ -468,7 +468,7 @@
 }
 
 .btnSecondary:hover {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--off-white);
   opacity: 1;
 }

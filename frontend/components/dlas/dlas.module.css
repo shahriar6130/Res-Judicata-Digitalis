@@ -135,7 +135,7 @@
 }
 
 .flowline span.flowOn {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -217,7 +217,7 @@
 }
 
 .stepper li.stepActive {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -308,7 +308,7 @@
 }
 
 .chip[aria-pressed="true"] {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -409,7 +409,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--off-white);
   border-radius: var(--r-3);
   padding: var(--s-4);
@@ -439,7 +439,7 @@
 .phone {
   width: 300px;
   max-width: 100%;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   border-radius: 28px;
   padding: var(--s-6) var(--s-4);
   color: var(--off-white);
@@ -571,7 +571,7 @@
 
 .lineUser {
   align-self: flex-end;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-radius: var(--r-3);
   padding: var(--s-2) var(--s-3);
@@ -661,7 +661,7 @@
 }
 
 .badgeDark {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-color: var(--ink);
 }
@@ -713,7 +713,7 @@
 }
 
 .pipeNow {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-color: var(--ink);
 }

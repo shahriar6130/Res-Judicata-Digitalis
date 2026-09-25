@@ -29,7 +29,7 @@
 .nextTitle { font-size: 1.15rem; font-weight: 700; }
 .note { width: 100%; min-height: 64px; font: inherit; font-size: var(--t-small); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; box-sizing: border-box; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; border: 0; background: var(--ink); color: var(--white); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; border: 0; background: var(--theme-solid-fill, var(--ink)); color: var(--white); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
 .btn:disabled { opacity: 0.5; cursor: progress; }
 .btnGhost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .err { border: 1px solid var(--red); background: #fef2f2; color: #991b1b; border-radius: 8px; padding: 8px 12px; font-size: var(--t-small); }
@@ -65,7 +65,7 @@
 .b_SYSTEM_CHECK { border: 1px dashed #6b7280; color: #374151; }
 .b_SYSTEM_SUGGESTION { border: 1.5px dashed #7c3aed; color: #6d28d9; background: #f5f3ff; }
 .b_OFFICER_REVIEW_REQUIRED { background: #f59e0b; color: #1f1300; }
-.b_OFFICER_CONFIRMED { background: var(--ink); color: var(--white); }
+.b_OFFICER_CONFIRMED { background: var(--theme-solid-fill, var(--ink)); color: var(--white); }
 .b_MEDIATOR_ACTION { background: #047857; color: #fff; }
 .b_PARTY_ACTION { background: #0e7490; color: #fff; }
 .b_CLO_CERTIFICATION_REQUIRED { background: #b91c1c; color: #fff; }

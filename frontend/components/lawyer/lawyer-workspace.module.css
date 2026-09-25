@@ -9,17 +9,17 @@
 .metrics div:last-child { border-right: 0; }
 .metrics strong { font-family: var(--font-serif); font-size: var(--t-title); line-height: 1; font-weight: var(--weight-semibold); }
 .metrics span { color: var(--gray); font-size: var(--t-small); }
-.focus { display: flex; align-items: end; justify-content: space-between; gap: var(--s-8); padding: var(--s-8); background: var(--theme-hero-fill, var(--ink)); color: var(--white); }
+.focus { --on-black-muted: var(--theme-hero-muted, var(--white)); display: flex; align-items: end; justify-content: space-between; gap: var(--s-8); padding: var(--s-8); background: var(--theme-hero-fill, var(--ink)); color: var(--theme-hero-fg, var(--white)); }
 .focus h2 { font-family: var(--font-serif); font-size: var(--t-section); line-height: var(--leading-section); margin: 0 0 var(--s-3); }
 .focus p:not(.eyebrow) { color: var(--on-black-muted); max-width: 540px; margin: 0; }
 .focus .eyebrow { color: var(--on-black-muted); }
-.focus button { flex: none; background: var(--white); color: var(--ink); border-color: var(--white); }
-.focus button:hover { background: var(--off-white); }
+.focus button { flex: none; background: var(--theme-feature-action-bg, var(--white)); color: var(--theme-feature-action-fg, var(--ink)); border-color: var(--theme-feature-action-bg, var(--white)); }
+.focus button:hover { background: var(--primary-action-hover); }
 .overviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-8); }
 .preview { border-top: 1px solid var(--line); padding-top: var(--s-4); min-width: 0; }
 .preview h2 { font-family: var(--font-serif); font-size: var(--t-sub); line-height: var(--leading-sub); margin: 0 0 var(--s-2); }
 .preview p:not(.eyebrow) { color: var(--gray); margin: 0 0 var(--s-4); }
-.textAction { border: 0; border-bottom: 1px solid var(--ink); padding: var(--s-1) 0; background: transparent; color: var(--ink); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
+.textAction { border: 0; border-bottom: 1px solid var(--theme-accent-ink, var(--ink)); padding: var(--s-1) 0; background: transparent; color: var(--theme-accent-ink, var(--ink)); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
 .textAction:hover { border-bottom-width: 2px; }
 .mainSection { min-width: 0; }
 .sectionTop { display: flex; justify-content: space-between; align-items: start; gap: var(--s-4); padding-bottom: var(--s-6); border-bottom: 1px solid var(--ink); }

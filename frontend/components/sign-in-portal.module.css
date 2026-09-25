@@ -39,12 +39,14 @@
 }
 .pageLawyer .panel { height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
-/* Left: black panel with the WebGL sculpture */
+/* Existing justice photograph; foregrounds are scoped to the photo pane. */
 .art {
+  --theme-art-fg: var(--theme-photo-fg, var(--white));
+  --theme-art-muted: var(--theme-photo-muted, var(--on-black-muted));
   position: relative;
   overflow: hidden;
-  background: var(--black);
-  color: var(--white);
+  background: var(--theme-solid-fill, var(--black));
+  color: var(--theme-art-fg, var(--white));
   min-height: 100dvh;
 }
 
@@ -95,7 +97,7 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: var(--weight-medium);
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
   opacity: 0.92;
   white-space: nowrap;
   user-select: none;
@@ -133,7 +135,7 @@
   max-width: 320px;
   padding-top: var(--s-4);
   border-top: 1px solid var(--on-black-muted);
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
 }
 .pageDlo .artCaption { left: auto; right: var(--s-8); text-align: right; align-items: flex-end; }
 .artCaption span { color: var(--on-black-muted); font-size: var(--t-label); letter-spacing: 0.08em; }

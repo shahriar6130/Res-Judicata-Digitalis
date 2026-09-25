@@ -29,8 +29,8 @@
 
 .secondary {
   background: var(--white);
-  border-color: var(--black);
-  color: var(--black);
+  border-color: var(--theme-accent-ink, var(--black));
+  color: var(--theme-accent-ink, var(--black));
 }
 
 .secondary:hover {

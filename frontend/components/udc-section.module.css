@@ -405,7 +405,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   display: flex;
   align-items: center;
@@ -443,7 +443,7 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   display: flex;
   align-items: center;
@@ -601,7 +601,7 @@
   width: 44px;
   height: 44px;
   border-radius: var(--r-2);
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   display: flex;
   align-items: center;

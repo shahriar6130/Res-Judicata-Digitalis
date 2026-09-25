@@ -52,7 +52,7 @@
 }
 
 .langBtnActive {
-  background: var(--ink, #1a1a1a);
+  background: var(--theme-solid-fill, var(--ink, #1a1a1a));
   color: var(--white, #ffffff);
   border-color: var(--ink, #1a1a1a);
 }
@@ -146,7 +146,7 @@
 .btn {
   min-height: 44px;
   padding: 0 18px;
-  background: var(--ink, #1a1a1a);
+  background: var(--theme-solid-fill, var(--ink, #1a1a1a));
   color: var(--white, #ffffff);
   border: 1px solid var(--ink, #1a1a1a);
   cursor: pointer;
@@ -254,7 +254,7 @@
 }
 
 .filterChipActive {
-  background: var(--ink, #1a1a1a);
+  background: var(--theme-solid-fill, var(--ink, #1a1a1a));
   color: var(--white, #ffffff);
   border-color: var(--ink, #1a1a1a);
 }

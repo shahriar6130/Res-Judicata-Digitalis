@@ -1,5 +1,5 @@
 .page { --ink: var(--admin-ink); --gray: var(--admin-muted); --line: var(--admin-line); --white: var(--admin-panel-bg); --off-white: var(--admin-soft-bg); --red: var(--admin-danger); width: 100%; min-height: 100dvh; max-width: none; margin: 0; padding: var(--s-8) max(var(--page-pad), calc((100% - var(--page-max)) / 2)) var(--s-16); color: var(--admin-ink); background: var(--admin-page-bg); font-family: var(--font-sans); }
-.hero { display: flex; justify-content: space-between; gap: var(--s-6); align-items: flex-end; padding: var(--s-8); background: var(--theme-hero-fill, var(--admin-hero-bg)); color: var(--admin-panel-bg); }
+.hero { --on-black-muted: var(--theme-hero-muted, var(--white)); display: flex; justify-content: space-between; gap: var(--s-6); align-items: flex-end; padding: var(--s-8); background: var(--theme-hero-fill, var(--admin-hero-bg)); color: var(--theme-hero-fg, var(--white)); }
 .hero h1 { font-family: var(--font-serif); font-size: var(--t-title); line-height: var(--leading-title); margin: var(--s-2) 0 var(--s-3); }
 .hero p { margin: 0; color: var(--admin-hero-muted); }
 .hero .kicker { color: var(--admin-panel-bg); }

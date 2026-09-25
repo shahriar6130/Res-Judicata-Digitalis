@@ -60,16 +60,16 @@
 }
 .queueRow.escalated strong,
 .queueRow.escalated span { color: var(--white); }
-.queueRow.escalated:hover { background: #c60f0f; }
+.queueRow.escalated:hover { background: var(--primary-action-hover); }
 
 .queueRow.action {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-bottom: 1px solid var(--black);
 }
 .queueRow.action strong,
 .queueRow.action span { color: var(--white); }
-.queueRow.action:hover { background: #1f1f1f; }
+.queueRow.action:hover { background: var(--primary-action-hover); }
 
 .queueRow.watch {
   background: var(--yellow);
@@ -220,7 +220,7 @@
 }
 
 .statusBadgeOk {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
 }
 
@@ -291,7 +291,7 @@
 .alertRow.escalated .alertBody small { color: var(--white); }
 
 .alertRow.action {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-bottom: 1px solid var(--black);
 }
@@ -389,18 +389,18 @@
   color: var(--white);
   border-bottom: 1px solid var(--black);
 }
-.assignmentRow.escalated:hover { background: #c60f0f; }
+.assignmentRow.escalated:hover { background: var(--primary-action-hover); }
 .assignmentRow.escalated .assignmentOfficer,
 .assignmentRow.escalated .assignmentTask,
 .assignmentRow.escalated .assignmentCase,
 .assignmentRow.escalated .assignmentDue { color: var(--white); }
 
 .assignmentRow.action {
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   color: var(--white);
   border-bottom: 1px solid var(--black);
 }
-.assignmentRow.action:hover { background: #1f1f1f; }
+.assignmentRow.action:hover { background: var(--primary-action-hover); }
 .assignmentRow.action .assignmentOfficer,
 .assignmentRow.action .assignmentTask,
 .assignmentRow.action .assignmentCase,
@@ -454,7 +454,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   border: 2px solid var(--white);
   box-shadow: 0 0 0 1px var(--line);
 }

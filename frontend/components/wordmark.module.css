@@ -34,31 +34,31 @@
 
 /* Login dark pane */
 .onDark .name {
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
 }
 
 .onDark .tagline {
-  color: var(--on-black-muted);
+  color: var(--theme-art-muted, var(--on-black-muted));
 }
 
 /* Light sidebar — keep সাক্ষ্য in white inside a defined dark plate so it
    stays instantly recognizable on the soft gray surface. */
 .onSidebar {
-  background: var(--ink);
-  color: var(--white);
+  background: var(--theme-art-fill, var(--ink));
+  color: var(--theme-art-fg, var(--white));
   padding: var(--s-3) var(--s-4);
   border-radius: var(--r-3);
 }
 
 .onSidebar .name {
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
   font-size: 24px;
   letter-spacing: 0;
   line-height: 1.2;
 }
 
 .onSidebar .tagline {
-  color: var(--on-black-muted);
+  color: var(--theme-art-muted, var(--on-black-muted));
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -76,10 +76,10 @@
   gap: var(--s-2);
   margin-top: var(--s-3);
   padding: 4px 10px 4px 8px;
-  border: 1px solid var(--on-black-muted);
+  border: 1px solid var(--theme-art-muted, var(--on-black-muted));
   border-radius: 999px;
   background: transparent;
-  color: var(--on-black-muted);
+  color: var(--theme-art-muted, var(--on-black-muted));
   font-size: 11px;
   font-weight: var(--weight-bold);
   letter-spacing: 0.08em;
@@ -107,11 +107,11 @@
   text-transform: none;
   opacity: 0.85;
   padding-left: var(--s-2);
-  border-left: 1px solid var(--on-black-muted);
+  border-left: 1px solid var(--theme-art-muted, var(--on-black-muted));
 }
 
 .onSidebar .roleBadge {
-  color: var(--white);
+  color: var(--theme-art-fg, var(--white));
   border-color: rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.08);
 }

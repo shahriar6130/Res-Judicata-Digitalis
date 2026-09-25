@@ -5,7 +5,7 @@
 .heading { font-family: var(--font-serif); font-size: var(--t-title); line-height: var(--leading-title); font-weight: var(--weight-semibold); margin: 0; }
 .summary { color: var(--gray); font-size: var(--t-small); margin: var(--s-3) 0 0; }
 .markAllBtn { flex: none; min-height: 44px; padding: var(--s-2) var(--s-4); border: 1px solid var(--ink); border-radius: var(--r-2); background: var(--white); color: var(--ink); font: inherit; font-size: var(--t-small); font-weight: var(--weight-semibold); cursor: pointer; }
-.markAllBtn:hover:not(:disabled) { background: var(--ink); color: var(--white); }
+.markAllBtn:hover:not(:disabled) { background: var(--theme-solid-fill, var(--ink)); color: var(--white); }
 .markAllBtn:disabled { color: var(--gray); border-color: var(--line); cursor: not-allowed; }
 .markAllBtn:focus-visible, .row:focus-visible { outline: var(--focus-width) solid var(--ink); outline-offset: 2px; }
 .group { min-width: 0; }

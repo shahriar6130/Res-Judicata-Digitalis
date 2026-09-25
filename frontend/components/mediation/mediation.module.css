@@ -259,7 +259,7 @@
   gap: var(--s-2);
   border: var(--control-border);
   border-color: var(--black);
-  background: var(--black);
+  background: var(--theme-solid-fill, var(--black));
   color: var(--white);
   padding: var(--s-3) var(--s-6);
   min-height: 44px;
@@ -273,7 +273,7 @@
     border-color var(--motion-base) var(--ease),
     color var(--motion-base) var(--ease);
 }
-.btn:hover { background: var(--ink); }
+.btn:hover { background: var(--theme-solid-fill, var(--ink)); }
 .btn:focus-visible { outline: var(--focus-width) solid var(--black); outline-offset: 2px; }
 .btn:disabled {
   background: var(--line);
@@ -306,12 +306,12 @@
 }
 .dispoBtnActive {
   composes: btn;
-  background: var(--ink);
+  background: var(--theme-solid-fill, var(--ink));
   border-color: var(--ink);
   color: var(--white);
   font-weight: var(--weight-semibold);
 }
-.dispoBtnActive:hover { background: var(--black); }
+.dispoBtnActive:hover { background: var(--theme-solid-fill, var(--black)); }
 
 /* Disposition option row: the five choices span the full width of the clause
    card (using the empty space on the right instead of clustering on the left)
@@ -364,7 +364,7 @@
 .stepperItemActive { border-left-color: var(--black); background: var(--off-white); font-weight: var(--weight-semibold); }
 
 .stepDot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
-.stepDotDone { border-color: var(--black); background: var(--black); }
+.stepDotDone { border-color: var(--black); background: var(--theme-solid-fill, var(--black)); }
 .stepDotCurrent { border-color: var(--black); }
 .stepDotBlocked { border-color: var(--red); background: var(--red); }
 

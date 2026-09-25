@@ -73,7 +73,8 @@ the repository's row-scoped database architecture.
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
-app/themes/blue_white.css   active theme implementing the role-based color system (#003366, #0076D6, #F8F9FA, #1A202C, #E2E8F0)
+app/themes/gov_theme.css    active light government theme (#e6fbd9, #038533, #05a53f)
+app/themes/blue_white.css   saved blue theme
 app/themes/black_theme.css   saved original black theme
 app/themes/red_white.css   saved courthouse image theme overrides
 components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
@@ -213,9 +214,9 @@ Nothing hardcodes a color or font family outside `app/tokens.css` and
 
 ### Saved theme
 
-The active theme is app/themes/blue_white.css, imported after app/tokens.css in app/globals.css. This applies the role-based system: Primary Brand Authority (#003366), Action Accent (#0076D6), Light Neutral (#F8F9FA), Dark Neutral (#1A202C), and Muted Neutral (#E2E8F0). The black_theme.css and red_white.css alternatives remain saved.
+The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
 
-To switch themes, change the active theme import in `app/globals.css` among `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
+To switch themes, change the active theme import in `app/globals.css` among `./themes/gov_theme.css`, `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
 
 ## Language
 
@@ -252,9 +253,9 @@ Every People row has a Delete action with a confirmation dialog. Deletion preser
 ### Admin sidebar
 
 The admin sidebar links to Overview, People, Mediator training, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
-The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one burgundy visual identity.
+The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one light green visual identity.
 
 
-### Blue White theme with role-based color system
+### Light government theme
 
-The active CSS-only theme in `frontend/app/themes/blue_white.css` implements the role-based color system: Primary Brand Authority (`#003366`) for sidebars, header bars, and container boundaries, Action Accent (`#0076D6`) for primary buttons, active tabs, and hypertext links, Light Neutral (`#F8F9FA`) for page backgrounds and card containers, Dark Neutral (`#1A202C`) for high-contrast body copy and form labels, and Muted Neutral (`#E2E8F0`) for dividers and borders. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes remain available without a theme button.
+The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.

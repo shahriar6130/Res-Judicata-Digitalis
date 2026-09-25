@@ -208,7 +208,7 @@
   border-radius: 8px;
   padding: 6px 12px;
   border: 1px solid var(--ink, #1f1a14);
-  background: var(--ink, #1f1a14);
+  background: var(--theme-solid-fill, var(--ink, #1f1a14));
   color: #fff;
   text-decoration: none;
   font-size: 13px;

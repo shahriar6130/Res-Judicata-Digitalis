@@ -81,8 +81,8 @@
   /* Active main-section nav item: dark fill with yellow text + yellow
      left accent — matches .navItemSub and .channelItemActive so the
      whole sidebar reads as one design system. */
-  background: var(--sidebar-dark-bg);
-  color: var(--yellow);
+  background: var(--sidebar-dark-active-bg);
+  color: var(--theme-nav-active-ink, var(--yellow));
   font-weight: var(--weight-semibold);
 }
 
@@ -99,7 +99,7 @@
 
 .dark .navItemProminent {
   background: var(--yellow);
-  color: var(--sidebar-dark-bg);
+  color: var(--theme-nav-on-accent, var(--sidebar-dark-bg));
   font-weight: var(--weight-bold);
   min-height: 48px;
   padding: var(--s-3) var(--s-4);
@@ -107,7 +107,7 @@
 
 .dark .navItemProminent.navItemActive {
   background: var(--yellow);
-  color: var(--sidebar-dark-bg);
+  color: var(--theme-nav-on-accent, var(--sidebar-dark-bg));
 }
 
 .dark .navItemSub {
@@ -121,8 +121,8 @@
   /* Active sub-item: invert to a dark fill so the label reads on a
      light background instead of light-on-light. The yellow accent
      strip on the left still tells the eye which section is current. */
-  background: var(--sidebar-dark-bg);
-  color: var(--yellow);
+  background: var(--sidebar-dark-active-bg);
+  color: var(--theme-nav-active-ink, var(--yellow));
   font-weight: var(--weight-semibold);
 }
 
@@ -155,7 +155,7 @@
   padding: 0 6px;
   border-radius: 999px;
   background: var(--sidebar-dark-accent);
-  color: var(--sidebar-dark-bg);
+  color: var(--theme-nav-on-accent, var(--sidebar-dark-bg));
   font-size: 11px;
   font-weight: var(--weight-bold);
   display: inline-flex;
@@ -229,8 +229,8 @@
      bar on the left so it matches the rest of the dark sidebar's
      active treatment. The previous off-white background hid the
      off-white text — same fix as .navItemSub below. */
-  background: var(--sidebar-dark-bg);
-  color: var(--yellow);
+  background: var(--sidebar-dark-active-bg);
+  color: var(--theme-nav-active-ink, var(--yellow));
 }
 
 .dark .channelItemActive::before {
@@ -247,7 +247,7 @@
 .dark .channelItemActive .channelParties,
 .dark .channelItemActive .channelId,
 .dark .channelItemActive .channelNumber {
-  color: var(--yellow);
+  color: var(--theme-nav-active-ink, var(--yellow));
 }
 
 .dark .channelItemActive .channelParties {
@@ -268,7 +268,7 @@
 }
 
 .dark .channelItemActive .channelIcon {
-  color: var(--yellow);
+  color: var(--theme-nav-active-ink, var(--yellow));
 }
 
 .dark .channelBody {
@@ -333,7 +333,7 @@
   height: 36px;
   border-radius: 50%;
   background: var(--sidebar-dark-accent);
-  color: var(--sidebar-dark-bg);
+  color: var(--theme-nav-on-accent, var(--sidebar-dark-bg));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,7 +362,7 @@
 
 .dark .profileRole {
   font-size: 11px;
-  color: var(--white);
+  color: var(--sidebar-dark-fg);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   line-height: 1.2;
@@ -757,7 +757,7 @@
 .dloSidebar .legacyLink:focus-visible,
 .dloSidebar .legacyKebabBtn:focus-visible,
 .dloSidebar .legacyKebabItem:focus-visible {
-  outline-color: var(--yellow);
+  outline-color: var(--sidebar-dark-accent);
 }
 .dloSidebar .navBadge {
   min-width: 24px;
@@ -796,7 +796,7 @@
 .adminSidebar .legacyList { gap: var(--s-2); }
 .adminSidebar .legacyLink { min-height: 46px; padding: var(--s-3) var(--s-4); border: 1px solid transparent; font-size: var(--t-small); line-height: var(--leading-small); }
 .adminSidebar .legacyLink:hover { border-color: var(--admin-sidebar-border); }
-.adminSidebar .legacyLinkActive { border-color: var(--admin-sidebar-active-bg); box-shadow: none; }
+.adminSidebar .legacyLinkActive { border-color: var(--theme-nav-active-border, var(--admin-sidebar-active-bg)); box-shadow: none; }
 .adminSidebar .legacyLinkActive::before { display: none; }
 .adminSidebar .legacyLink:focus-visible { outline-color: var(--admin-sidebar-fg); }
 

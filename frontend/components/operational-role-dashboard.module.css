@@ -24,7 +24,7 @@
 .actionText { text-align: right; }
 .history > div { display: grid; grid-template-columns: 100px 1fr 220px; gap: var(--s-4); padding: var(--s-4) 0; border-bottom: 1px solid var(--line); }
 .history time, .history div span:last-child { color: var(--gray); }
-.coverage { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-8); padding: var(--s-6); background: var(--black); color: var(--white); }
+.coverage { --on-black-muted: var(--theme-hero-muted, var(--white)); display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-8); padding: var(--s-6); background: var(--theme-hero-fill, var(--black)); color: var(--theme-hero-fg, var(--white)); }
 .coverage .eyebrow, .coverage p { color: var(--on-black-muted); }
 .coverage p { margin-top: var(--s-2); max-width: 680px; }
 .coverageLink { flex: 0 0 auto; border: 1px solid var(--white); border-radius: var(--r-2); padding: var(--s-3) var(--s-6); }

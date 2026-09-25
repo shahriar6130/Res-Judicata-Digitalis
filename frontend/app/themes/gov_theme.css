@@ -1,145 +1,147 @@
-/*
- * Bangladesh Government Portal Theme (সাক্ষ্য)
- *
- * Inspired by the official Bangladesh National Web Portal (bangladesh.gov.bd)
- * design system:
- * - Primary Brand Green: #00A63E (Dark: #008532, Light: #2DAB5B)
- * - Secondary National Red: #DC2626 (Light: #FEF2F2, Dark: #ED3131)
- * - Portal Link Blue: #1568b2 (Dark/Hover: #1b81dd)
- * - Neutral Borders & Dividers: #d0d0d0 / #e0e0e0
- * - Neutral Canvas: #f8faf8 / #ffffff
- * - Dark Charcoal Text: #111827 / #1f2937
- * - Warning Orange: #FF6600
+/* Light government theme: black ink, white space, and green accents.
+ * Strong green supports white button labels; bright green is decorative.
+ * Status meaning must always include a text label or icon.
  */
-
 :root {
-  /* Typography & Core Ink */
-  --black: #111827;
-  --ink: #1f2937;
+  color-scheme: light;
+  --gov-light: #e6fbd9;
+  --gov-green: #038533;
+  --gov-bright: #05a53f;
+  --gov-green-hover: #02712b;
+  --gov-canvas: #f8fcf6;
+  --gov-muted: #40523e;
+  --gov-border: #72896a;
+  --black: #000000;
+  --ink: var(--black);
   --white: #ffffff;
-  --off-white: #f8faf8;
-  --gray: #6b7280;
-  --line: #d0d0d0;
+  --off-white: var(--gov-canvas);
+  --gray: var(--gov-muted);
+  --line: var(--gov-border);
   --overlay: rgba(20, 35, 25, 0.65);
-
-  /* National Green Brand Actions */
-  --primary-action: #00A63E;
-  --primary-action-hover: #008532;
-  --selection-bg: #00A63E;
-  --selection-fg: #ffffff;
-  --focus-color: #00A63E;
-
-  /* National Alerts & Accents */
-  --red: #DC2626;
-  --yellow: #FF6600;
-  --green: #00A63E;
-
-  /* Portal Links */
-  --color-link-normal: #1568b2;
-  --color-link-dark: #1b81dd;
-
-  /* Navigation Sidebar (Deep Government Green) */
-  --sidebar-bg: #0d3a1f;
-  --sidebar-fg: #ffffff;
-  --sidebar-muted: #b9dec4;
-  --sidebar-border: #144e2b;
-  --sidebar-hover-bg: #144e2b;
-  --sidebar-active-bg: #00A63E;
-  --sidebar-active-fg: #ffffff;
-  --sidebar-accent: #2DAB5B;
-
-  --sidebar-dark-bg: #0d3a1f;
-  --sidebar-dark-fg: #ffffff;
-  --sidebar-dark-muted: #b9dec4;
-  --sidebar-dark-border: #144e2b;
-  --sidebar-dark-hover: #144e2b;
-  --sidebar-dark-active-bg: #00A63E;
-  --sidebar-dark-active-fg: #ffffff;
-  --sidebar-dark-accent: #2DAB5B;
-
-  /* Status Tokens */
-  --status-active: #00A63E;
-  --status-review: #FF6600;
-  --status-needs-action: #DC2626;
-  --status-resolved: #6b7280;
-  --status-pending: #d97706;
-
-  /* Surfaces & Containers */
+  --primary-action: var(--gov-green);
+  --primary-action-hover: var(--gov-green-hover);
+  --selection-bg: var(--gov-light);
+  --selection-fg: var(--black);
+  --focus-color: var(--black);
+  --red: var(--gov-green);
+  --yellow: var(--gov-green);
+  --green: var(--gov-green);
+  --color-link-normal: var(--gov-green-hover);
+  --color-link-dark: var(--gov-green-hover);
+  --sidebar-bg: var(--gov-light);
+  --sidebar-fg: var(--black);
+  --sidebar-muted: var(--gov-muted);
+  --sidebar-border: var(--gov-border);
+  --sidebar-hover-bg: var(--white);
+  --sidebar-active-bg: var(--gov-green);
+  --sidebar-active-fg: var(--white);
+  --sidebar-accent: var(--gov-green);
+  --sidebar-dark-bg: var(--gov-light);
+  --sidebar-dark-fg: var(--black);
+  --sidebar-dark-muted: var(--gov-muted);
+  --sidebar-dark-border: var(--gov-border);
+  --sidebar-dark-hover: var(--white);
+  --sidebar-dark-active-bg: var(--gov-green);
+  --sidebar-dark-active-fg: var(--white);
+  --sidebar-dark-accent: var(--gov-green);
+  --status-active: var(--gov-green);
+  --status-review: var(--gov-green);
+  --status-needs-action: var(--gov-green);
+  --status-resolved: var(--gov-muted);
+  --status-pending: var(--gov-green);
   --surface-card: #ffffff;
-  --surface-card-border: #d0d0d0;
-  --surface-card-lodge: #00A63E;
-  --surface-card-lodge-fg: #ffffff;
-  --surface-card-lodge-accent: #008532;
-
+  --surface-card-border: var(--gov-border);
+  --surface-card-lodge: var(--gov-green);
+  --surface-card-lodge-fg: var(--white);
+  --surface-card-lodge-accent: var(--white);
   --on-black: #ffffff;
-  --on-black-muted: #b9dec4;
-  --line-on-black: #00A63E;
-  --lawmark-opacity: 0.75;
-  --grid-line: rgba(255, 255, 255, 0.12);
-
-  /* Role Accents */
-  --accent-citizen: #00A63E;
-  --accent-dlo: #DC2626;
-  --accent-lawyer: #008532;
-  --accent-udc: #FF6600;
-  --accent-admin: #0d3a1f;
-
-  /* DLO & Charts */
-  --dlo-muted: #4b5563;
-  --dlo-line: #d0d0d0;
-  --dlo-hero-muted: #b9dec4;
-  --dlo-positive-ink: #008532;
-  --dlo-danger-ink: #DC2626;
-  --dlo-warning-ink: #b45309;
-  --dlo-disabled-ink: #9ca3af;
-  --dlo-chart-purple: #0d3a1f;
-  --dlo-chart-blue: #1568b2;
-  --dlo-chart-rose: #DC2626;
-  --dlo-chart-olive: #008532;
-  --dlo-chart-muted: #9ca3af;
-
-  --udc-warning-ink: #b45309;
-  --udc-danger-ink: #DC2626;
-
-  /* Administration Workspace */
-  --admin-sidebar-bg: #0d3a1f;
-  --admin-sidebar-fg: #ffffff;
-  --admin-sidebar-muted: #b9dec4;
-  --admin-sidebar-border: #144e2b;
-  --admin-sidebar-hover: #144e2b;
-  --admin-sidebar-active-bg: #00A63E;
-  --admin-sidebar-active-fg: #ffffff;
-  --admin-page-bg: #f8faf8;
+  --on-black-muted: var(--white);
+  --line-on-black: var(--gov-green);
+  --lawmark-opacity: 1;
+  --grid-line: rgba(3, 133, 51, .12);
+  --accent-citizen: var(--gov-green);
+  --accent-dlo: var(--gov-green);
+  --accent-lawyer: var(--gov-green);
+  --accent-udc: var(--gov-green);
+  --accent-admin: var(--gov-light);
+  --dlo-muted: var(--gov-muted);
+  --dlo-line: var(--gov-border);
+  --dlo-hero-muted: var(--gov-muted);
+  --dlo-positive-ink: var(--gov-green);
+  --dlo-danger-ink: var(--gov-green);
+  --dlo-warning-ink: var(--gov-green);
+  --dlo-disabled-ink: var(--gov-muted);
+  --dlo-chart-purple: var(--gov-light);
+  --dlo-chart-blue: var(--gov-green);
+  --dlo-chart-rose: var(--gov-green);
+  --dlo-chart-olive: var(--gov-green);
+  --dlo-chart-muted: var(--gov-muted);
+  --udc-warning-ink: var(--gov-green);
+  --udc-danger-ink: var(--gov-green);
+  --admin-sidebar-bg: var(--gov-light);
+  --admin-sidebar-fg: var(--black);
+  --admin-sidebar-muted: var(--gov-muted);
+  --admin-sidebar-border: var(--gov-border);
+  --admin-sidebar-hover: var(--white);
+  --admin-sidebar-active-bg: var(--gov-green);
+  --admin-sidebar-active-fg: var(--white);
+  --admin-page-bg: var(--gov-canvas);
   --admin-panel-bg: #ffffff;
-  --admin-soft-bg: #edf5ef;
-  --admin-hero-bg: #008532;
-  --admin-hero-muted: #e6f4ea;
-  --admin-ink: #111827;
-  --admin-muted: #4b5563;
-  --admin-line: #d0d0d0;
-  --admin-accent: #00A63E;
-  --admin-accent-hover: #008532;
-  --admin-danger: #DC2626;
-
-  /* Emblem */
-  --gavel-head: #2DAB5B;
+  --admin-soft-bg: var(--gov-light);
+  --admin-hero-bg: var(--gov-light);
+  --admin-hero-muted: var(--gov-muted);
+  --admin-ink: var(--black);
+  --admin-muted: var(--gov-muted);
+  --admin-line: var(--gov-border);
+  --admin-accent: var(--gov-green);
+  --admin-accent-hover: var(--gov-green-hover);
+  --admin-danger: var(--gov-green);
+  --gavel-head: var(--gov-bright);
   --gavel-top: #ffffff;
-  --gavel-band: #00A63E;
-  --gavel-shadow: #0d3a1f;
-  --gavel-handle: #008532;
-
+  --gavel-band: var(--gov-green);
+  --gavel-shadow: var(--gov-light);
+  --gavel-handle: var(--gov-green);
   --bottom-nav-bg: #ffffff;
-  --bottom-nav-border: #d0d0d0;
+  --bottom-nav-border: var(--gov-border);
   --control-radius: 6px;
   --motion-base: 200ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
-  --theme-hero-start: #008532;
-  --theme-hero-end: #0d3a1f;
-  --theme-hero-fill: linear-gradient(120deg, var(--theme-hero-start), var(--theme-hero-end));
-  --theme-shadow: 0 4px 12px rgba(0, 80, 35, .08);
-
-  /* Portal widget overlay gradient token */
-  --portal-slider-overlay: linear-gradient(90deg, #3c3939c0 27.88%, rgba(217, 217, 217, 0.1) 100%);
+  --theme-hero-start: var(--gov-light);
+  --theme-hero-end: var(--gov-light);
+  --theme-hero-fill: var(--gov-light);
+  --theme-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+  --portal-slider-overlay: linear-gradient(90deg, var(--gov-light), var(--gov-light));
+  --theme-hero-fg: var(--black);
+  --theme-hero-muted: var(--gov-muted);
+  --theme-solid-fill: var(--gov-green);
+  --theme-nav-active-ink: var(--white);
+  --theme-nav-on-accent: var(--white);
+  --theme-nav-active-border: var(--gov-green);
+  --theme-art-fill: var(--gov-light);
+  --theme-art-fg: var(--black);
+  --theme-art-muted: var(--gov-muted);
+  --theme-art-filter: none;
+  --theme-photo-fg: var(--white);
+  --theme-photo-muted: var(--white);
+  --theme-accent-ink: var(--gov-green-hover);
+  --theme-feature-action-bg: var(--gov-green);
+  --theme-feature-action-fg: var(--white);
+  --theme-art-overlay: linear-gradient(180deg, rgba(0, 0, 0, .65) 0%, rgba(0, 0, 0, .12) 25%, rgba(0, 0, 0, .2) 80%, rgba(0, 0, 0, .7) 100%);
+  --focus-width: 3px;
+  --brand-primary: var(--gov-green);
+  --brand-accent: var(--gov-bright);
+  --brand-light-neutral: var(--gov-canvas);
+  --brand-dark-neutral: var(--black);
+  --brand-muted-neutral: var(--gov-border);
+  --color-gov-green: var(--gov-green);
+  --color-gov-green-light: var(--gov-light);
+  --color-gov-green-dark: var(--gov-green);
+  --color-gov-red: var(--gov-green);
+  --color-gov-red-light: var(--gov-light);
+  --color-gov-link: var(--gov-green);
+  --color-gov-link-dark: var(--black);
+  --color-gov-warning: var(--gov-green);
+  --color-gov-border: var(--gov-border);
 }
 
 /* Green header rule carrying the national government identity */
@@ -149,33 +151,20 @@ body {
   color: var(--ink);
 }
 
-/* Hypertext links use the gov link blue (#1568b2) */
-a {
+/* Text links remain distinguishable without relying on hue alone. */
+a:not([class]) {
+  text-decoration: underline;
+  text-underline-offset: .2em;
   color: var(--color-link-normal);
 }
 
-a:hover {
+a:not([class]):hover {
   color: var(--color-link-dark);
 }
 
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--primary-action);
-}
-
-/* Active navigation item styling for dark sidebar */
-:root .dark [class*="navItemActive"],
-:root [class*="dark"] [class*="navItemActive"] {
-  color: var(--sidebar-active-bg) !important;
-}
-:root .dark [class*="navItemActive"]::before,
-:root [class*="dark"] [class*="navItemActive"]::before {
-  background: var(--sidebar-active-bg) !important;
-}
-:root .dark [class*="navItemProminent"],
-:root [class*="dark"] [class*="navItemProminent"] {
-  background: var(--sidebar-active-bg) !important;
-  color: var(--sidebar-active-fg) !important;
 }
 
 /* Semantic selectors */

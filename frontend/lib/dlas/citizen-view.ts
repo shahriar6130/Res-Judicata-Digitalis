@@ -73,6 +73,8 @@ function statusOf(a: ApplicationRecord): CaseStatus {
       return "under_review";
     case "ACCEPTED":
       return "approved";
+    case "RESOLVED":
+      return "resolved";
     case "REJECTED":
     case "WITHDRAWN":
     case "CLOSED":
@@ -128,8 +130,15 @@ function auditAt(a: ApplicationRecord, action: string): string | null {
 const PATHWAY_TEXT: Record<PathwayType, { bn: string; en: string }> = {
   GRAM_ADALAT: { bn: "গ্রাম আদালতে প্রেরিত", en: "Referred to the Gram Adalat (village court)" },
   MEDIATION: { bn: "মধ্যস্থতায় প্রেরিত — মধ্যস্থতাকারী যোগাযোগ করবেন", en: "Referred to mediation — a mediator will contact you" },
+  REFERRAL: { bn: "অন্য সেবায় রেফার করা হয়েছে — অফিস বিস্তারিত জানাবে", en: "Referred to another service — the office will tell you the details" },
   LAWYER: { bn: "প্যানেল আইনজীবী নিয়োগ করা হবে", en: "A panel lawyer will be assigned" },
 };
+const FAILURE_PATHWAY_TEXT = {
+  COURT_LEGAL_PATHWAY: { bn: "আদালত / আইনি পথ", en: "Court / legal pathway" },
+  LAWYER_ASSIGNMENT: { bn: "আইনজীবী নিয়োগ", en: "Lawyer assignment" },
+  FURTHER_LEGAL_AID_REVIEW: { bn: "আরও লিগ্যাল এইড পর্যালোচনা", en: "Further legal aid review" },
+  OTHER_REFERRAL: { bn: "অন্য রেফারেল", en: "Other referral" },
+} as const;
 
 function timeline(a: ApplicationRecord): TimelineEvent[] {
   // Rejected: the record is closed after verification — show exactly that.
@@ -144,7 +153,7 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
   }
   // Step 1 is done at submit; the next backbone stage is "current" (waiting on a human).
   const doneUpTo = PIPELINE.indexOf(a.stage);
-  return PIPELINE.map((stage, i) => {
+  const base = PIPELINE.map((stage, i) => {
     const s = STAGE_TEXT[stage];
     const state: TimelineEvent["state"] = i <= doneUpTo ? "completed" : i === doneUpTo + 1 ? "current" : "upcoming";
     return {
@@ -158,6 +167,34 @@ function timeline(a: ApplicationRecord): TimelineEvent[] {
       state,
     };
   });
+  // Lawyer path: DLAO recorded the court outcome, then closed the case.
+  const comp = a.lawyer?.completion;
+  if (comp) {
+    const o = base.find((x) => x.id === "OUTCOME");
+    const word = { WON: ["জয়", "Won"], LOST: ["হার", "Lost"], SETTLED: ["আপস", "Settled"], WITHDRAWN_BY_CLIENT: ["আপনি প্রত্যাহার করেছেন", "Withdrawn by you"], OTHER: ["অন্যান্য", "Other"], JUDGMENT: ["রায়", "Judgment"] }[comp.outcome];
+    if (o) Object.assign(o, { descriptionBn: `আদালতের ধাপ শেষ — ফলাফল: ${word[0]} · ${comp.reason}`, descriptionEn: `Court stage complete — outcome: ${word[1]} · ${comp.reason}` });
+    const cl = a.lawyer?.closure;
+    const c = base.find((x) => x.id === "CLOSURE");
+    if (c && cl) Object.assign(c, { descriptionBn: `কেস বন্ধ করেছেন ${cl.byName} · ${cl.reason}`, descriptionEn: `Case closed by ${cl.byName} · ${cl.reason}`, state: "completed" as const });
+  }
+  const tst = a.mediation?.workspace?.settlementWorkflow?.testimonial;
+  if (tst) {
+    const c = base.find((x) => x.id === "CLOSURE");
+    const ap = a.mediation?.workspace?.settlementWorkflow?.appeal ?? null;
+    const closed = !!a.closedAt;
+    const tail = ap?.status === "FILED" ? { bn: "আপনার আপিল অফিসে আছে", en: "your appeal is with the office" } : ap?.status === "ACCEPTED" ? { bn: "আপিল গৃহীত — আইনজীবী নিয়োগ হবে", en: "appeal accepted — a lawyer will be assigned" } : closed ? { bn: "কেস বন্ধ", en: "case closed" } : { bn: "মেনে নিন বা ৭ দিনের মধ্যে আপিল করুন", en: "accept it or appeal within 7 days" };
+    if (c) Object.assign(c, { descriptionBn: `মধ্যস্থতায় নিষ্পত্তি যাচাই হয়েছে — প্রত্যয়নপত্র ${tst.testimonialId} · ${tail.bn}`, descriptionEn: `Mediated settlement verified — testimonial ${tst.testimonialId} · ${tail.en}`, dateBn: fmt(tst.issuedAt, "bn"), dateEn: fmt(tst.issuedAt, "en"), state: closed ? ("completed" as const) : ("current" as const) });
+  }
+  const failure = a.mediation?.workspace?.failureRecord;
+  if (!failure) return base;
+  const officerDone = failure.status === "REFERRAL_CONFIRMED";
+  const lawyerAccepted = a.lawyer?.assignments.some((x) => x.status === "ACCEPTED") ?? false;
+  const handoff: TimelineEvent[] = [
+    { id: `mediation-failure-${failure.recordId}`, titleBn: "মধ্যস্থতায় সমঝোতা হয়নি", titleEn: "Mediation did not settle", descriptionBn: "আনুষ্ঠানিক ফলাফল ও রেফারেল রেকর্ড তৈরি হয়েছে", descriptionEn: "A formal outcome and referral record was created", dateBn: fmt(failure.createdAt, "bn"), dateEn: fmt(failure.createdAt, "en"), state: "completed" },
+    { id: `officer-review-${failure.recordId}`, titleBn: "লিগ্যাল এইড অফিসার পর্যালোচনা", titleEn: "Legal Aid Officer review", descriptionBn: officerDone && failure.confirmedPathway ? `পরবর্তী পথ: ${FAILURE_PATHWAY_TEXT[failure.confirmedPathway].bn}` : failure.status === "MORE_INFORMATION_REQUESTED" ? "আরও প্রক্রিয়াগত তথ্য চাওয়া হয়েছে" : "পরবর্তী আইনি পথ নিশ্চিত করা বাকি", descriptionEn: officerDone && failure.confirmedPathway ? `Next pathway: ${FAILURE_PATHWAY_TEXT[failure.confirmedPathway].en}` : failure.status === "MORE_INFORMATION_REQUESTED" ? "More procedural information was requested" : "The next legal pathway is awaiting confirmation", dateBn: failure.officerReview.at ? fmt(failure.officerReview.at, "bn") : "", dateEn: failure.officerReview.at ? fmt(failure.officerReview.at, "en") : "", state: officerDone ? "completed" : "current" },
+  ];
+  if (failure.confirmedPathway === "LAWYER_ASSIGNMENT") handoff.push({ id: `lawyer-handoff-${failure.recordId}`, titleBn: "প্যানেল আইনজীবী নিয়োগ", titleEn: "Panel-lawyer assignment", descriptionBn: lawyerAccepted ? "আইনজীবী নিয়োগ গ্রহণ করেছেন" : "মধ্যস্থতা থেকে আইনজীবী নিয়োগ কার্যপ্রবাহে হস্তান্তর হয়েছে", descriptionEn: lawyerAccepted ? "A panel lawyer accepted the assignment" : "The case was handed from mediation to the lawyer-assignment workflow", dateBn: failure.officerReview.at ? fmt(failure.officerReview.at, "bn") : "", dateEn: failure.officerReview.at ? fmt(failure.officerReview.at, "en") : "", state: lawyerAccepted ? "completed" : "current" });
+  return [...base, ...handoff];
 }
 
 /** " · Panel lawyer: X" once a lawyer has accepted the case. */
@@ -181,6 +218,8 @@ function stageDate(a: ApplicationRecord, i: number): string | null {
   if (i === 1) return a.review?.receivedAt ?? null;
   if (i === 2) return auditAt(a, "case.created");
   if (i === 3) return a.review?.pathway?.at ?? null;
+  if (i === 5) return a.lawyer?.completion?.at ?? null;
+  if (i === 6) return a.lawyer?.closure?.at ?? null;
   return null;
 }
 
@@ -288,6 +327,12 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
       body: { bn: `${label(MATTERS, a.data.matter.category, "bn")} — ${a.routing.office}`, en: `${label(MATTERS, a.data.matter.category, "en")} — ${a.routing.office}` },
       href: `cases/${a.applicationId}`,
     });
+    for (const e of a.audit) {
+      const d = (e.detail ?? {}) as { title?: string; groupId?: string };
+      if (e.action === "incident_group.linked") out.push({ id: `grp-${e.seq}`, at: e.at, icon: "bell", title: { bn: `আপনার কেস একটি গ্রুপে যুক্ত · ${d.title ?? ""}`, en: `Your case was linked to a group · ${d.title ?? ""}` }, body: { bn: "একই ঘটনার অন্য কেসের সাথে — আপনার তথ্য গোপন থাকে", en: "With other cases from the same incident — your details stay private" }, href: `cases/${a.applicationId}` });
+      if (e.action === "incident_group.shared_evidence_linked") out.push({ id: `sev-${e.seq}`, at: e.at, icon: "bell", title: { bn: `গ্রুপে নতুন সাধারণ প্রমাণ · ${d.title ?? ""}`, en: `New shared evidence in your group · ${d.title ?? ""}` }, body: { bn: "আপনার কেসের পাতায় দেখুন", en: "See it on your case page" }, href: `cases/${a.applicationId}` });
+      if (e.action === "incident_group.unlinked") out.push({ id: `ugrp-${e.seq}`, at: e.at, icon: "bell", title: { bn: "আপনার কেস গ্রুপ থেকে আলাদা করা হয়েছে", en: "Your case is no longer in the group" }, body: { bn: "আপনার কেস আগের মতোই চলবে", en: "Your case continues as before" }, href: `cases/${a.applicationId}` });
+    }
     for (const t of db.tasks.filter((x) => x.applicationId === a.applicationId && x.status !== "DONE")) {
       const map: Partial<Record<string, { icon: CitizenNotification["icon"]; bn: string; en: string }>> = {
         ELIGIBILITY_REVIEW: { icon: "shield", bn: "অফিসারের পর্যালোচনার অপেক্ষায়", en: "Waiting for officer review" },
@@ -352,11 +397,28 @@ export function notificationsFor(db: DlasDb, me: CitizenAccount | undefined): Ci
       }
       out.push({ id: `hrg-${h.hearingId}`, at: h.addedAt, icon: "bell", title: { bn: `শুনানি: ${formatDateTime(h.at, "bn")}`, en: `Hearing: ${formatDateTime(h.at, "en")}` }, body: { bn: `${a.caseId ?? a.applicationId} · ${h.court}`, en: `${a.caseId ?? a.applicationId} · ${h.court}` }, href: `cases/${a.applicationId}` });
     }
+    const closureTestimonial = a.lawyer?.closureTestimonial;
+    if (closureTestimonial) {
+      out.push({
+        id: `lawyer-testimonial-${closureTestimonial.testimonialId}`,
+        at: closureTestimonial.issuedAt,
+        icon: "check",
+        title: { bn: "কেস বন্ধ — প্রত্যয়নপত্র প্রস্তুত", en: "Case closed — testimonial ready" },
+        body: { bn: `${closureTestimonial.caseRef} · প্রত্যয়নপত্র ${closureTestimonial.testimonialId}`, en: `${closureTestimonial.caseRef} · Testimonial ${closureTestimonial.testimonialId}` },
+        href: `cases/${a.applicationId}`,
+      });
+    }
     if (d?.decision === "NOT_ELIGIBLE") {
       out.push({ id: `rej-${a.applicationId}`, at: d.at, icon: "bell", title: { bn: "আবেদন গৃহীত হয়নি", en: "Application not accepted" }, body: { bn: `কারণ: ${d.reason}`, en: `Reason: ${d.reason}` }, href: `cases/${a.applicationId}` });
     }
   }
   for (const m of db.outbox.filter((x) => x.to === me.phone && x.kind === "SMS_CONFIRMATION")) {
+    const messageContext = m.context;
+    if (messageContext?.kind === "DOCUMENT_REQUEST") {
+      const application = apps.find((a) => a.applicationId === m.applicationId);
+      const document = application?.data.documents.find((d) => d.docId === messageContext.docId);
+      if (document?.status === "ATTACHED") continue;
+    }
     out.push({
       id: `sms-${m.msgId}`,
       at: m.at,

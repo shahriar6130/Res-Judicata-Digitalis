@@ -16,6 +16,7 @@ import { CallSimulatorPanel } from "./panels/call-simulator.panel";
 import { IntakeWorkspacePanel } from "./panels/intake-workspace.panel";
 import { SearchPanel } from "./panels/search.panel";
 import { HandoffsPanel } from "./panels/handoffs.panel";
+import { IvrEscalationsPanel } from "./panels/ivr-escalations.panel";
 import { CallbacksPanel } from "./panels/callbacks.panel";
 import { HistoryPanel } from "./panels/history.panel";
 import { AccessibilityDemoPanel } from "./panels/accessibility-demo.panel";
@@ -141,6 +142,7 @@ export function HelplineWorkspace() {
 
         {hash.route === "search" ? <SearchPanel onOpenRecord={gotoRecord} /> : null}
         {hash.route === "handoffs" ? <HandoffsPanel /> : null}
+        {hash.route === "ivr-escalations" ? <IvrEscalationsPanel /> : null}
         {hash.route === "callbacks" ? <CallbacksPanel /> : null}
         {hash.route === "history" ? <HistoryPanel /> : null}
         {hash.route === "accessibility-demo" ? <AccessibilityDemoPanel /> : null}

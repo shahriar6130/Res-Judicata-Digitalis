@@ -9,11 +9,18 @@ the user's reduced-motion preference.
 
 The administrator dashboard at `/dashboard/admin` uses the shared local record
 for live counts, cross-office application monitoring, audit history, and searchable
-create/edit forms for citizen, lawyer, DLO officer, and UDC operator accounts. Account
+create/edit/delete controls for citizen, lawyer, DLO officer, mediator, and UDC operator accounts. Account
 changes are audited. The DLO review screen offers a reasoned correction form during
 verification for applicant, filer, matter, urgency, and safe-contact information.
 Changing verified fields reopens the related check; a district change reroutes open work.
 Legal decisions remain officer actions. Prototype data lives in browser `dlas.db.v1`.
+That browser record is also used as an offline cache for the optional Upstash JSON mirror described
+below.
+
+The administrator Applications section shows each application's hearing schedule. Administrators
+can add hearings or edit the date/time, court, and purpose; lawyer-reported attendance and outcomes
+remain read-only. Hearing schedule changes persist to `dlas.db.v1`, are audited, and update the due
+date of an existing open lawyer-report task when applicable.
 
 The admin Backup tab downloads a dated JSON bundle of app-owned browser storage,
 including the shared record and stored document previews. To restore, choose a JSON
@@ -32,11 +39,43 @@ first; keep S24 and S33 thin and treat only S23 export as optional Tier 2. `/das
 - TypeScript, CSS Modules
 - `next/font`: Playfair Display (Latin) + Noto Serif Bengali, wired into one serif stack
 
+## Upstash JSON persistence on Vercel
+
+The app hydrates `dlas.db.v1` from `/api/dlas-store` and mirrors debounced writes back through that
+server-only Route Handler. Admin create, edit, delete, hearing, JSON export, and backup-restore
+actions also reconcile with Upstash before reporting success. Export downloads the reconciled
+current snapshot, while import immediately flushes the restored snapshot online. Their bilingual status message explicitly
+distinguishes an online database save from a browser-only save when Upstash is unconfigured or
+unreachable. The browser never receives an Upstash credential; failed remote writes remain queued
+for a foreground reconnect retry.
+
+In Vercel, add these Environment Variables for Development, Preview, and Production as needed:
+
+```text
+KV_REST_API_URL
+KV_REST_API_TOKEN
+KV_REST_API_READ_ONLY_TOKEN
+```
+
+`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are supported aliases. `KV_URL` and
+`REDIS_URL` are not used because Vercel serverless functions connect through HTTPS REST. Never use
+`NEXT_PUBLIC_` for any token. See `.env.example` for local placeholders; put real local values in
+the ignored `.env.local` file or run `vercel env pull .env.local`.
+
+By default the JSON key is `rjd:dlas:db:v1:<environment>`, where the suffix comes from
+`VERCEL_ENV` (or `NODE_ENV` locally). Set `DLAS_KV_KEY` only when a different namespace is needed.
+The Route Handler accepts only the current DLAS schema and a maximum 4 MiB JSON document. This
+whole-document adapter is suitable for the prototype; a production multi-user system should use
+the repository's row-scoped database architecture.
+
 ## Structure
 
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
+app/themes/blue_white.css   active theme implementing the role-based color system (#003366, #0076D6, #F8F9FA, #1A202C, #E2E8F0)
+app/themes/black_theme.css   saved original black theme
+app/themes/red_white.css   saved courthouse image theme overrides
 components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
               Button, Field, Sidebar, LawMark
 lib/          i18n context + dictionary, roles, brand, portal-art
@@ -52,7 +91,7 @@ Each role signs in from its own URL; after sign-in the app lands directly on tha
 | District Legal Aid Officer (জেলা আইনি সহায়তা কর্মকর্তা) | `/dlo` | `/dashboard/dlo` | `/dashboard/dlo` |
 | Panel lawyer (প্যানেল আইনজীবী) | `/lawyer` | `/dashboard/lawyer` | `/dashboard/lawyer` |
 | UDC operator (ইউডিসি উদ্যোক্তা) | `/udc` (also `/portal/udc`) | `/dashboard/udc` | `/dashboard/udc` |
-| Administrator (প্রশাসক) | `/admin` | `/dashboard/admin` | `/dashboard/admin` |
+| Administrator (প্রশাসক) | `/admin` (automatic redirect; no credentials) | `/dashboard/admin` | `/dashboard/admin` |
 
 Citizen notifications at `/dashboard/citizen#notifications` group new and earlier updates, show
 readable details and timestamps, and open the related case or dashboard view. The unread count and
@@ -63,6 +102,24 @@ access to another citizen's application or upload controls.
 The home document-upload section appears only when an owned, open application has an outstanding
 document; there is no placeholder card when nothing needs uploading.
 
+Successful mediation continues from `/dashboard/mediator` through a persisted settlement state
+machine. **Settlement reached** opens manual fields for the issue, proposed and agreed resolution,
+conditions, deadline, and additional terms. Party execution is simulated and visibly labelled
+`DEMO / SIMULATED`; mediator confirmation is stored separately. The DLO sidebar opens the separate
+CLO queue at `/dashboard/dlo/settlements`, with one review route per agreement. Only an explicit
+CLO **Certify** action after both signatures and mediator confirmation records `RESOLVED` and may
+create settlement follow-up tasks. Return and clarification actions reopen mediator correction;
+revised terms require fresh execution and confirmation.
+
+Failed mediation also continues through a persisted workflow. **Mediation failed** collects the
+mediation date, attendance, discussed issues, outcome, optional reason/status, follow-up need, and
+proposed referral without requesting confidential caucus notes. It creates a formal failure/referral
+record and an advisory system suggestion. The separate officer queue is available at
+`/dashboard/dlo/mediation-outcomes`; officers may confirm, change the path, or request more
+information. Confirming `LAWYER_ASSIGNMENT` creates the existing panel-lawyer assignment task and
+exposes that workflow in the DLO case workspace. The citizen timeline shows the handoff from
+mediation through officer review to lawyer assignment.
+
 The DLO workspace opens on `#overview` (also the default route). Its header shows the active
 workload, the four status tiles navigate to `#new`, `#review`, `#decided`, and `#tasks`, and charts
 summarize the current office's applications by queue state, matter, and filing channel. Those four
@@ -71,6 +128,20 @@ Overview link and labelled queue counts. Worklist links open `#app/<APP-ID>` for
 flow; each application and follow-up record has a visible **Open application** control. The records
 wrap their labelled fields across the available width without horizontal scrolling. All queue
 figures come from `dlas.db.v1` and follow the selected Bangla or English language.
+The open-application review form uses the full workspace width and has no separate audit-trail
+sidebar. Audit entries are still persisted and remain available through the existing activity and
+debug views.
+The DLO sidebar's **District UDC approvals** view (`#udcs`) lists only UDC operators registered in
+the officer's district. The DLO can approve one account, approve all pending district accounts, or
+reject an account with a required reason. The state, deciding officer, timestamp, reason, and audit
+event persist in `dlas.db.v1`; pending and rejected UDC accounts cannot enter assisted intake.
+For lawyer-path cases, the Panel lawyer section provides the complete ending flow: record the
+representation outcome, review the payable-hearing count, use **Pay lawyer (simulated)**, and enter
+a closing note to enable **Close case**. Closure is blocked until every recorded lawyer payment is
+paid, then the application becomes `RESOLVED`, the citizen is notified, and the action is audited.
+The same close action generates a persisted simulated case-closure testimonial containing the
+recorded outcome, reasons, lawyers, hearing count, issuing officer, and timestamp. It appears on
+the citizen's owned case page, creates a citizen notification, and is referenced by the safe SMS.
 
 The legacy lawyer dashboard at `/dashboard/lawyer` has focused Overview, Assignments, Reports,
 and Schedule views that match its sidebar links. The assignment offer supports acceptance or a
@@ -78,10 +149,14 @@ required decline reason. The hearing report collects attendance, outcome, and ne
 Its sample case data and action feedback are labelled simulated and remain in the current session.
 
 The UDC dashboard opens with a new assisted application action, operator-scoped work counts and
-recent intakes. The sidebar groups Overview, application work and support destinations. Consent
-and document links open their dedicated intake panels. Connection diagnostics are available in an
-expandable strip, and the global header provides the language toggle. The `/udc` sign-in page
-uses the existing mobile login and operator registration flow with UDC-specific art and copy.
+recent intakes. Assisted intake reuses the citizen **Lodge a complaint** component, including its
+five steps, validation, safe-contact and consent controls, while `UdcDoor` records operator
+provenance and in-person identity attestation. Evidence is a sealed, forward-only transfer: UDC can
+add it to the shared case record but cannot see its contents, preview, filename, or quality-review
+screen. Legacy intake/document hashes also resolve to the shared wizard. The sidebar groups
+Overview, application work and support destinations. Connection diagnostics are available in an
+expandable strip, and the global header provides the language toggle. The `/udc` sign-in page uses
+the existing mobile login and operator registration flow with UDC-specific art and copy.
 
 The `/device/ivr` and `/device/ussd` simulators share a guided phone workspace. A mode switch,
 three-step introduction, handset, conversation, and live-record panel make the active task clearer.
@@ -122,9 +197,25 @@ claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/lay
 Nothing hardcodes a color or font family outside `app/tokens.css` and
 `app/layout.tsx`; change the whole look in those two files.
 
-The mediator case workspace includes a human-led document-review gate. Unclear and missing items
-create one visible DLAO follow-up task, resolving an item completes the linked task, and the workflow
-cannot advance to session preparation while any recorded document remains unresolved.
+### Citizen representation and case-service updates
+
+- Assisted intake includes **For an alleged person**, preserving the represented person as the
+  applicant and recording `matter.assistanceRole = ALLEGED_PERSON_DEFENCE` for defence legal aid.
+- A lawyer-path case with an accepted lawyer shows a citizen **Request lawyer change** action for
+  alleged illegal conduct. It creates a high-priority DLAO task; DLAO approval persists on the
+  case and sends the citizen the promised approval/update-soon message.
+- Mediation assignment can retain several active, individually eligible mediators on one case.
+  Each co-mediator passes the same district, certificate, availability, case-type and conflict
+  checks, and duplicate assignment of the same mediator is blocked.
+- Mediation-completion banners and SMS announce completion and the testimonial without seven-day
+  appeal copy. A document-request task and its matching simulated-SMS notification disappear from
+  the citizen feed as soon as that requested document is attached.
+
+### Saved theme
+
+The active theme is app/themes/blue_white.css, imported after app/tokens.css in app/globals.css. This applies the role-based system: Primary Brand Authority (#003366), Action Accent (#0076D6), Light Neutral (#F8F9FA), Dark Neutral (#1A202C), and Muted Neutral (#E2E8F0). The black_theme.css and red_white.css alternatives remain saved.
+
+To switch themes, change the active theme import in `app/globals.css` among `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
 
 ## Language
 
@@ -142,3 +233,28 @@ npm run build
 npm run start
 npm run lint
 ```
+### Court mediation and mediation privacy (Features 8–9)
+
+- The legal pathway form captures mediation origin and all court referral fields. Court-origin matters reuse `/dashboard/mediator` and remain labelled throughout assignment and mediation.
+- Certified court settlements and confirmed court-path failure records create a `COURT_AUTHORITY_NOTIFICATION` task. Officer dispatch recording is explicitly simulated.
+- `lib/dlas/mediation-access.ts` contains the mediation role/scope matrix and case access helpers.
+- Mediator caucus content is stored under `workspace.mediatorConfidential` and is omitted from public/officer projections. Assigned-mediator checks run on reads and every mutation.
+- DLO sign-up supports Legal Aid Officer and Chief Legal Aid Officer authority roles. Only the Chief role can open the settlement certification worklist or certify an agreement.
+- Mediation sensitive-action audits include an explicit `caseId`; confidential note text is never copied into an audit entry.
+### Device simulator UI
+
+`/device` defaults to the IVR simulator; `/device/ivr` and `/device/ussd` select the corresponding phone flow. The interface uses a compact heading, a two-option mode switch, and one centered handset. The handset display has a compact fixed height with internal scrolling for longer prompts, and its keypad and call controls retain 44px targets. Every mount starts fresh: the active device session is not restored and the flow neither stores nor shows conversation history. Voice text entry appears inside the handset when required. The device surface omits message, live JSON, and debug-console panels while continuing to write required application fields, provenance, audit events, handoffs, and submissions.
+### Admin mediator and UDC management
+
+`/dashboard/admin#users` includes Mediators and UDC operators. Mediator add/edit uses the shared `db.mediators` registry and captures status, role, district, qualification, mediation tracks, and case types. The dedicated `/dashboard/admin#training` section lists every mediator and edits training/certification status, provider, certificate number, issue/expiry dates, and a required training note. A training edit appends the administrative record and audit, resets prior verification, returns an active mediator to pending verification, survives the legacy auto-approval migration, and waits for the online-store result; it does not bypass the established verification requirement. UDC operator add/edit uses `db.udcOperators` and synchronizes the associated registered UDC centre. Both flows append admin/account audit entries; the existing mediator verification, certification, assignment, and login workflows remain in place.
+
+Every People row has a Delete action with a confirmation dialog. Deletion preserves historical application and admin audit records and writes a deletion audit event. Active mediator and lawyer assignments block removal with an inline message. Deleting a UDC operator also removes the operator's linked registered centre entry.
+### Admin sidebar
+
+The admin sidebar links to Overview, People, Mediator training, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
+The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one burgundy visual identity.
+
+
+### Blue White theme with role-based color system
+
+The active CSS-only theme in `frontend/app/themes/blue_white.css` implements the role-based color system: Primary Brand Authority (`#003366`) for sidebars, header bars, and container boundaries, Action Accent (`#0076D6`) for primary buttons, active tabs, and hypertext links, Light Neutral (`#F8F9FA`) for page backgrounds and card containers, Dark Neutral (`#1A202C`) for high-contrast body copy and form labels, and Muted Neutral (`#E2E8F0`) for dividers and borders. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes remain available without a theme button.

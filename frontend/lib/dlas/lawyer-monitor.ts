@@ -16,7 +16,7 @@
 import { useMemo } from "react";
 import { mutate, useDlasDb } from "./store";
 import { DlaoAuth, useCurrentOfficer } from "./dlao";
-import { LawyerAuth, dayKey, hearingMissed, hearingState, lawyerStats, rulesOf, useClock } from "./lawyer";
+import { LawyerAuth, activeRedFlag, dayKey, hearingMissed, hearingState, lawyerStats, rulesOf, useClock } from "./lawyer";
 import type { ApplicationRecord, AuditEntry, DlaoOfficerAccount, DlasDb, Hearing, HearingUpdate, LawyerAssignment, LawyerContact, PanelLawyerAccount } from "./schema";
 
 const now = () => new Date().toISOString();
@@ -57,6 +57,9 @@ export type MonitoredLawyer = {
   pastCases: LawyerCaseRow[];
   lastReportAt: string | null;
   alerts: string[]; // short codes for sorting / tags
+  redFlag: ReturnType<typeof activeRedFlag>; // active red flag (declined too many offers)
+  declines: number; // declined offers counting towards the next red flag
+  declineLimit: number;
 };
 
 function monitor(db: DlasDb, l: PanelLawyerAccount, t: number): MonitoredLawyer {
@@ -98,7 +101,9 @@ function monitor(db: DlasDb, l: PanelLawyerAccount, t: number): MonitoredLawyer 
   if (today?.status === "ABSENT") alerts.push("ABSENT");
   if (!today) alerts.push("NOT_MARKED");
   if (openSummons) alerts.push("SUMMONED");
-  return { l, todayStatus: today?.status ?? null, stats, missed90, overdueReports, pendingOffers, openSummons, cases: rows, pastCases: past, lastReportAt, alerts };
+  const redFlag = activeRedFlag(l);
+  if (redFlag) alerts.unshift("RED_FLAG");
+  return { l, todayStatus: today?.status ?? null, stats, missed90, overdueReports, pendingOffers, openSummons, cases: rows, pastCases: past, lastReportAt, alerts, redFlag, declines: stats.declines ?? 0, declineLimit: rulesOf(db).declinesBeforeRedFlag };
 }
 
 /** All lawyers the logged-in officer supervises, most urgent first. */
@@ -108,7 +113,7 @@ export function useDistrictLawyers() {
   const t = useClock();
   return useMemo(() => {
     const list = db.lawyers.filter((l) => officerSeesLawyer(o, l)).map((l) => monitor(db, l, t));
-    const weight = (m: MonitoredLawyer) => m.overdueReports * 100 + m.missed90 * 50 + m.openSummons * 20 + (m.todayStatus === "ABSENT" ? 5 : 0) + m.cases.length;
+    const weight = (m: MonitoredLawyer) => (m.redFlag ? 1000 : 0) + m.overdueReports * 100 + m.missed90 * 50 + m.openSummons * 20 + (m.todayStatus === "ABSENT" ? 5 : 0) + m.cases.length;
     list.sort((x, y) => weight(y) - weight(x) || x.l.name.localeCompare(y.l.name));
     // Latest hearing reports across these lawyers (case updates feed).
     const ids = new Set(list.map((m) => m.l.lawyerId));
@@ -216,6 +221,28 @@ export const DlaoLawyerMonitor = {
   },
 
   /** Record whether the lawyer came in for the summons. */
+  /** The officer reviewed the declined offers and clears the red flag (note required). New declines count from now. */
+  clearRedFlag(lawyerId: string, note: string) {
+    if (note.trim().length < 10) throw new Error("Write what you reviewed / agreed (at least 10 characters)");
+    return withLawyer(lawyerId, (db, l, o) => {
+      const f = activeRedFlag(l);
+      if (!f) throw new Error("No active red flag");
+      f.status = "CLEARED";
+      f.clearedAt = now();
+      f.clearedBy = o.officerId;
+      f.clearedByName = o.name;
+      f.clearNote = note.trim();
+      audit(db, l.audit, { actor: o.officerId, role: "dlao", action: "lawyer.red_flag_cleared", detail: { flagId: f.flagId, note: f.clearNote } });
+      for (const t of db.tasks) {
+        if (t.type !== "LAWYER_RED_FLAG" || t.status === "DONE" || (t.context as { flagId?: string } | undefined)?.flagId !== f.flagId) continue;
+        t.status = "DONE";
+        logOnCase(db, t.applicationId, { actor: o.officerId, role: "dlao", action: "task.closed", detail: { taskId: t.taskId, type: t.type, lawyerId } });
+      }
+      smsLawyer(db, l, null, `DLAS: ${o.name} has reviewed and cleared your red flag. Note: ${f.clearNote}`);
+      return f;
+    });
+  },
+
   resolveSummons(lawyerId: string, contactId: string, input: { result: "ATTENDED" | "MISSED"; note: string }) {
     return withLawyer(lawyerId, (db, l, o) => {
       const c = l.contacts.find((x) => x.contactId === contactId && x.kind === "SUMMONS");

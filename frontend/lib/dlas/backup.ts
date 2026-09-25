@@ -111,5 +111,11 @@ export function importBackup(preview: BackupPreview): void {
     }
     throw error;
   }
-  window.location.reload();
+  // Notify the current page without reloading: callers may still need to await
+  // an online flush of the restored DLAS snapshot before navigation is safe.
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: DLAS_KEY,
+    newValue: window.localStorage.getItem(DLAS_KEY),
+    storageArea: window.localStorage,
+  }));
 }

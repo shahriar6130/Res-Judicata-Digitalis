@@ -1,0 +1,219 @@
+/*
+ * Blue White theme.
+ *
+ * Implements the design color specification:
+ * - Primary (Brand Authority): #003366 (Deep Navy Blue) — Header bars, headlines, strong boundaries
+ * - Action Accent: #0076D6 (Accessible Blue) — Primary buttons, active tabs, hypertext links
+ * - Light Neutral (60% Space): #F8F9FA (Off-White / Soft Gray) — Page background, card containers
+ * - Dark Neutral (Text): #1A202C (Charcoal Black) — Main body copy, data text, form labels
+ * - Muted Neutral: #E2E8F0 (Border Gray) — Subtle dividers, form borders, disabled states
+ */
+
+:root {
+  /* Dark Neutral (Text) - #1A202C Charcoal Black for high-contrast reading */
+  --black: #1A202C;
+  --ink: #1A202C;
+  --white: #ffffff;
+  
+  /* Light Neutral (60% Space) - #F8F9FA Off-White / Soft Gray */
+  --off-white: #F8F9FA;
+  
+  /* Slate text & Muted Neutral - #E2E8F0 Border Gray */
+  --gray: #718096;
+  --line: #E2E8F0;
+  --overlay: rgba(26, 32, 44, 0.6);
+  
+  --red: #c73545;
+  --yellow: #b8871b;
+  --green: #28754a;
+
+  /* Action Accent - #0076D6 Accessible Blue for primary actions & interactions */
+  --primary-action: #0076D6;
+  --primary-action-hover: #005bb5;
+  --selection-bg: #0076D6;
+  --selection-fg: #ffffff;
+  --focus-color: #0076D6;
+
+  /* Primary (Brand Authority) - #003366 Deep Navy Blue for headers & navigation */
+  --sidebar-bg: #003366;
+  --sidebar-fg: #ffffff;
+  --sidebar-muted: #CBD5E1;
+  --sidebar-border: #002244;
+  --sidebar-hover-bg: #00264d;
+  --sidebar-active-bg: #0076D6;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-accent: #0076D6;
+
+  --sidebar-dark-bg: #003366;
+  --sidebar-dark-fg: #ffffff;
+  --sidebar-dark-muted: #CBD5E1;
+  --sidebar-dark-border: #002244;
+  --sidebar-dark-hover: #00264d;
+  --sidebar-dark-active-bg: #0076D6;
+  --sidebar-dark-active-fg: #ffffff;
+  --sidebar-dark-accent: #0076D6;
+
+  /* Status */
+  --status-active: #28754a;
+  --status-review: #b8871b;
+  --status-needs-action: #c73545;
+  --status-resolved: #718096;
+  --status-pending: #9a5f12;
+
+  /* Card containers */
+  --surface-card: #ffffff;
+  --surface-card-border: #E2E8F0;
+  --surface-card-lodge: #0076D6;
+  --surface-card-lodge-fg: #ffffff;
+  --surface-card-lodge-accent: #003366;
+
+  --on-black: #ffffff;
+  --on-black-muted: #CBD5E1;
+  --line-on-black: #0076D6;
+  --lawmark-opacity: 0.72;
+  --grid-line: rgba(255, 255, 255, 0.12);
+
+  /* Role accents */
+  --accent-citizen: #0076D6;
+  --accent-dlo: #0076D6;
+  --accent-lawyer: #0076D6;
+  --accent-udc: #0076D6;
+  --accent-admin: #0076D6;
+
+  --dlo-muted: #718096;
+  --dlo-line: #E2E8F0;
+  --dlo-hero-muted: #CBD5E1;
+  --dlo-positive-ink: #28754a;
+  --dlo-danger-ink: #c73545;
+  --dlo-warning-ink: #82520f;
+  --dlo-disabled-ink: #A0AEC0;
+  --dlo-chart-purple: #003366;
+  --dlo-chart-blue: #0076D6;
+  --dlo-chart-rose: #0076D6;
+  --dlo-chart-olive: #003366;
+  --dlo-chart-muted: #CBD5E1;
+
+  --udc-warning-ink: #82520f;
+  --udc-danger-ink: #c73545;
+
+  /* Admin System Administration */
+  --admin-sidebar-bg: #003366;
+  --admin-sidebar-fg: #ffffff;
+  --admin-sidebar-muted: #CBD5E1;
+  --admin-sidebar-border: #002244;
+  --admin-sidebar-hover: #00264d;
+  --admin-sidebar-active-bg: #0076D6;
+  --admin-sidebar-active-fg: #ffffff;
+  --admin-page-bg: #F8F9FA;
+  --admin-panel-bg: #ffffff;
+  --admin-soft-bg: #F8F9FA;
+  --admin-hero-bg: #003366;
+  --admin-hero-muted: #CBD5E1;
+  --admin-ink: #1A202C;
+  --admin-muted: #718096;
+  --admin-line: #E2E8F0;
+  --admin-accent: #0076D6;
+  --admin-accent-hover: #005bb5;
+  --admin-danger: #c73545;
+
+  --gavel-head: #0076D6;
+  --gavel-top: #ffffff;
+  --gavel-band: #003366;
+  --gavel-shadow: #002244;
+  --gavel-handle: #4a90e2;
+
+  --bottom-nav-bg: #ffffff;
+  --bottom-nav-border: #E2E8F0;
+  --control-radius: 8px;
+  --motion-base: 220ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --theme-hero-start: #003366;
+  --theme-hero-end: #002244;
+  --theme-hero-fill: linear-gradient(120deg, var(--theme-hero-start), var(--theme-hero-end));
+  --theme-shadow: 0 8px 24px rgba(0, 51, 102, .08);
+
+  /* Explicit palette tokens per specification */
+  --brand-primary: #003366;
+  --brand-accent: #0076D6;
+  --brand-light-neutral: #F8F9FA;
+  --brand-dark-neutral: #1A202C;
+  --brand-muted-neutral: #E2E8F0;
+}
+
+/* Header bars, primary headlines, strong container boundaries (#003366) */
+body {
+  border-top: var(--s-1) solid var(--brand-primary);
+  background-color: var(--off-white);
+  color: var(--ink);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--brand-primary);
+}
+
+/* Hypertext links use Action Accent (#0076D6) */
+a {
+  color: var(--brand-accent);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary-action);
+}
+
+/* Active navigation item styling for dark sidebar */
+:root .dark [class*="navItemActive"],
+:root [class*="dark"] [class*="navItemActive"] {
+  color: var(--sidebar-active-bg) !important;
+}
+:root .dark [class*="navItemActive"]::before,
+:root [class*="dark"] [class*="navItemActive"]::before {
+  background: var(--sidebar-active-bg) !important;
+}
+:root .dark [class*="navItemProminent"],
+:root [class*="dark"] [class*="navItemProminent"] {
+  background: var(--sidebar-active-bg) !important;
+  color: var(--sidebar-active-fg) !important;
+}
+
+/* Semantic selectors */
+:root body main > header {
+  border-bottom: 2px solid var(--line);
+  background: var(--surface-card);
+}
+:root body main > section {
+  border-radius: var(--r-4);
+}
+:root body button,
+:root body a,
+:root body input,
+:root body select,
+:root body textarea {
+  transition: background-color var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease),
+    color var(--motion-base) var(--ease),
+    box-shadow var(--motion-base) var(--ease);
+}
+:root body input:focus-visible,
+:root body select:focus-visible,
+:root body textarea:focus-visible {
+  border-color: var(--primary-action);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root body main {
+    animation: blue-white-reveal 420ms var(--ease) both;
+  }
+  :root body [role="dialog"],
+  :root body [role="alertdialog"] {
+    animation: blue-white-reveal 220ms var(--ease) both;
+  }
+  @media (hover: hover) {
+    :root body button:enabled:hover {
+      box-shadow: var(--theme-shadow);
+    }
+  }
+}
+@keyframes blue-white-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

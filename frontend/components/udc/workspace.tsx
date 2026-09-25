@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { NetworkBar } from "./primitives/network-bar";
+import { LightModeStrip } from "./primitives/light-mode-panel";
 import { useI18n } from "@/lib/i18n";
 import { UdcDashboardPanel } from "./panels/dashboard.panel";
-import { UdcNewIntakePanel } from "./panels/new-intake.panel";
-import { UdcIntakeWorkspacePanel } from "./panels/intake-workspace.panel";
-import { UdcDocumentsPanel } from "./panels/documents.panel";
-import { UdcConsentPanel } from "./panels/consent.panel";
+import { AssistedIntake } from "@/components/assisted-intake";
 import { UdcOfflineQueuePanel } from "./panels/offline-queue.panel";
 import { UdcSyncCentrePanel } from "./panels/sync-centre.panel";
 import { UdcConflictDetailPanel } from "./panels/conflict-detail.panel";
@@ -100,17 +98,33 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
         </main>
       );
     }
-    if (view === "intake-new") {
-      return <UdcNewIntakePanel role={role} />;
+    const approvalStatus = operator.approval?.status ?? "PENDING";
+    if (approvalStatus !== "APPROVED") {
+      return (
+        <main id="udc-main" className={styles.page}>
+          <h1 className={styles.pageTitle}>
+            {approvalStatus === "REJECTED"
+              ? (lang === "bn" ? "ইউডিসি নিবন্ধন প্রত্যাখ্যাত" : "UDC registration rejected")
+              : (lang === "bn" ? "জেলা অনুমোদনের অপেক্ষায়" : "Awaiting district approval")}
+          </h1>
+          <p className={styles.bannerInfo}>
+            {approvalStatus === "REJECTED"
+              ? (lang === "bn"
+                  ? `এই ইউডিসি অ্যাকাউন্ট দিয়ে সহায়তাপ্রাপ্ত আবেদন শুরু করা যাবে না। কারণ: ${operator.approval?.reason ?? "কারণ দেওয়া হয়নি"}`
+                  : `This UDC account cannot start assisted applications. Reason: ${operator.approval?.reason ?? "No reason recorded"}`)
+              : (lang === "bn"
+                  ? "আপনার জেলার ডিএলও অনুমোদন দিলে সহায়তাপ্রাপ্ত আবেদন শুরু করতে পারবেন।"
+                  : "You can start assisted applications after the DLO for your district approves this account.")}
+          </p>
+        </main>
+      );
     }
-    if (view === "intake" && params.section === "documents" && params.temporaryId) {
-      return <UdcDocumentsPanel temporaryId={params.temporaryId} role={role} />;
-    }
-    if (view === "intake" && params.section === "consent" && params.temporaryId) {
-      return <UdcConsentPanel temporaryId={params.temporaryId} role={role} />;
-    }
-    if (view === "intake" && params.temporaryId) {
-      return <UdcIntakeWorkspacePanel temporaryId={params.temporaryId} role={role} />;
+    if (view === "intake-new" || view === "intake") {
+      return (
+        <main id="udc-main" className={styles.page}>
+          <AssistedIntake mode="udc" />
+        </main>
+      );
     }
     if (view === "offline-queue") {
       return <UdcOfflineQueuePanel role={role} />;
@@ -159,6 +173,7 @@ export function UdcWorkspace({ role = "udc" }: { role?: string }) {
     <div className={styles.udcShell}>
       <div className={styles.udcStickyTop}>
         <NetworkBar lang={lang} />
+        <LightModeStrip lang={lang} />
       </div>
       <div className={styles.udcShellBody}>
         {renderPanel()}

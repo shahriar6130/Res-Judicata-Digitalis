@@ -18,9 +18,10 @@ export function CitizenDocuments({ applicationId }: { applicationId: string }) {
   const app = useCitizenApplication(applicationId);
   if (!app) return null;
   const docs = app.data.documents;
-  const needed = docs.filter((d) => d.status !== "ATTACHED").sort((x, y) => (y.requested?.at ?? "").localeCompare(x.requested?.at ?? ""));
+  // Only what the Legal Aid Officer actually asked for — not the matter's default checklist (e.g. NID + marriage certificate for family).
+  const needed = docs.filter((d) => d.status !== "ATTACHED" && !!d.requested).sort((x, y) => (y.requested?.at ?? "").localeCompare(x.requested?.at ?? ""));
   const submitted = docs.filter((d) => d.status === "ATTACHED");
-  const closed = app.status === "REJECTED" || app.status === "CLOSED" || app.status === "WITHDRAWN";
+  const closed = app.status === "REJECTED" || app.status === "RESOLVED" || app.status === "CLOSED" || app.status === "WITHDRAWN";
 
   return (
     <>

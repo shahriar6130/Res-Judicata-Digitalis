@@ -27,7 +27,13 @@ import type {
   LanguageCode,
   Relation,
   SafeTime,
+  Task,
+  UdcOperatorAccount,
+  UrgencyFlag,
 } from "./schema";
+import { mutate } from "./store";
+
+const URGENCY_FLAGS = ["IMMEDIATE_DANGER", "VIOLENCE_OR_THREAT", "ONLINE_HARASSMENT", "EVICTION", "DETENTION", "CHILD_INVOLVED"] as const;
 
 /* ================================================================== *
  *  Citizen door (existing 5-step wizard)
@@ -37,15 +43,18 @@ import type {
 export interface CitizenDraftLike {
   name: string;
   phone: string;
-  actingFor: "self" | "family" | "neighbor" | null;
+  actingFor: "self" | "family" | "neighbor" | "alleged" | null;
   proxyRel: string;
   proxyName: string;
   proxyPhone: string;
+  district?: string;
   nidNumber?: string;
   matter: string | null;
   partyName: string;
   partyAddress: string;
   description: string;
+  urgent?: boolean;
+  urgencyFlags?: string[];
   documents: { id: string; name: string; mimeType: string; size: number; dataUrl: string }[];
   contactSlot: "anytime" | "custom" | null;
   contactDay: DayCode | "";
@@ -60,6 +69,7 @@ const CITIZEN_ENTRY = "/dashboard/citizen#intake";
 
 function mapRelation(text: string, actingFor: CitizenDraftLike["actingFor"]): Relation {
   if (actingFor === "neighbor") return "NEIGHBOUR";
+  if (actingFor === "alleged") return "OTHER";
   const t = text.toLowerCase();
   if (/ভাই|বোন|brother|sister|sibling/.test(t)) return "SIBLING";
   if (/স্বামী|স্ত্রী|husband|wife|spouse/.test(t)) return "SPOUSE";
@@ -85,7 +95,7 @@ function writeKey(key: string, v: string | null) {
 }
 
 export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): DeepPartial<ApplicationData> {
-  const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+  const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
   const applicantPhone = normalizePhone(rep ? d.proxyPhone : d.phone);
   const method: ContactMethod = rep && !applicantPhone ? "VIA_REPRESENTATIVE" : "CALL";
   return {
@@ -97,8 +107,13 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
       : { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
     matter: {
       category: mapLegacyMatter(d.matter),
+      assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
       summary: d.description.trim() || null,
       opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+    },
+    urgency: {
+      selfReportedUrgent: !!d.urgent,
+      flags: d.urgent ? (d.urgencyFlags ?? []).filter((f): f is UrgencyFlag => (URGENCY_FLAGS as readonly string[]).includes(f)) : [],
     },
     safeContact: {
       method,
@@ -153,7 +168,7 @@ export const CitizenDoor = {
   sync(d: CitizenDraftLike, district: string | null, completedStep: number) {
     const sid = CitizenDoor.ensure();
     const tag: CaptureTag =
-      d.actingFor === "family" || d.actingFor === "neighbor"
+      d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged"
         ? { source: "REPRESENTATIVE_REPORTED", method: "WEB_FORM", by: `rep:${normalizePhone(d.phone) ?? "unknown"}` }
         : { source: "APPLICANT_STATED", method: "WEB_FORM", by: "applicant" };
     const step: IntakeStep | undefined = completedStep >= 4 ? "DOCUMENTS_ATTACHED" : completedStep >= 3 ? "DETAILS_CAPTURED" : undefined;
@@ -163,7 +178,7 @@ export const CitizenDoor = {
 
   /** Final submit from step 5. Returns the gateway result (errors are shown by the wizard). */
   async submit(d: CitizenDraftLike, district: string | null): Promise<SubmitResult> {
-    const rep = d.actingFor === "family" || d.actingFor === "neighbor";
+    const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
     const by = rep ? `rep:${normalizePhone(d.phone) ?? "unknown"}` : "applicant";
     const tag: CaptureTag = rep
       ? { source: "REPRESENTATIVE_REPORTED", method: "WEB_FORM", by }
@@ -233,6 +248,7 @@ export const CitizenDoor = {
  * ================================================================== */
 
 const UDC_ENTRY = "/dashboard/udc/intake";
+const UDC_WIZARD_KEY = "dlas.active.UDC_ASSISTED.wizard";
 
 const CONTACT_KIND_TO_METHOD: Record<string, ContactMethod> = {
   applicant_controlled_phone: "CALL",
@@ -297,6 +313,139 @@ function udcTag(operatorId: string, note?: string): CaptureTag {
 }
 
 export const UdcDoor = {
+  /** Active shared complaint-wizard session for one logged-in operator. */
+  currentWizard(operatorId: string) {
+    const id = readKey(`${UDC_WIZARD_KEY}.${operatorId}`);
+    const session = id ? IntakeGateway.getSession(id) : undefined;
+    return session?.meta.operatorId === operatorId ? session : undefined;
+  },
+
+  resetWizard(operatorId: string) {
+    const session = UdcDoor.currentWizard(operatorId);
+    if (session && session.step !== "SUBMITTED") IntakeGateway.abandon(session.sessionId);
+    writeKey(`${UDC_WIZARD_KEY}.${operatorId}`, null);
+  },
+
+  /**
+   * Shared five-step complaint wizard adapter. Evidence is written straight to
+   * the sealed file store and only an opaque transfer status returns to the UDC UI.
+   */
+  async syncWizard(d: CitizenDraftLike, operator: UdcOperatorAccount, lang: "bn" | "en", completedStep: number): Promise<string> {
+    const key = `${UDC_WIZARD_KEY}.${operator.operatorId}`;
+    let session = UdcDoor.currentWizard(operator.operatorId);
+    if (!session || session.step === "SUBMITTED" || session.step === "ABANDONED") {
+      session = IntakeGateway.startSession({
+        channel: "UDC_ASSISTED",
+        entryPoint: `${UDC_ENTRY}/new`,
+        meta: { operatorId: operator.operatorId, centre: operator.centre, clientRef: `UDC-${Date.now()}`, lang },
+        actor: `udc:${operator.operatorId}`,
+      });
+      IntakeGateway.attestIdentity(session.sessionId, operator.operatorId, "Applicant present at UDC; identity attested by operator");
+      writeKey(key, session.sessionId);
+    }
+
+    const rep = d.actingFor === "family" || d.actingFor === "neighbor" || d.actingFor === "alleged";
+    const statedApplicantPhone = normalizePhone(rep ? d.proxyPhone : d.phone);
+    const applicantPhone = statedApplicantPhone ?? normalizePhone(d.phone);
+    const contactPhone = normalizePhone(d.phone) ?? applicantPhone;
+    const safeTime = d.contactSlot === "anytime"
+      ? "ANYTIME"
+      : d.contactSlot === "custom" && d.contactTime
+        ? bucketForTime(d.contactTime)
+        : null;
+    const tag = udcTag(operator.operatorId, rep ? `applicant assisted through ${d.actingFor}` : "applicant present at UDC");
+
+    IntakeGateway.capture(
+      session.sessionId,
+      {
+        applicant: {
+          fullName: (rep ? d.proxyName : d.name).trim() || null,
+          phone: applicantPhone,
+          phoneOwnedByApplicant: applicantPhone ? (!rep || !!statedApplicantPhone) : null,
+          district: mapLegacyDistrict(d.district ?? operator.district),
+          nidNumber: d.nidNumber?.trim() || null,
+          preferredLanguage: "bn",
+        },
+        filedBy: {
+          kind: "UDC_OPERATOR",
+          name: null,
+          phone: null,
+          relation: null,
+          operatorId: operator.operatorId,
+          centre: operator.centre,
+        },
+        matter: {
+          category: mapLegacyMatter(d.matter),
+          assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
+          summary: d.description.trim() || null,
+          opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+        },
+        urgency: {
+          selfReportedUrgent: !!d.urgent,
+          flags: d.urgent ? (d.urgencyFlags ?? []).filter((f): f is UrgencyFlag => (URGENCY_FLAGS as readonly string[]).includes(f)) : [],
+        },
+        safeContact: {
+          method: "CALL",
+          phone: contactPhone,
+          safeTime,
+          window: d.contactSlot === "custom" && d.contactDay && d.contactTime ? { day: d.contactDay, time: d.contactTime } : null,
+          smsAllowed: true,
+          voicemailAllowed: false,
+          neutralWordingRequired: true,
+          notes: d.specialInstructions.trim() || null,
+        },
+        freeServiceNoticeAcknowledged: completedStep >= 5 && d.consentOk,
+      },
+      tag,
+      { step: completedStep >= 4 ? "DOCUMENTS_ATTACHED" : completedStep >= 3 ? "DETAILS_CAPTURED" : undefined },
+    );
+
+    if (completedStep >= 4) {
+      const current = IntakeGateway.getSession(session.sessionId);
+      for (const doc of d.documents) {
+        const docId = `DOC-${doc.id}`;
+        if (current?.draft.documents.some((item) => item.docId === docId)) continue;
+        const stored = await FileStore.put(docId, doc.dataUrl, doc.mimeType || "application/octet-stream");
+        IntakeGateway.attachDocument(session.sessionId, {
+          docId,
+          type: "OTHER",
+          status: "ATTACHED",
+          fileName: doc.name,
+          mimeType: doc.mimeType || null,
+          sizeBytes: doc.size,
+          sha256: await hashDataUrl(doc.dataUrl),
+          sensitive: true,
+          qualityNote: "Sealed forward-only UDC transfer; operator preview disabled",
+          preview: stored,
+        }, tag);
+      }
+    }
+
+    if (completedStep >= 5) {
+      IntakeGateway.capture(session.sessionId, {
+        consent: {
+          dataProcessing: d.consentOk,
+          contactOnSafeChannel: d.consentOk,
+          shareWithAssignedProviders: d.consentOk,
+          method: d.consentOk ? "UDC_VERBAL_READBACK" : null,
+          readBackConfirmed: d.consentOk,
+          recordedAt: new Date().toISOString(),
+        },
+      }, tag);
+    }
+    return session.sessionId;
+  },
+
+  async submitWizard(d: CitizenDraftLike, operator: UdcOperatorAccount, lang: "bn" | "en"): Promise<SubmitResult> {
+    const sessionId = await UdcDoor.syncWizard(d, operator, lang, 5);
+    const by = `udc:${operator.operatorId}`;
+    IntakeGateway.ensureChecklist(sessionId, { source: "SYSTEM_DERIVED", method: "SYSTEM", by: "system", note: "checklist for matter" });
+    IntakeGateway.setStep(sessionId, "REVIEWED", by);
+    const result = IntakeGateway.submit(sessionId, by);
+    if (result.ok) writeKey(`${UDC_WIZARD_KEY}.${operator.operatorId}`, null);
+    return result;
+  },
+
   /** "Start intake" on /dashboard/udc/intake/new. Idempotent per temporaryId. */
   start(i: UdcStartInput): string {
     let s = IntakeGateway.findSessionByClientRef(i.temporaryId);
@@ -398,28 +547,65 @@ export const UdcDoor = {
   },
 
   /** Document captured by the UDC camera flow. */
-  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }, preview?: "STORED" | "TOO_LARGE" | "NONE") {
+  syncDocument(temporaryId: string, c: UdcCaptureLike, file?: { name: string; type: string }, preview?: "STORED" | "TOO_LARGE" | "NONE", opts?: { heldOnDevice?: string }) {
     const s = IntakeGateway.findSessionByClientRef(temporaryId);
     if (!s || s.step === "SUBMITTED") return;
     const type = CHECKLIST_TO_DOC[c.checklistItemId] ?? "OTHER";
     const quality = c.qualityFindings.map((f) => `${f.severity}: ${f.message.en}`).join("; ");
+    const held = opts?.heldOnDevice ? `Held on the UDC device — ${opts.heldOnDevice}. Uploads automatically when the connection is good.` : null;
     IntakeGateway.attachDocument(
       s.sessionId,
       {
         docId: `DOC-${c.id}`,
         type,
-        status: "ATTACHED",
+        // light mode (slow network): the record lists the document, the bytes follow on reconnect
+        status: held ? "WILL_SUBMIT_LATER" : "ATTACHED",
         fileName: file?.name ?? c.documentType.en,
         mimeType: file?.type || null,
         sizeBytes: c.bytes,
         sha256: null,
         sensitive: c.sensitivity === "restricted" || SENSITIVE_DOC_TYPES.includes(type),
-        qualityNote: quality || null,
-        preview: preview ?? "NONE",
+        qualityNote: [held, quality].filter(Boolean).join(" · ") || null,
+        preview: held ? "NONE" : preview ?? "NONE",
       },
-      udcTag(s.meta.operatorId ?? "udc"),
+      udcTag(s.meta.operatorId ?? "udc", held ? "light mode — text first, file held on device" : undefined),
     );
     IntakeGateway.setStep(s.sessionId, "DOCUMENTS_ATTACHED");
+  },
+
+  /**
+   * Light mode: a file held on the UDC device during a slow network is uploaded now.
+   * Before submission → attached to the intake session; after → attached to the application
+   * (audit "document.uploaded_after_reconnect", DOCUMENT_REVIEW task for the DLAO).
+   */
+  completeHeldUpload(temporaryId: string, c: { docId: string; checklistItemId: string; label: string; sensitive: boolean }, file: { name: string; type: string; size: number; sha256: string | null; heldAt: string; heldBecause: string }, preview: "STORED" | "TOO_LARGE" | "NONE"): "SESSION" | "APPLICATION" {
+    const type = CHECKLIST_TO_DOC[c.checklistItemId] ?? "OTHER";
+    const appId = IntakeGateway.applicationIdForClientRef(temporaryId);
+    const s = IntakeGateway.findSessionByClientRef(temporaryId);
+    const operator = s?.meta.operatorId ?? "udc";
+    const doc = { docId: c.docId, type, status: "ATTACHED" as const, fileName: file.name, mimeType: file.type || null, sizeBytes: file.size, sha256: file.sha256, sensitive: c.sensitive || SENSITIVE_DOC_TYPES.includes(type), qualityNote: null, preview };
+    if (!appId) {
+      if (!s) throw new Error("The intake for this file was not found");
+      IntakeGateway.attachDocument(s.sessionId, doc, udcTag(operator, "uploaded after reconnect (light mode)"));
+      return "SESSION";
+    }
+    mutate((db) => {
+      const a = db.applications.find((x) => x.applicationId === appId)!;
+      const t = new Date().toISOString();
+      const i = a.data.documents.findIndex((d) => d.docId === c.docId);
+      const next = { ...(i >= 0 ? a.data.documents[i] : {}), ...doc, uploadedAt: t, uploadedVia: "UDC" as const };
+      if (i >= 0) a.data.documents[i] = next;
+      else a.data.documents.push(next);
+      a.provenance[`documents.${c.docId}`] = { source: "OPERATOR_ENTERED", method: "OPERATOR_FORM", confidence: "STATED", by: `udc:${operator}`, at: t, note: "uploaded after reconnect (light mode)" };
+      db.counters.auditSeq += 1;
+      a.audit.push({ seq: db.counters.auditSeq, at: t, actor: `udc:${operator}`, role: "udc_operator", caseId: a.caseId ?? a.applicationId, action: "document.uploaded_after_reconnect", detail: { docId: c.docId, type, bytes: file.size, heldAt: file.heldAt, heldBecause: file.heldBecause, sha256: file.sha256 } });
+      const review: Task = { taskId: `TSK-${Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0")}`, type: "DOCUMENT_REVIEW", applicationId: a.applicationId, sessionId: a.channel.sessionId, assignedRole: "DLAO", office: a.routing.office, status: "OPEN", priority: a.routing.recommendedPriority, reason: `UDC uploaded ${c.label} after the connection came back — review it in step 3`, dueAt: new Date(Date.now() + 48 * 3600_000).toISOString(), createdAt: t, context: { docId: c.docId } };
+      db.tasks.push(review);
+      a.taskIds.push(review.taskId);
+      a.version += 1;
+      a.updatedAt = t;
+    });
+    return "APPLICATION";
   },
 
   /**

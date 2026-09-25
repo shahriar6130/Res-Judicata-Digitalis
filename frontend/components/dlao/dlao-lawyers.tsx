@@ -97,6 +97,7 @@ export function LawyersMonitor() {
   const unmarked = list.length - present - absent;
   const overdue = list.reduce((n, m) => n + m.overdueReports, 0);
   const summons = list.reduce((n, m) => n + m.openSummons, 0);
+  const flagged = list.filter((m) => m.redFlag).length;
   return (
     <>
       <h1 className={styles.title}>{tx("প্যানেল আইনজীবী", "Panel lawyers")}</h1>
@@ -112,6 +113,7 @@ export function LawyersMonitor() {
             [unmarked, tx("আজ দেননি", "Not marked"), unmarked ? "warn" : "neutral"],
             [overdue, tx("প্রতিবেদন দেরি", "Overdue reports"), overdue ? "err" : "neutral"],
             [summons, tx("খোলা তলব", "Open summons"), summons ? "warn" : "neutral"],
+            [flagged, tx("লাল পতাকা", "Red-flagged"), flagged ? "err" : "neutral"],
           ] as [number, string, Tone][]
         ).map(([n, l, tone]) => (
           <div key={l} className={styles.stat} style={tone === "err" ? { borderColor: "var(--red)" } : tone === "warn" ? { borderColor: "var(--status-pending)" } : undefined}>
@@ -154,6 +156,13 @@ export function LawyersMonitor() {
                       <div className={styles.hint}>
                         {m.l.barEnrolmentNo} · {m.l.practiceAreas.map((c) => label(MATTERS, c, lang)).join(", ") || "—"}
                       </div>
+                      {m.redFlag ? (
+                        <Tag tone="err" title={tx(`${m.redFlag.declines.length}টি প্রস্তাব প্রত্যাখ্যান`, `${m.redFlag.declines.length} offers declined`)}>
+                          🚩 {tx("লাল পতাকা", "Red flag")}
+                        </Tag>
+                      ) : m.declines >= m.declineLimit - 2 && m.declines > 0 ? (
+                        <Tag tone="warn">{tx(`প্রত্যাখ্যান ${m.declines}/${m.declineLimit}`, `Declined ${m.declines}/${m.declineLimit}`)}</Tag>
+                      ) : null}
                       {m.openSummons ? <Tag tone="warn">{tx("তলব খোলা", "Summoned")}</Tag> : null}
                       {m.pendingOffers ? <Tag>{tx(`${m.pendingOffers} প্রস্তাব`, `${m.pendingOffers} offer(s)`)}</Tag> : null}
                     </td>
@@ -244,6 +253,8 @@ export function LawyerDetail({ id }: { id: string }) {
             {m.l.name}
           </span>
           <TodayTag s={m.todayStatus} />
+          {m.redFlag ? <Tag tone="err">🚩 {tx("লাল পতাকা", "Red flag")}</Tag> : null}
+          <Tag tone={m.redFlag ? "err" : m.declines >= m.declineLimit - 2 && m.declines > 0 ? "warn" : "neutral"}>{tx(`প্রত্যাখ্যাত প্রস্তাব ${m.declines}/${m.declineLimit}`, `Declined offers ${m.declines}/${m.declineLimit}`)}</Tag>
           {m.overdueReports ? <Tag tone="err">{tx(`${m.overdueReports} প্রতিবেদন দেরি`, `${m.overdueReports} overdue report(s)`)}</Tag> : null}
           {m.missed90 >= rules.missedHearingsBeforeReassign ? <Tag tone="err">{tx(`${m.missed90} শুনানি মিস`, `${m.missed90} missed hearings`)}</Tag> : null}
         </div>
@@ -265,6 +276,8 @@ export function LawyerDetail({ id }: { id: string }) {
           {msg.text}
         </Banner>
       ) : null}
+
+      {m.redFlag ? <RedFlagPanel m={m} run={run} /> : null}
 
       <div className={styles.stats}>
         <div className={styles.stat}>
@@ -365,6 +378,51 @@ export function LawyerDetail({ id }: { id: string }) {
 }
 
 type RunFn = (fn: () => void, ok: string) => void;
+
+/** Active red flag: the declined offers with the lawyer's reasons, and the officer's review → clear. */
+function RedFlagPanel({ m, run }: { m: MonitoredLawyer; run: RunFn }) {
+  const { lang, tx } = useTx();
+  const [note, setNote] = useState("");
+  const f = m.redFlag!;
+  return (
+    <section className={ui.panel} style={{ borderColor: "var(--red)", marginBottom: "var(--s-5)" }}>
+      <div className={ui.panelTitle}>
+        <span style={{ color: "var(--red)" }}>
+          🚩 {tx(`লাল পতাকা — ${f.declines.length}টি মামলার প্রস্তাব প্রত্যাখ্যান (সীমা ${f.threshold})`, `Red flag — declined ${f.declines.length} case offers (limit ${f.threshold})`)}
+        </span>
+        <span className={styles.hint}>{formatDateTime(f.raisedAt, lang)}</span>
+      </div>
+      <p className={styles.hint} style={{ marginTop: 0 }}>
+        {tx("পরামর্শমূলক: আইনজীবী প্যানেলে থাকবেন; ইঞ্জিন তাকে তালিকার শেষে রাখবে যতক্ষণ না আপনি পর্যালোচনা করে পতাকা তুলে নেন।", "Advisory: the lawyer stays on the panel; the engine lists them after other lawyers until you review and clear the flag.")}
+      </p>
+      <ol style={{ margin: "0 0 12px", paddingLeft: 20 }}>
+        {f.declines.map((d) => (
+          <li key={d.assignmentId} style={{ marginBottom: 4 }}>
+            <a href={`#app/${d.applicationId}`}>{d.caseId ?? d.applicationId}</a> · {formatDateTime(d.at, lang)} — <em>{d.reason ?? "—"}</em>
+          </li>
+        ))}
+      </ol>
+      <label className={styles.field}>
+        <span className={styles.label}>{tx("পর্যালোচনার নোট (কমপক্ষে ১০ অক্ষর)", "Review note (at least 10 characters)")}</span>
+        <textarea className={styles.textarea} style={{ minHeight: 60 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder={tx("যেমন: ফোনে কথা হয়েছে, কারণগুলো যুক্তিসঙ্গত", "e.g. Spoke by phone — reasons were valid (conflicts / court clashes)")} />
+      </label>
+      <div className={styles.actions} style={{ marginTop: 10 }}>
+        <Button
+          variant="secondary"
+          disabled={note.trim().length < 10}
+          onClick={() =>
+            run(() => {
+              DlaoLawyerMonitor.clearRedFlag(m.l.lawyerId, note);
+              setNote("");
+            }, tx("লাল পতাকা তুলে নেওয়া হয়েছে; নতুন প্রত্যাখ্যান এখন থেকে গোনা হবে।", "Red flag cleared — new declines count from now."))
+          }
+        >
+          {tx("পর্যালোচনা করে পতাকা তুলুন", "Reviewed — clear flag")}
+        </Button>
+      </div>
+    </section>
+  );
+}
 type CaseOpt = { applicationId: string; caseId: string | null };
 
 function CaseSelect({ value, onChange, cases }: { value: string; onChange: (v: string) => void; cases: CaseOpt[] }) {

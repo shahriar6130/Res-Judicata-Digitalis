@@ -1,0 +1,264 @@
+"use client";
+
+/* ------------------------------------------------------------------ *
+ *  /demo/mediation — END-TO-END MEDIATION DEMO (Feature 12).
+ *
+ *  Two fictional cases, each moved one real step at a time by the role
+ *  that owns it (lib/dlas/mediation-demo.ts). Human steps show the
+ *  reason that will be recorded and wait for a click; the timeline on
+ *  the right is read from the shared record, so a step done in the real
+ *  screen shows up here too.
+ * ------------------------------------------------------------------ */
+
+import { useState, type CSSProperties } from "react";
+import { useI18n } from "@/lib/i18n";
+import { LanguageToggle } from "@/components/language-toggle";
+import {
+  DEMO_CASES,
+  DEMO_CAST,
+  DEMO_STEPS,
+  demoCases,
+  mediationLifecycle,
+  runDemoStep,
+  signInForDemo,
+  useDlasDb,
+  type DemoCaseKey,
+  type LifecycleLane,
+} from "@/lib/dlas";
+import { CheckpointBadge, LANE, MediationLifecycleView } from "./lifecycle-timeline";
+import css from "./lifecycle.module.css";
+
+type Lang = "bn" | "en";
+
+const ROLES: { lane: LifecycleLane; bn: string; en: string; textBn: string; textEn: string }[] = [
+  { lane: "SYSTEM", bn: "প্রযুক্তি", en: "Technology", textBn: "কাজের ঝামেলা সামলায়: যাচাই, রাউটিং, যোগ্যতা ফিল্টার, SMS, সময়সীমা, অডিট। সিদ্ধান্ত নেয় না।", textEn: "Handles the operational friction: checks, routing, eligibility filters, SMS, deadlines, audit. Decides nothing." },
+  { lane: "MEDIATOR", bn: "মধ্যস্থতাকারী", en: "Mediator", textBn: "মধ্যস্থতা পরিচালনা করেন — সেশন, একান্ত আলোচনা, পক্ষদের সম্মত শর্ত।", textEn: "Conducts the mediation — sessions, private caucus, the terms the parties agree." },
+  { lane: "OFFICER", bn: "লিগ্যাল এইড অফিসার", en: "Legal Aid Officer", textBn: "আইনি ও প্রশাসনিক সিদ্ধান্ত নেন: যোগ্যতা, পথ, নিয়োগ, রেফারেল।", textEn: "Makes the legal and administrative decisions: eligibility, pathway, assignment, referral." },
+  { lane: "CLO", bn: "চিফ লিগ্যাল এইড অফিসার", en: "CLO", textBn: "নিষ্পত্তি চুক্তি প্রত্যয়ন ও জেলার তত্ত্বাবধান।", textEn: "Certifies settlement agreements and oversees the district." },
+  { lane: "LAWYER", bn: "প্যানেল আইনজীবী", en: "Panel lawyer", textBn: "কেস প্রতিনিধিত্ব / মামলায় গেলে দায়িত্ব নেন।", textEn: "Takes over when the case moves to representation / litigation." },
+  { lane: "DBLA", bn: "DBLA", en: "DBLA", textBn: "উচ্চতর পর্যবেক্ষণ ও তত্ত্বাবধান — সব জেলা, শুধু দেখা।", textEn: "Higher-level monitoring and oversight — all districts, read-only." },
+];
+
+const LANE_ROLE: Partial<Record<LifecycleLane, "CITIZEN" | "OFFICER" | "MEDIATOR" | "CLO" | "LAWYER">> = { CITIZEN: "CITIZEN", SYSTEM: "OFFICER", OFFICER: "OFFICER", MEDIATOR: "MEDIATOR", PARTY: "MEDIATOR", CLO: "CLO", LAWYER: "LAWYER" };
+
+export function MediationDemo() {
+  const { lang } = useI18n();
+  const L = lang as Lang;
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const db = useDlasDb();
+  const [k, setK] = useState<DemoCaseKey>("A");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  const cases = demoCases(db);
+  const a = cases[k];
+  const spec = DEMO_CASES[k];
+  const lc = a ? mediationLifecycle(a, db.tasks, spec.branch) : null;
+  const stage = lc ? lc.current : null;
+  const stageKey = a ? stage?.key ?? null : "submitted";
+  const step = stageKey ? DEMO_STEPS[stageKey] : undefined;
+  const human = stage ? ["OFFICER", "CLO"].includes(stage.lane) || stage.key === "settlement" || stage.key === "failed" : false;
+  const noteKey = `${k}:${a?.applicationId ?? "new"}:${stageKey}`;
+  const note = notes[noteKey] ?? step?.note ?? "";
+
+  async function run(newRun = false) {
+    setBusy(true);
+    setError("");
+    setDone("");
+    try {
+      const s = await runDemoStep(k, human && !newRun ? note : undefined, newRun);
+      setDone(`✓ ${DEMO_STEPS[s]?.action[L] ?? s}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openAs(href: string, lane: LifecycleLane) {
+    setError("");
+    try {
+      if (lane === "DBLA") {
+        window.location.href = href;
+        return;
+      }
+      const role = LANE_ROLE[lane] ?? "OFFICER";
+      await signInForDemo(role, k);
+      window.location.href = href;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  const laneCount = (lane: LifecycleLane) => (lc ? lc.stages.filter((s) => s.lane === lane) : []);
+
+  return (
+    <main className={css.page}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
+        <div>
+          <p className={css.kicker}>{tx("সাক্ষ্য · শুরু থেকে শেষ ডেমো", "SHAKKHO · END-TO-END DEMO")}</p>
+          <h1 className={css.h1}>{tx("প্রযুক্তি-সহায়িত, মানুষ-নিয়ন্ত্রিত মধ্যস্থতা", "Technology-assisted, human-controlled mediation")}</h1>
+        </div>
+        <LanguageToggle />
+      </div>
+      <p className={css.lead}>
+        {tx(
+          "দুটি কাল্পনিক কেস আসল সেবার মধ্য দিয়ে এক ধাপ করে এগোয় — প্রতিটি ধাপ করেন সেই ভূমিকা যার দায়িত্ব। মানুষের সিদ্ধান্তের ধাপে কারণ দেখানো হয় এবং আপনার ক্লিকের অপেক্ষা থাকে। শুধু SMS, OTP ও স্বাক্ষর সিমুলেটেড।",
+          "Two fictional cases move through the real services one step at a time — each step done by the role that owns it. Human decision steps show the reason that will be recorded and wait for your click. Only SMS, OTP delivery and signatures are simulated.",
+        )}
+      </p>
+
+      <div className={css.roles}>
+        {ROLES.map((r) => {
+          const mine = laneCount(r.lane);
+          return (
+            <div key={r.lane} className={css.role} style={{ "--lane": LANE[r.lane].color } as CSSProperties}>
+              <div className={css.roleName} style={{ color: LANE[r.lane].color }}>
+                {L === "bn" ? r.bn : r.en}
+              </div>
+              <div className={css.roleText}>{L === "bn" ? r.textBn : r.textEn}</div>
+              {lc && r.lane !== "DBLA" ? (
+                <div className={css.roleCount}>
+                  {mine.filter((s) => s.state === "DONE").length}/{mine.length} {tx("ধাপ", "steps")}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={css.tabs} role="tablist">
+        {(["A", "B"] as DemoCaseKey[]).map((key) => {
+          const c = cases[key];
+          const l = c ? mediationLifecycle(c, db.tasks, DEMO_CASES[key].branch) : null;
+          return (
+            <button key={key} type="button" role="tab" aria-selected={k === key} className={`${css.tab} ${k === key ? css.tabOn : ""}`} onClick={() => { setK(key); setError(""); setDone(""); }}>
+              <span className={css.tabTitle}>{DEMO_CASES[key].title[L]}</span>
+              <span className={css.tabSub}>
+                {!c ? tx("শুরু হয়নি", "not started") : l?.complete ? tx("✓ সম্পন্ন", "✓ complete") : `${l?.stages.filter((s) => s.state === "DONE").length}/${l?.stages.length} ${tx("ধাপ", "stages")}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className={css.split}>
+        <div>
+          <div className={css.caseHead}>
+            <span>{spec.story[L]}</span>
+          </div>
+          <div className={css.caseHead}>
+            <span>
+              {tx("আবেদনকারী", "Applicant")}: <strong>{DEMO_CAST[k].name}</strong>
+            </span>
+            <span>
+              {tx("প্রতিপক্ষ", "Respondent")}: {DEMO_CAST[k].respondent}
+            </span>
+            {a ? <span className={css.mono}>{a.caseId ?? a.applicationId}</span> : null}
+            {a?.caseId ? <span className={`${css.mono} ${css.muted}`}>{a.applicationId}</span> : null}
+          </div>
+
+          {/* NEXT STEP */}
+          <section className={css.next} aria-live="polite">
+            {!a || stage ? (
+              <>
+                <div className={css.nextHead}>
+                  <span className={css.kicker} style={{ margin: 0 }}>
+                    {tx("পরবর্তী ধাপ", "NEXT STEP")}
+                  </span>
+                  {stage ? <CheckpointBadge c={stage.checkpoint} /> : <CheckpointBadge c="CITIZEN_ACTION" />}
+                </div>
+                <div className={css.nextTitle}>{stage ? stage.title[L] : tx("নাগরিক আবেদন জমা দেন", "Citizen submits the application")}</div>
+                {stage ? <div className={`${css.small} ${css.muted}`}>{stage.purpose[L]}</div> : null}
+                {step ? (
+                  <div className={css.small}>
+                    <strong style={{ color: LANE[stage?.lane ?? "CITIZEN"].color }}>{step.actor}</strong> — {step.action[L]}
+                  </div>
+                ) : stage ? (
+                  <div className={`${css.small} ${css.muted}`}>{tx("এই ধাপ আগের ধাপ শেষ হলে নিজে থেকেই সম্পন্ন হয়।", "This stage completes on its own when the previous step is done.")}</div>
+                ) : null}
+                {human && step?.note !== undefined ? (
+                  <label className={css.small}>
+                    <strong>{tx("যে কারণ রেকর্ড হবে (আপনি বদলাতে পারেন):", "Reason that will be recorded (you can edit it):")}</strong>
+                    <textarea className={css.note} value={note} onChange={(e) => setNotes({ ...notes, [noteKey]: e.target.value })} />
+                  </label>
+                ) : null}
+                <div className={css.row}>
+                  {step ? (
+                    <button type="button" className={css.btn} disabled={busy} onClick={() => run(false)}>
+                      {busy ? tx("চলছে…", "Working…") : human ? `${tx("মানুষ হিসেবে সিদ্ধান্ত দিন", "Decide as")} ${step.actor} →` : `${tx("চালান", "Run")}: ${step.actor} →`}
+                    </button>
+                  ) : null}
+                  {stage && stage.state !== "UPCOMING" && stage.lane !== "SYSTEM" ? (
+                    <button type="button" className={`${css.btn} ${css.btnGhost}`} onClick={() => openAs(stage.href, stage.lane)}>
+                      {tx("বরং আসল স্ক্রিনে করুন", "Do it in the real screen instead")} ({LANE[stage.lane][L]}) ↗
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={css.nextHead}>
+                  <span className={css.kicker} style={{ margin: 0 }}>
+                    {tx("কেস সম্পন্ন", "CASE COMPLETE")}
+                  </span>
+                  <CheckpointBadge c="COMPLETED" />
+                </div>
+                <div className={css.nextTitle}>{k === "A" ? tx("নিষ্পন্ন, প্রত্যয়িত ও ফলো-আপ সম্পন্ন", "Resolved, certified and followed up") : tx("প্যানেল আইনজীবী প্রতিনিধিত্ব শুরু করেছেন", "The panel lawyer has taken over the representation")}</div>
+                <div className={css.row}>
+                  <a className={`${css.btn} ${css.btnGhost}`} href="#timeline">
+                    {tx("সময়রেখা দেখুন", "Read the timeline")}
+                  </a>
+                  <button type="button" className={`${css.btn} ${css.btnGhost}`} onClick={() => openAs(`/dashboard/dlo#app/${encodeURIComponent(a.applicationId)}`, "OFFICER")}>
+                    {tx("পূর্ণ অডিট ট্রেইল ↗", "Full audit trail ↗")}
+                  </button>
+                  <button type="button" className={`${css.btn} ${css.btnGhost}`} disabled={busy} onClick={() => run(true)}>
+                    {tx("নতুন রান শুরু করুন", "Start a new run")}
+                  </button>
+                </div>
+              </>
+            )}
+            {error ? (
+              <div className={css.err} role="alert">
+                ⚠ {error}
+              </div>
+            ) : null}
+            {done ? <div className={css.okMsg}>{done}</div> : null}
+            <div className={`${css.small} ${css.muted}`}>
+              {tx(
+                "প্রতিটি ধাপ আসল সেবা দিয়ে ডেমো অ্যাকাউন্ট হিসেবে চলে, তারপর আপনার আগের সাইন-ইন ফিরিয়ে দেওয়া হয়। 'আসল স্ক্রিন' বোতাম আপনাকে ওই ডেমো ভূমিকায় সাইন-ইন করায়।",
+                "Each step runs through the real service as the demo account, then your previous sign-in is restored. 'Real screen' buttons sign you in as that demo role.",
+              )}
+            </div>
+          </section>
+
+          {a && lc ? (
+            <div className={css.small}>
+              <p className={css.kicker}>{tx("মানবিক চেকপয়েন্ট", "HUMAN CHECKPOINTS IN THIS CASE")}</p>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {lc.stages
+                  .filter((s) => ["OFFICER", "CLO"].includes(s.lane))
+                  .map((s) => (
+                    <li key={s.key} style={{ marginBottom: 4 }}>
+                      <CheckpointBadge c={s.checkpoint} /> {s.title[L]}
+                      {s.by ? <span className={css.muted}> — {s.by.name || s.by.role}</span> : null}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+
+        <div id="timeline">
+          {a ? (
+            <MediationLifecycleView a={a} expected={spec.branch} onOpen={openAs} />
+          ) : (
+            <p className={css.muted}>{tx("‘চালান’ চাপলে নাগরিক আবেদন জমা দেবেন এবং সময়রেখা এখানে শুরু হবে।", "Press Run and the citizen files the application — the timeline starts here.")}</p>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}

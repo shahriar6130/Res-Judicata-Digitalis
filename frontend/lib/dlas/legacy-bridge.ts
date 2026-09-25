@@ -79,6 +79,8 @@ const LEGACY_MATTER: Record<string, MatterCategory> = {
   civil: "CIVIL_MONEY",
   violence: "VIOLENCE",
   cyber: "CYBER_HARASSMENT",
+  sexual_harassment: "SEXUAL_HARASSMENT",
+  security: "SECURITY",
 };
 
 export function mapLegacyMatter(v: unknown): MatterCategory | null {

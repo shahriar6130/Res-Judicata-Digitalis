@@ -43,6 +43,7 @@ import {
   type ValidationResult,
 } from "./schema";
 import { validateApplication } from "./validate";
+import { classifyIncident } from "./incident-taxonomy";
 import { normalizePhone, officeFor, REQUIRED_DOCS } from "./reference";
 import { legacyIdTaken, mirrorToLegacyStore } from "./legacy-bridge";
 
@@ -471,7 +472,15 @@ export const IntakeGateway = {
       // Advisory routing — a recommendation, never a decision.
       const reasons: string[] = [];
       let priority: "NORMAL" | "HIGH" | "URGENT" = "NORMAL";
-      if (d.urgency.flags.includes("IMMEDIATE_DANGER") || d.urgency.flags.includes("DETENTION")) {
+      // Rule-based incident category from the applicant's own words (no question to the citizen).
+      const incident = classifyIncident({ matter: d.matter.category, summary: d.matter.summary }, now());
+      if (incident.red) {
+        priority = "URGENT";
+        reasons.push(`RED FLAG (rule): ${incident.rule}`);
+      }
+      if (priority === "URGENT") {
+        /* already urgent by rule */
+      } else if (d.urgency.flags.includes("IMMEDIATE_DANGER") || d.urgency.flags.includes("DETENTION")) {
         priority = "URGENT";
         reasons.push("Applicant reports immediate danger / detention");
       } else if (d.urgency.flags.length || d.urgency.selfReportedUrgent) {
@@ -515,6 +524,12 @@ export const IntakeGateway = {
         audit: [],
         review: null,
         lawyer: null,
+        staffCheck: null,
+        pathwayClassification: null,
+        incident,
+        mediation: null,
+        aiTriage: s.aiTriage ?? [],
+        agentHandoff: s.agentHandoff ?? null,
         closedAt: null,
         version: 1,
         createdAt: s.createdAt,
@@ -530,6 +545,7 @@ export const IntakeGateway = {
         action: "application.submitted",
         detail: { applicationId, channel: s.channel, sessionId: s.sessionId, valid: validation.valid },
       });
+      audit(db, record.audit, { actor: "system", role: "system", action: incident.red ? "incident.red_flagged" : "incident.classified", detail: { category: incident.category, subcategory: incident.subcategory, rule: incident.rule, keywords: incident.matched.map((m) => m.keyword), rulesVersion: incident.rulesVersion } });
 
       // ---- workflow tasks (humans decide) ----
       const mkTask = (type: TaskType, reason: string, hours: number, p: Task["priority"], role: Task["assignedRole"] = "DLAO"): Task => ({

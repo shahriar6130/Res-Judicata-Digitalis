@@ -45,7 +45,7 @@ import {
 } from "@/lib/intake-store";
 import styles from "./assisted-intake.module.css";
 import Link from "next/link";
-import { CitizenAuth, CitizenDoor, DAYS, DISTRICTS, normalizePhone, useDlasDb } from "@/lib/dlas";
+import { CitizenAuth, CitizenDoor, DAYS, DISTRICTS, normalizePhone, UdcAuth, UdcDoor, useDlasDb } from "@/lib/dlas";
 
 /* ------------------------------------------------------------------ *
  *  Assisted Intake — 5-step wizard for starting a new case.
@@ -86,6 +86,8 @@ const MATTER_KEYS: readonly MatterCategory[] = [
   "land",
   "civil",
   "criminal",
+  "sexual_harassment",
+  "security",
   "labour",
   "other",
 ];
@@ -98,6 +100,8 @@ function matterTitleKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
     case "land": return "intakeMatterLand";
     case "civil": return "intakeMatterCivil";
     case "criminal": return "intakeMatterCriminal";
+    case "sexual_harassment": return "intakeMatterSexualHarassment";
+    case "security": return "intakeMatterSecurity";
     case "labour": return "intakeMatterLabour";
     case "other": return "intakeMatterOther";
   }
@@ -109,6 +113,8 @@ function matterEyebrowKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
     case "land": return "intakeMatterLandEyebrow";
     case "civil": return "intakeMatterCivilEyebrow";
     case "criminal": return "intakeMatterCriminalEyebrow";
+    case "sexual_harassment": return "intakeMatterSexualHarassmentEyebrow";
+    case "security": return "intakeMatterSecurityEyebrow";
     case "labour": return "intakeMatterLabourEyebrow";
     case "other": return "intakeMatterOtherEyebrow";
   }
@@ -120,6 +126,8 @@ function matterSubKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
     case "land": return "intakeMatterLandSub";
     case "civil": return "intakeMatterCivilSub";
     case "criminal": return "intakeMatterCriminalSub";
+    case "sexual_harassment": return "intakeMatterSexualHarassmentSub";
+    case "security": return "intakeMatterSecuritySub";
     case "labour": return "intakeMatterLabourSub";
     case "other": return "intakeMatterOtherSub";
   }
@@ -222,8 +230,10 @@ function VoiceStatusRow({ status }: { status: VoiceStatus }) {
  *  Top-level wizard. Mounted by CitizenDashboard inside #intake.
  * ------------------------------------------------------------------ */
 
-export function AssistedIntake() {
+export function AssistedIntake({ mode = "citizen" }: { mode?: "citizen" | "udc" }) {
   const { lang, t } = useI18n();
+  const udcOperator = typeof window !== "undefined" && mode === "udc" ? UdcAuth.current() : undefined;
+  const storageScope = mode === "udc" ? `udc-${udcOperator?.operatorId ?? "unknown"}` : undefined;
 
   const [step, setStep] = useState<Step>(1);
   /* Lazy initializers let us read from `localStorage` during render
@@ -231,10 +241,15 @@ export function AssistedIntake() {
      rule the project enforces. After mount we still listen for
      online/offline transitions and refresh the queue count. */
   const [draft, setDraft] = useState<IntakeDraft>(() => {
-    const d = loadDraft() ?? emptyDraft();
+    const d = loadDraft(storageScope) ?? emptyDraft();
     // The filer is the logged-in account: name + phone always come from it.
     // A draft saved by another account (or by the old demo voice samples)
     // is discarded rather than shown.
+    if (mode === "udc") {
+      if (!udcOperator) return d;
+      const base = d.ownerId === udcOperator.operatorId ? d : emptyDraft();
+      return { ...base, ownerId: udcOperator.operatorId, district: base.district || udcOperator.district };
+    }
     const acct = typeof window !== "undefined" ? CitizenAuth.current() : undefined;
     if (!acct) return d;
     const base = d.ownerId === acct.citizenId ? d : emptyDraft();
@@ -245,10 +260,10 @@ export function AssistedIntake() {
   const [storageFull, setStorageFull] = useState<boolean>(() => {
     // Probe save quota once at mount so the banner can surface it.
     if (typeof window === "undefined") return false;
-    return !saveDraft(loadDraft() ?? emptyDraft());
+    return !saveDraft(loadDraft(storageScope) ?? emptyDraft(), storageScope);
   });
   const [online, setOnline] = useState<boolean>(() => isOnline());
-  const [pendingCount, setPendingCount] = useState<number>(() => loadPending().length);
+  const [pendingCount, setPendingCount] = useState<number>(() => loadPending(storageScope).length);
 
   /* ------------------------------------------------------------- *
    *  Hydrate from `localStorage` on mount and listen for changes
@@ -259,7 +274,7 @@ export function AssistedIntake() {
     function onOnline() {
       setOnline(true);
       // Best-effort flush — see `lib/intake-store.ts` for the contract.
-      syncPending()
+      syncPending(storageScope)
         .then(({ remaining }) => {
           setPendingCount(remaining);
         })
@@ -276,7 +291,7 @@ export function AssistedIntake() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, []);
+  }, [storageScope]);
 
   /* Persist after every draft change. We update `saveDraft` only when
      the field set actually changed to avoid hammering localStorage on
@@ -287,9 +302,9 @@ export function AssistedIntake() {
     const json = JSON.stringify(draft);
     if (json === lastSavedJsonRef.current) return;
     lastSavedJsonRef.current = json;
-    const ok = saveDraft(draft);
+    const ok = saveDraft(draft, storageScope);
     setStorageFull(!ok);
-  }, [draft, submittedRef]);
+  }, [draft, storageScope, submittedRef]);
 
   /* ------------------------------------------------------------- *
    *  Voice for description (Step 3). Reuses the mock STT from the
@@ -322,32 +337,37 @@ export function AssistedIntake() {
   // Shared-record requirements (same for every door): verified phone + district
   // on step 1, a safe contact time on step 5. See lib/dlas/validate.ts.
   const dlasDb = useDlasDb();
-  const citizenSession = CitizenDoor.current();
+  const citizenSession = mode === "citizen" ? CitizenDoor.current() : undefined;
   void dlasDb;
-  const phoneVerified =
-    !!citizenSession?.identity.verified &&
-    citizenSession.identity.phone === normalizePhone(draft.phone);
+  const phoneVerified = mode === "udc"
+    ? !!normalizePhone(draft.phone)
+    : !!citizenSession?.identity.verified && citizenSession.identity.phone === normalizePhone(draft.phone);
   const extraErrors = useMemo(() => {
     const e: string[] = [];
     if (step === 1 && !draft.district) e.push(lang === "bn" ? "জেলা বাছাই করুন" : "Choose your district");
     if (step === 1 && draft.nidNumber && ![10, 13, 17].includes(draft.nidNumber.replace(/\D/g, "").length))
       e.push(lang === "bn" ? "এনআইডি নম্বর ১০, ১৩ বা ১৭ সংখ্যার হতে হবে" : "NID number must have 10, 13 or 17 digits");
-    if (step === 1 && !phoneVerified) e.push(lang === "bn" ? "মোবাইল নম্বরটি কোড দিয়ে যাচাই করুন" : "Verify your mobile number with the code");
+    if (step === 1 && !phoneVerified) e.push(
+      mode === "udc"
+        ? (lang === "bn" ? "সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (01…)" : "Enter a valid 11-digit mobile number (01…)")
+        : (lang === "bn" ? "মোবাইল নম্বরটি কোড দিয়ে যাচাই করুন" : "Verify your mobile number with the code"),
+    );
     if (step === 5 && !draft.contactSlot) e.push(lang === "bn" ? "নিরাপদ যোগাযোগের সময় বাছাই করুন" : "Choose a safe contact time");
     if (step === 5 && draft.contactSlot === "custom" && (!draft.contactDay || !draft.contactTime))
       e.push(lang === "bn" ? "যোগাযোগের দিন ও সময় লিখুন" : "Enter the contact day and time");
     return e;
-  }, [step, draft.district, draft.nidNumber, draft.contactSlot, draft.contactDay, draft.contactTime, phoneVerified, lang]);
+  }, [step, draft.district, draft.nidNumber, draft.contactSlot, draft.contactDay, draft.contactTime, phoneVerified, lang, mode]);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const allValid = Object.keys(errors).length === 0 && extraErrors.length === 0;
 
   /* ------------------------------------------------------------- *
    *  Navigation handlers.
    * ------------------------------------------------------------- */
-  function handleNext() {
+  async function handleNext() {
     if (!allValid) return;
     try {
-      CitizenDoor.sync(draft, draft.district, step);
+      if (mode === "udc" && udcOperator) await UdcDoor.syncWizard(draft, udcOperator, lang, step);
+      else CitizenDoor.sync(draft, draft.district, step);
     } catch {
       /* storage failure is surfaced on submit */
     }
@@ -368,7 +388,9 @@ export function AssistedIntake() {
     // writes provenance + audit and opens the DLAO review task.
     let receipt = makeTempReceipt();
     try {
-      const r = await CitizenDoor.submit(draft, draft.district);
+      const r = mode === "udc" && udcOperator
+        ? await UdcDoor.submitWizard(draft, udcOperator, lang)
+        : await CitizenDoor.submit(draft, draft.district);
       if (!r.ok) {
         setSubmitErrors(r.validation.errors.map((e) => `${e.path} — ${e.message}`));
         return;
@@ -385,14 +407,14 @@ export function AssistedIntake() {
       draft,
       createdAtIso: new Date().toISOString(),
       lang,
-    });
+    }, storageScope);
     setPendingCount(queue.length);
     setSubmittedOffline(!wasOnline);
     setSubmittedRef(receipt);
-    clearDraft();
+    clearDraft(storageScope);
     if (wasOnline) {
       // Best-effort flush right away.
-      syncPending()
+      syncPending(storageScope)
         .then(({ remaining }) => setPendingCount(remaining))
         .catch(() => {
           /* leave in queue */
@@ -402,12 +424,17 @@ export function AssistedIntake() {
 
   function handleReset() {
     setStep(1);
-    const acct = CitizenAuth.current();
-    setDraft(acct ? { ...emptyDraft(), ownerId: acct.citizenId, name: acct.name, phone: acct.phone } : emptyDraft());
+    if (mode === "udc" && udcOperator) {
+      UdcDoor.resetWizard(udcOperator.operatorId);
+      setDraft({ ...emptyDraft(), ownerId: udcOperator.operatorId, district: udcOperator.district });
+    } else {
+      const acct = CitizenAuth.current();
+      setDraft(acct ? { ...emptyDraft(), ownerId: acct.citizenId, name: acct.name, phone: acct.phone } : emptyDraft());
+    }
     setSubmittedRef(null);
     setSubmittedOffline(false);
     setStorageFull(false);
-    setPendingCount(loadPending().length);
+    setPendingCount(loadPending(storageScope).length);
   }
 
   /* ------------------------------------------------------------- *
@@ -420,6 +447,7 @@ export function AssistedIntake() {
         refNumber={submittedRef}
         offline={submittedOffline}
         onAnother={handleReset}
+        allowDebug={mode !== "udc"}
       />
     );
   }
@@ -452,12 +480,20 @@ export function AssistedIntake() {
                 onChange={setField}
                 errors={errors}
               />
-              <CitizenIdentityCheck
-                draft={draft}
-                onDistrict={(v) => setField("district", v)}
-                onNid={(v) => setField("nidNumber", v)}
-                verified={phoneVerified}
-              />
+              {mode === "udc" ? (
+                <UdcIdentityCheck
+                  draft={draft}
+                  onDistrict={(v) => setField("district", v)}
+                  onNid={(v) => setField("nidNumber", v)}
+                />
+              ) : (
+                <CitizenIdentityCheck
+                  draft={draft}
+                  onDistrict={(v) => setField("district", v)}
+                  onNid={(v) => setField("nidNumber", v)}
+                  verified={phoneVerified}
+                />
+              )}
             </>
           ) : null}
 
@@ -482,6 +518,7 @@ export function AssistedIntake() {
           {step === 4 ? (
             <Step4Documents
               draft={draft}
+              forwardOnly={mode === "udc"}
               onAdd={(doc) =>
                 setField("documents", [...draft.documents, doc])
               }
@@ -500,7 +537,7 @@ export function AssistedIntake() {
               onChange={setField}
               errors={errors}
               applicantLabel={
-                draft.actingFor === "family" && draft.proxyName
+                draft.actingFor !== "self" && draft.proxyName
                   ? draft.proxyName
                   : draft.name
               }
@@ -524,7 +561,7 @@ export function AssistedIntake() {
         </form>
 
         <aside className={styles.aside}>
-          <SidePreview draft={draft} />
+          <SidePreview draft={draft} forwardOnly={mode === "udc"} />
           <HowItWorks />
         </aside>
       </div>
@@ -666,6 +703,7 @@ function Step1Identity({
     { key: "self", titleKey: "actingSelfTitle", icon: <User size={18} /> },
     { key: "family", titleKey: "actingFamilyTitle", icon: <Users size={18} /> },
     { key: "neighbor", titleKey: "actingNeighborTitle", icon: <HelpingHand size={18} /> },
+    { key: "alleged", titleKey: "actingAllegedTitle", icon: <Shield size={18} /> },
   ];
 
   return (
@@ -764,7 +802,7 @@ function Step1Identity({
         </span>
       ) : null}
 
-      {draft.actingFor === "family" || draft.actingFor === "neighbor" ? (
+      {draft.actingFor === "family" || draft.actingFor === "neighbor" || draft.actingFor === "alleged" ? (
         <div className={styles.proxyDisclosure}>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>{t("proxyRelLabel")}</span>
@@ -962,7 +1000,25 @@ function Step3Parties({
           ) : null}
         </label>
       </div>
+
+      <SafetyNote />
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  No "Is this urgent?" question any more: urgency is decided by fixed
+ *  rules from the matter type and the description (lib/dlas/incident-
+ *  taxonomy.ts) and red cases are flagged for the officer. The citizen
+ *  only gets the emergency advice.
+ * ------------------------------------------------------------------ */
+
+function SafetyNote() {
+  const { lang } = useI18n();
+  return (
+    <p style={{ fontSize: "0.85rem", opacity: 0.8, margin: "12px 0 0" }}>
+      {lang === "bn" ? "আপনার বর্ণনা থেকেই অফিস বুঝে নেয় কোন কেস জরুরি — আলাদা করে কিছু বলতে হবে না। জীবন-ঝুঁকিতে এখনই ৯৯৯-এ ফোন করুন।" : "The office works out from your description which cases are urgent — you do not need to mark anything. If a life is at risk, call 999 now."}
+    </p>
   );
 }
 
@@ -980,12 +1036,14 @@ function Step4Documents({
   draft,
   onAdd,
   onRemove,
+  forwardOnly = false,
 }: {
   draft: IntakeDraft;
   onAdd: (doc: IntakeDocument) => void;
   onRemove: (id: string) => void;
+  forwardOnly?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [limitHit, setLimitHit] = useState(false);
@@ -1043,6 +1101,22 @@ function Step4Documents({
       </h2>
       <p className={styles.stepSubtitle}>{t("intakeStep4Sub")}</p>
 
+      {forwardOnly ? (
+        <div className={styles.agreementBox} role="note">
+          <Shield size={24} />
+          <div>
+            <p className={styles.agreementTitle}>
+              {lang === "bn" ? "সিল করা ফরওয়ার্ড-অনলি প্রমাণ" : "Sealed, forward-only evidence"}
+            </p>
+            <p className={styles.agreementBody}>
+              {lang === "bn"
+                ? "ইউডিসি শুধু ফাইলটি মামলার রেকর্ডে পাঠাতে পারে। এই পর্দায় প্রমাণের বিষয়বস্তু, প্রিভিউ বা ফাইলের নাম দেখা যাবে না।"
+                : "The UDC can only pass the file into the case record. This screen never shows its contents, preview, or filename."}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ""}`}
         onDrop={handleDrop}
@@ -1085,22 +1159,28 @@ function Step4Documents({
         <p className={styles.docsEmpty}>{t("intakeDocsEmpty")}</p>
       ) : (
         <ul className={styles.docsList}>
-          {draft.documents.map((doc) => (
+          {draft.documents.map((doc, index) => (
             <li key={doc.id} className={styles.docRow}>
               <span className={styles.docIcon} aria-hidden>
                 <FileText size={20} />
               </span>
               <span className={styles.docMeta}>
-                <span className={styles.docName}>{doc.name}</span>
+                <span className={styles.docName}>
+                  {forwardOnly
+                    ? (lang === "bn" ? `সিল করা প্রমাণ ${index + 1}` : `Sealed evidence ${index + 1}`)
+                    : doc.name}
+                </span>
                 <span className={styles.docSize}>
-                  {t("intakeDocsFileSize")}: {formatBytes(doc.size)}
+                  {forwardOnly
+                    ? (lang === "bn" ? "ফরওয়ার্ডের জন্য প্রস্তুত" : "Ready to forward")
+                    : `${t("intakeDocsFileSize")}: ${formatBytes(doc.size)}`}
                 </span>
               </span>
               <button
                 type="button"
                 className={styles.docRemove}
                 onClick={() => onRemove(doc.id)}
-                aria-label={`${t("intakeDocsRemoveBtn")} — ${doc.name}`}
+                aria-label={`${t("intakeDocsRemoveBtn")} — ${forwardOnly ? index + 1 : doc.name}`}
               >
                 <X size={16} />
                 {t("intakeDocsRemoveBtn")}
@@ -1298,12 +1378,12 @@ function WizardFooter({
  *  Live preview card (right column).
  * ------------------------------------------------------------------ */
 
-function SidePreview({ draft }: { draft: IntakeDraft }) {
+function SidePreview({ draft, forwardOnly = false }: { draft: IntakeDraft; forwardOnly?: boolean }) {
   const { t, lang } = useI18n();
   const matterLabel = draft.matter ? t(matterTitleKey(draft.matter)) : null;
   const slotLabel = slotSummary(draft, t, lang);
   const applicantLabel =
-    draft.actingFor === "family" && draft.proxyName
+    draft.actingFor !== "self" && draft.proxyName
       ? draft.proxyName
       : draft.name;
 
@@ -1333,7 +1413,9 @@ function SidePreview({ draft }: { draft: IntakeDraft }) {
             <dt className={styles.previewLabel}>{t("intakePreviewDocs")}</dt>
             <dd className={styles.previewValue}>
               {draft.documents.length > 0
-                ? `${draft.documents.length} ${t("intakePreviewDocs").toLowerCase()}`
+                ? forwardOnly
+                  ? (lang === "bn" ? `${draft.documents.length}টি সিল করা ফাইল ফরওয়ার্ডের জন্য প্রস্তুত` : `${draft.documents.length} sealed file(s) ready to forward`)
+                  : `${draft.documents.length} ${t("intakePreviewDocs").toLowerCase()}`
                 : "—"}
             </dd>
           </div>
@@ -1389,10 +1471,12 @@ function SuccessView({
   refNumber,
   offline,
   onAnother,
+  allowDebug = true,
 }: {
   refNumber: string;
   offline: boolean;
   onAnother: () => void;
+  allowDebug?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -1424,7 +1508,7 @@ function SuccessView({
           {t("intakeSuccessNext3")}
         </li>
       </ul>
-      {refNumber.startsWith("APP-") ? (
+      {allowDebug && refNumber.startsWith("APP-") ? (
         <p className={styles.successHint}>
           <Link href={`/debug?id=${refNumber}`}>/debug?id={refNumber}</Link>
         </p>
@@ -1467,6 +1551,57 @@ function validateStep(
  *  Same requirements as IVR (caller-line id), USSD (MSISDN) and UDC
  *  (operator attestation) — see lib/dlas/validate.ts.
  * ------------------------------------------------------------------ */
+
+function UdcIdentityCheck({
+  draft,
+  onDistrict,
+  onNid,
+}: {
+  draft: IntakeDraft;
+  onDistrict: (v: string) => void;
+  onNid: (v: string) => void;
+}) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  return (
+    <section className={styles.stepCard} aria-label={tx("পরিচয় প্রত্যয়ন ও জেলা", "Identity attestation and district")}>
+      <div className={styles.agreementBox} role="note">
+        <Shield size={24} />
+        <div>
+          <p className={styles.agreementTitle}>{tx("ইউডিসি পরিচয় প্রত্যয়ন", "UDC identity attestation")}</p>
+          <p className={styles.agreementBody}>
+            {tx(
+              "আবেদনকারী বা তার প্রতিনিধি উপস্থিত আছেন—ইউডিসি অপারেটর এই পরিচয় প্রত্যয়ন করে আবেদনটি পাঠাবেন। আবেদনকারীর ফোনে আলাদা ওটিপি লাগবে না।",
+              "The applicant or representative is present. The UDC operator attests the identity before forwarding; no separate applicant OTP is required.",
+            )}
+          </p>
+        </div>
+      </div>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>{tx("আবেদনকারীর জেলা", "Applicant district")}</span>
+        <select className={styles.textInput} value={draft.district} onChange={(e) => onDistrict(e.target.value)}>
+          <option value="">{tx("বাছাই করুন", "Select")}</option>
+          {DISTRICTS.map((district) => (
+            <option key={district.code} value={district.code}>{district.label[lang]}</option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>{tx("আবেদনকারীর জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "Applicant's NID number (optional)")}</span>
+        <input
+          className={styles.textInput}
+          inputMode="numeric"
+          value={draft.nidNumber ?? ""}
+          onChange={(e) => onNid(e.target.value)}
+          placeholder={tx("১০, ১৩ বা ১৭ সংখ্যা", "10, 13 or 17 digits")}
+        />
+        <span className={styles.micLabelMuted}>
+          {tx("জেলা লিগ্যাল এইড অফিসার মূল পরিচয়পত্রের সঙ্গে এটি মিলিয়ে দেখবেন।", "The district legal aid officer will verify this against the original identity document.")}
+        </span>
+      </label>
+    </section>
+  );
+}
 
 function CitizenIdentityCheck({
   draft,
@@ -1519,7 +1654,7 @@ function CitizenIdentityCheck({
       </label>
       <label className={styles.field}>
         <span className={styles.fieldLabel}>
-          {draft.actingFor === "family" || draft.actingFor === "neighbor"
+          {draft.actingFor === "family" || draft.actingFor === "neighbor" || draft.actingFor === "alleged"
             ? tx("আবেদনকারীর জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "Applicant's NID number (optional)")
             : tx("জাতীয় পরিচয়পত্র নম্বর (ঐচ্ছিক)", "NID number (optional)")}
         </span>

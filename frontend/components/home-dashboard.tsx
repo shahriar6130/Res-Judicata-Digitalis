@@ -8,6 +8,8 @@ import { useCitizenProfile } from "@/lib/citizen-profile";
 import { useHashRoute } from "@/lib/use-hash-route";
 import { StatusPill } from "@/components/status-pill";
 import { CitizenUploadsCard } from "@/components/dlas/citizen-uploads-card";
+import { CitizenSettlementAlerts } from "@/components/dlas/citizen-settlement";
+import { CitizenGroupAlerts } from "@/components/dlas/citizen-group";
 import { Bell, Building, ChevronRight, FileText, HelpingHand } from "@/components/icons";
 import styles from "./home-dashboard.module.css";
 
@@ -103,6 +105,8 @@ export function HomeDashboard() {
         </button>
       ) : null}
 
+      <CitizenSettlementAlerts />
+      <CitizenGroupAlerts />
       <CitizenUploadsCard />
 
       <section className={styles.actions} aria-label={t("homeHowCanWeHelp")}>

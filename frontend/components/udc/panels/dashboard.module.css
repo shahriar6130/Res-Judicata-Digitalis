@@ -1,5 +1,5 @@
 .home { gap: var(--s-8); width: 100%; }
-.hero { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, .8fr); background: var(--ink); color: var(--white); }
+.hero { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, .8fr); background: var(--theme-hero-fill, var(--ink)); color: var(--white); }
 .heroCopy { padding: var(--s-12); display: flex; flex-direction: column; align-items: flex-start; }
 .eyebrow, .heroAside > span, .sectionHeading span, .footerTools > span { font-size: var(--t-label); font-weight: var(--weight-semibold); letter-spacing: .09em; }
 .eyebrow { color: var(--on-black-muted); }

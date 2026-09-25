@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Bengali, Noto_Serif_Bengali, Playfair_Display } from "next/font/google";
 import { I18nProvider } from "@/lib/i18n";
+import { RemoteStoreBootstrap } from "@/components/dlas/remote-store-bootstrap";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -42,7 +43,10 @@ export default function RootLayout({
   return (
     <html lang="bn" className={`${playfair.variable} ${bengali.variable} ${inter.variable} ${bengaliSans.variable}`}>
       <body>
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider>
+          <RemoteStoreBootstrap />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

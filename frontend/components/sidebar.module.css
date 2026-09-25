@@ -777,6 +777,29 @@
 .dloSidebar .legacyProfilePanel { padding: var(--s-4) var(--s-6); }
 .dloSidebar .legacyProfileAvatar { border-radius: var(--r-2); }
 
+/* Admin uses the same dependable hash navigation with its own red identity. */
+.adminSidebar {
+  --sidebar-bg: var(--admin-sidebar-bg);
+  --sidebar-fg: var(--admin-sidebar-fg);
+  --sidebar-muted: var(--admin-sidebar-muted);
+  --sidebar-border: var(--admin-sidebar-border);
+  --sidebar-hover-bg: var(--admin-sidebar-hover);
+  --sidebar-active-bg: var(--admin-sidebar-active-bg);
+  --sidebar-active-fg: var(--admin-sidebar-active-fg);
+}
+.adminSidebar .brand { padding: var(--s-8) var(--s-6) var(--s-6); }
+.adminSidebar .brand > span {
+  background: var(--admin-hero-bg);
+  border: 1px solid var(--admin-sidebar-border);
+}
+.adminSidebar .nav { padding: var(--s-8) var(--s-4); }
+.adminSidebar .legacyList { gap: var(--s-2); }
+.adminSidebar .legacyLink { min-height: 46px; padding: var(--s-3) var(--s-4); border: 1px solid transparent; font-size: var(--t-small); line-height: var(--leading-small); }
+.adminSidebar .legacyLink:hover { border-color: var(--admin-sidebar-border); }
+.adminSidebar .legacyLinkActive { border-color: var(--admin-sidebar-active-bg); box-shadow: none; }
+.adminSidebar .legacyLinkActive::before { display: none; }
+.adminSidebar .legacyLink:focus-visible { outline-color: var(--admin-sidebar-fg); }
+
 /* Legacy profile panel — pinned to the bottom of the dark sidebar so
    the operator always sees who they are signed in as. Sits after the
    `.nav` block (which has `flex: 1`) so it anchors without needing

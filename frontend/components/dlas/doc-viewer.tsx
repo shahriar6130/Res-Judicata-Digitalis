@@ -18,12 +18,15 @@ import { useI18n } from "@/lib/i18n";
 import { X } from "@/components/icons";
 import styles from "./doc-viewer.module.css";
 
-export function DocViewButton({ app, doc, className }: { app: ApplicationRecord; doc: DocumentRef; className?: string }) {
+export function DocViewButton({ app, doc, className, onOpen }: { app: ApplicationRecord; doc: DocumentRef; className?: string; onOpen?: () => void }) {
   const { lang } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className={className ?? styles.viewBtn} onClick={() => setOpen(true)}>
+      <button type="button" className={className ?? styles.viewBtn} onClick={() => {
+          setOpen(true);
+          onOpen?.();
+        }}>
         {lang === "bn" ? "দেখুন" : "View"}
       </button>
       {open ? <DocViewer app={app} doc={doc} onClose={() => setOpen(false)} /> : null}

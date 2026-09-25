@@ -1,5 +1,6 @@
-import { MediatorWorklist } from "@/components/mediation/worklist";
+import { SignInPortal } from "@/components/sign-in-portal";
+import { getRole } from "@/lib/roles";
 
-export default function MediatorWorklistPage() {
-  return <MediatorWorklist />;
+export default function MediatorSignIn() {
+  return <SignInPortal role={getRole("mediator")} />;
 }

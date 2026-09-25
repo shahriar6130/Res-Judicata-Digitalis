@@ -20,6 +20,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { SkipLink } from "@/components/helpline/primitives/skip-link";
 import { useNetwork, networkRowClass } from "../primitives/use-network";
+import { HeldUploadsList } from "../primitives/light-mode-panel";
 import styles from "../udc.module.css";
 
 /** Visual classification for the row background — driven by syncStatus *and* network. */
@@ -193,6 +194,8 @@ export function UdcSyncCentrePanel({ role = "udc" }: { role?: string }) {
               {lang === "bn" ? "ব্যান্ডউইথ" : "bandwidth"} {Math.round(net.bandwidthBps / 1000)}kbps
             </span>
           </div>
+
+          <HeldUploadsList lang={lang === "bn" ? "bn" : "en"} />
 
           <div className={styles.tabs}>
             {(["all", "queued", "synced", "conflict"] as const).map((f) => (

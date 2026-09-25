@@ -1,6 +1,5 @@
-import { SignInPortal } from "@/components/sign-in-portal";
-import { getRole } from "@/lib/roles";
+import { redirect } from "next/navigation";
 
 export default function AdminSignIn() {
-  return <SignInPortal role={getRole("admin")} />;
+  redirect("/dashboard/admin");
 }

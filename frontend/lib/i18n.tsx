@@ -67,18 +67,32 @@ export type MessageKey =
   | "dlaoNavDecided"
   | "dlaoNavTasks"
   | "dlaoNavLawyers"
+  | "dlaoNavMediators"
+  | "dlaoNavSettlements"
+  | "dlaoNavMediationMonitor"
+  | "dlaoNavDistrictCases"
+  | "dlaoNavUrgent"
+  | "dlaoNavTransfers"
+  | "dlaoNavGroups"
+  | "dlaoNavDuplicates"
+  | "dlaoNavUdcs"
+  | "dlaoNavMediationOutcomes"
+  | "navMyMediations"
   | "navAssignedCases"
   | "navCaseIntake"
   | "navAttendance"
   | "navHearingReports"
   | "navCalendar"
+  | "navAllHearings"
   | "navOverview"
   | "navUsers"
+  | "navMediatorTraining"
   | "navRules"
   | "navMetrics"
   | "navApplications"
   | "navBackup"
   | "navAudit"
+  | "navMediationOversight"
   | "navFileComplaint"
   | "complaintTitle"
   | "complaintIntro"
@@ -195,6 +209,8 @@ export type MessageKey =
   | "actingFamilySub"
   | "actingNeighborTitle"
   | "actingNeighborSub"
+  | "actingAllegedTitle"
+  | "actingAllegedSub"
   | "dispute1Title"
   | "dispute1Sub"
   | "dispute1Eyebrow"
@@ -500,6 +516,7 @@ export type MessageKey =
   | "helplineNavContinueIntake"
   | "helplineNavSearchRecord"
   | "helplineNavHandoffs"
+  | "helplineNavIvrEscalations"
   | "helplineNavDlaoTasks"
   | "helplineNavHistory"
   | "helplineNavAccessibility"
@@ -716,6 +733,12 @@ export type MessageKey =
   | "intakeMatterCriminal"
   | "intakeMatterCriminalEyebrow"
   | "intakeMatterCriminalSub"
+  | "intakeMatterSexualHarassment"
+  | "intakeMatterSexualHarassmentEyebrow"
+  | "intakeMatterSexualHarassmentSub"
+  | "intakeMatterSecurity"
+  | "intakeMatterSecurityEyebrow"
+  | "intakeMatterSecuritySub"
   | "intakeMatterLabour"
   | "intakeMatterLabourEyebrow"
   | "intakeMatterLabourSub"
@@ -1250,17 +1273,31 @@ export const messages: Messages = {
     dlaoNavDecided: "সিদ্ধান্ত হয়েছে",
     dlaoNavTasks: "ফলো-আপ কাজ",
     dlaoNavLawyers: "প্যানেল আইনজীবী",
+    dlaoNavMediators: "মধ্যস্থতাকারী",
+    dlaoNavSettlements: "নিষ্পত্তি যাচাই",
+    dlaoNavMediationMonitor: "মধ্যস্থতা পর্যবেক্ষণ",
+    dlaoNavDistrictCases: "জেলার সব কেস",
+    dlaoNavUrgent: "জরুরি কেস",
+    dlaoNavTransfers: "কেস স্থানান্তর",
+    dlaoNavGroups: "কেস গ্রুপ (একই ঘটনা)",
+    dlaoNavDuplicates: "দ্বৈত / ঝুঁকি যাচাই",
+    dlaoNavUdcs: "জেলার ইউডিসি অনুমোদন",
+    dlaoNavMediationOutcomes: "ব্যর্থ মধ্যস্থতা",
+    navMyMediations: "আমার মধ্যস্থতা",
     navAssignedCases: "নিয়োগপ্রাপ্ত মামলা",
     navCaseIntake: "মামলা গ্রহণ",
     navAttendance: "উপস্থিতি",
     navHearingReports: "শুনানির প্রতিবেদন",
     navCalendar: "ক্যালেন্ডার",
+    navAllHearings: "সব শুনানি",
     navOverview: "সংক্ষেপ",
     navUsers: "ব্যবহারকারী",
+    navMediatorTraining: "মধ্যস্থতাকারী প্রশিক্ষণ",
     navRules: "নিয়ম ও থ্রেশহোল্ড",
     navMetrics: "মেট্রিক্স",
     navApplications: "আবেদন",
     navBackup: "ব্যাকআপ",
+    navMediationOversight: "মধ্যস্থতা তত্ত্বাবধান",
     navAudit: "নিবন্ধন",
     navFileComplaint: "অভিযোগ জানান",
     complaintTitle: "একটি অভিযোগ নথিভুক্ত করুন",
@@ -1396,6 +1433,8 @@ export const messages: Messages = {
     actingFamilySub: "বোন, মা, ভাই বা আত্মীয়র পক্ষে",
     actingNeighborTitle: "প্রতিবেশী/বন্ধু",
     actingNeighborSub: "জরুরি সহায়তাকারী হিসেবে",
+    actingAllegedTitle: "অভিযুক্ত ব্যক্তির পক্ষে",
+    actingAllegedSub: "অভিযোগের বিরুদ্ধে আইনি প্রতিরক্ষার জন্য",
     dispute1Title: "পারিবারিক সহিংসতা",
     dispute1Sub: "শারীরিক বা মানসিক নির্যাতন",
     dispute1Eyebrow: "জরুরি অগ্রাধিকার",
@@ -1731,6 +1770,7 @@ export const messages: Messages = {
     helplineNavNewCall: "নতুন কল শুরু করুন",
     helplineNavContinueIntake: "আগের আবেদন চালিয়ে নিন",
     helplineNavSearchRecord: "রেকর্ড অনুসন্ধান",
+    helplineNavIvrEscalations: "IVR থেকে আসা কল",
     helplineNavHandoffs: "হস্তান্তর তালিকা",
     helplineNavDlaoTasks: "ডিএলএও যোগাযোগ",
     helplineNavHistory: "যোগাযোগের ইতিহাস",
@@ -1963,6 +2003,12 @@ export const messages: Messages = {
     intakeMatterCriminal: "ফৌজদারি অভিযোগ",
     intakeMatterCriminalEyebrow: "ফৌজদারি",
     intakeMatterCriminalSub: "চুরি, প্রতারণা, হয়রানি",
+    intakeMatterSexualHarassment: "যৌন হয়রানি / নিপীড়ন",
+    intakeMatterSexualHarassmentEyebrow: "জরুরি",
+    intakeMatterSexualHarassmentSub: "যৌন হয়রানি, নিপীড়ন, ধর্ষণ",
+    intakeMatterSecurity: "নিরাপত্তা / হুমকি",
+    intakeMatterSecurityEyebrow: "জরুরি",
+    intakeMatterSecuritySub: "প্রাণনাশের হুমকি, অপহরণ, নিখোঁজ",
     intakeMatterLabour: "শ্রম বিরোধ",
     intakeMatterLabourEyebrow: "শ্রম",
     intakeMatterLabourSub: "বেতন, চাকরি থেকে অব্যাহতি",
@@ -2523,17 +2569,31 @@ export const messages: Messages = {
     dlaoNavDecided: "Decided",
     dlaoNavTasks: "Follow-up tasks",
     dlaoNavLawyers: "Panel lawyers",
+    dlaoNavMediators: "Mediators",
+    dlaoNavSettlements: "Settlement verification",
+    dlaoNavMediationMonitor: "Mediation monitor",
+    dlaoNavDistrictCases: "All district cases",
+    dlaoNavUrgent: "Urgent cases",
+    dlaoNavTransfers: "Case transfers",
+    dlaoNavGroups: "Group cases (same incident)",
+    dlaoNavDuplicates: "Duplicate / fraud-risk check",
+    dlaoNavUdcs: "District UDC approvals",
+    dlaoNavMediationOutcomes: "Failed mediation reviews",
+    navMyMediations: "My mediations",
     navAssignedCases: "Assigned Cases",
     navCaseIntake: "Case intake",
     navAttendance: "Attendance",
     navHearingReports: "Hearing Reports",
     navCalendar: "Calendar",
+    navAllHearings: "All hearings",
     navOverview: "Overview",
     navUsers: "Users",
+    navMediatorTraining: "Mediator training",
     navRules: "Rules & Thresholds",
     navMetrics: "Metrics",
     navApplications: "Applications",
     navBackup: "Backup",
+    navMediationOversight: "Mediation oversight",
     navAudit: "Audit Log",
     navFileComplaint: "File a complaint",
     complaintTitle: "File a complaint",
@@ -2668,6 +2728,8 @@ export const messages: Messages = {
     actingFamilySub: "Sister, mother, brother or relative",
     actingNeighborTitle: "For a neighbour or friend",
     actingNeighborSub: "As an emergency helper",
+    actingAllegedTitle: "For an alleged person",
+    actingAllegedSub: "To seek legal aid for their defence",
     dispute1Title: "Family violence",
     dispute1Sub: "Physical or mental abuse",
     dispute1Eyebrow: "Urgent priority",
@@ -3006,6 +3068,7 @@ export const messages: Messages = {
     helplineNavNewCall: "Start new call",
     helplineNavContinueIntake: "Continue intake",
     helplineNavSearchRecord: "Search record",
+    helplineNavIvrEscalations: "IVR escalations",
     helplineNavHandoffs: "Handoff queue",
     helplineNavDlaoTasks: "DLAO contact",
     helplineNavHistory: "History",
@@ -3250,6 +3313,12 @@ export const messages: Messages = {
     intakeMatterCriminal: "Criminal complaint",
     intakeMatterCriminalEyebrow: "Criminal",
     intakeMatterCriminalSub: "Theft, fraud, harassment",
+    intakeMatterSexualHarassment: "Sexual harassment / abuse",
+    intakeMatterSexualHarassmentEyebrow: "Urgent",
+    intakeMatterSexualHarassmentSub: "Harassment, sexual assault, rape",
+    intakeMatterSecurity: "Security / threats",
+    intakeMatterSecurityEyebrow: "Urgent",
+    intakeMatterSecuritySub: "Death threats, kidnapping, missing person",
     intakeMatterLabour: "Labour dispute",
     intakeMatterLabourEyebrow: "Labour",
     intakeMatterLabourSub: "Wages, unfair dismissal",

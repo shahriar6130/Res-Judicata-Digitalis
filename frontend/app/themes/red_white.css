@@ -1,0 +1,113 @@
+/*
+ * Red White courthouse editorial theme derived from:
+ * reference_image/ed_1_-_crisis_of_judges_-_file_visual_anwar_sohel.jpg
+ *
+ * Loaded after the base tokens. The source image is a visual reference; it is
+ * not used as a page background.
+ */
+
+:root {
+  /* Paper, newsprint, ink and the image's red disc. */
+  --black: #1d1c1b;
+  --white: #ffffff;
+  --off-white: #efeeea;
+  --ink: #292725;
+  --gray: #6b6863;
+  --line: #ccc9c3;
+  --overlay: rgba(29, 28, 27, 0.67);
+  --red: #df1820;
+  --yellow: #b8871b;
+  --green: #28754a;
+  --primary-action: #df1820;
+  --primary-action-hover: #ac1117;
+  --selection-bg: #df1820;
+  --selection-fg: #ffffff;
+
+  --sidebar-bg: #252321;
+  --sidebar-fg: #f7f6f2;
+  --sidebar-muted: #b7b3ad;
+  --sidebar-border: #4d4a46;
+  --sidebar-active-bg: #df1820;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-accent: #df1820;
+  --sidebar-hover-bg: #393734;
+
+  --status-active: #28754a;
+  --status-review: #b8871b;
+  --status-needs-action: #df1820;
+  --status-resolved: #76736f;
+  --status-pending: #9a5f12;
+
+  --surface-card: #f9f8f4;
+  --surface-card-border: #c9c6bf;
+  --surface-card-lodge: #df1820;
+  --surface-card-lodge-fg: #ffffff;
+  --surface-card-lodge-accent: #292725;
+
+  --on-black: #ffffff;
+  --on-black-muted: #c8c5bf;
+  --line-on-black: #716d67;
+  --lawmark-opacity: 0.7;
+  --grid-line: rgba(255, 255, 255, 0.12);
+
+  --accent-citizen: #df1820;
+  --accent-dlo: #df1820;
+  --accent-lawyer: #df1820;
+  --accent-udc: #df1820;
+  --accent-admin: #df1820;
+
+  --dlo-muted: #625f5b;
+  --dlo-line: #c9c6bf;
+  --dlo-hero-muted: #c8c5bf;
+  --dlo-positive-ink: #28754a;
+  --dlo-danger-ink: #b51218;
+  --dlo-warning-ink: #82520f;
+  --dlo-disabled-ink: #908d88;
+  --dlo-chart-purple: #625e5a;
+  --dlo-chart-blue: #85817b;
+  --dlo-chart-rose: #df1820;
+  --dlo-chart-olive: #98938c;
+  --dlo-chart-muted: #b7b3ad;
+
+  --udc-warning-ink: #82520f;
+  --udc-danger-ink: #b51218;
+
+  --admin-sidebar-bg: #252321;
+  --admin-sidebar-fg: #f7f6f2;
+  --admin-sidebar-muted: #b7b3ad;
+  --admin-sidebar-border: #4d4a46;
+  --admin-sidebar-hover: #393734;
+  --admin-sidebar-active-bg: #df1820;
+  --admin-sidebar-active-fg: #ffffff;
+  --admin-page-bg: #efeeea;
+  --admin-panel-bg: #f9f8f4;
+  --admin-soft-bg: #e3e0da;
+  --admin-hero-bg: #df1820;
+  --admin-hero-muted: #ffffff;
+  --admin-ink: #292725;
+  --admin-muted: #6b6863;
+  --admin-line: #ccc9c3;
+  --admin-accent: #df1820;
+  --admin-accent-hover: #ac1117;
+  --admin-danger: #b51218;
+
+  --gavel-head: #b7b3ad;
+  --gavel-top: #f7f6f2;
+  --gavel-band: #625f5b;
+  --gavel-shadow: #55524e;
+  --gavel-handle: #77736e;
+
+  --bottom-nav-bg: #f9f8f4;
+  --bottom-nav-border: #c9c6bf;
+  --focus-color: #df1820;
+}
+
+/* A visible red editorial rule carries the reference image across every route. */
+body {
+  border-top: var(--s-1) solid var(--red);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--red);
+}

@@ -39,7 +39,9 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { mutate, readDb, useDlasDb } from "./store";
 import { DISTRICTS, MATTERS, label, normalizePhone } from "./reference";
 import { DlaoAuth } from "./dlao";
+import { handlingDistrict } from "./case-handling";
 import type {
+  LawyerRedFlag,
   ApplicationRecord,
   AssignmentLedger,
   AuditEntry,
@@ -50,6 +52,7 @@ import type {
   HearingUpdate,
   LawyerAssignment,
   LawyerMatter,
+  LawyerClosureTestimonial,
   LawyerRuleset,
   LawyerShortlist,
   MatterCategory,
@@ -71,6 +74,7 @@ export const DEFAULT_LAWYER_RULES: LawyerRuleset = {
   shortlistSize: 5,
   attendanceWindowDays: 30,
   weights: { workload: 35, winRate: 30, attendance: 25, specialisation: 10 },
+  declinesBeforeRedFlag: 8,
 };
 
 const now = () => new Date().toISOString();
@@ -143,6 +147,7 @@ export const LawyerAuth = {
         attendance: [],
         notificationsReadAt: null,
         contacts: [],
+        redFlags: [],
         audit: [],
       };
       audit(db, a.audit, { actor: a.lawyerId, role: "panel_lawyer", action: "lawyer.signed_up", detail: { district: a.district, barEnrolmentNo: a.barEnrolmentNo, practiceAreas: a.practiceAreas } });
@@ -182,7 +187,7 @@ export const LawyerAuth = {
   },
 
   /** Register today's attendance (present / absent). Changing it the same day keeps one entry and is audited. */
-  markAttendance(status: "PRESENT" | "ABSENT") {
+  markAttendance(status: "PRESENT" | "ABSENT", via: { method: "SELF_DECLARED" | "BIOMETRIC_SIMULATED"; deviceId?: string | null } = { method: "SELF_DECLARED" }) {
     const me = LawyerAuth.current();
     if (!me) throw new Error("Lawyer login required");
     return mutate((db) => {
@@ -190,12 +195,16 @@ export const LawyerAuth = {
       l.attendance = l.attendance ?? [];
       const date = dayKey();
       const prev = l.attendance.find((x) => x.date === date);
-      if (prev?.status === status) return prev;
+      if (prev?.status === status && (prev.method ?? "SELF_DECLARED") === via.method) return prev;
+      const method = via.method;
+      const before = prev?.status ?? null;
       if (prev) {
         prev.status = status;
         prev.at = now();
-      } else l.attendance.push({ date, status, at: now() });
-      audit(db, l.audit, { actor: l.lawyerId, role: "panel_lawyer", action: prev ? "attendance.changed" : "attendance.marked", detail: { date, status, from: prev ? (status === "PRESENT" ? "ABSENT" : "PRESENT") : null } });
+        prev.method = method;
+        prev.deviceId = via.deviceId ?? null;
+      } else l.attendance.push({ date, status, at: now(), method, deviceId: via.deviceId ?? null });
+      audit(db, l.audit, { actor: l.lawyerId, role: "panel_lawyer", action: prev ? "attendance.changed" : "attendance.marked", detail: { date, status, from: before, method, deviceId: via.deviceId ?? null, simulated: method === "BIOMETRIC_SIMULATED" } });
       return l.attendance.find((x) => x.date === date)!;
     });
   },
@@ -309,6 +318,46 @@ function paymentFor(a: ApplicationRecord, s: LawyerAssignment, status: NonNullab
   };
 }
 
+/* ---------------- red flag: too many declined offers ---------------- */
+
+export function activeRedFlag(l: PanelLawyerAccount): LawyerRedFlag | null {
+  return [...(l.redFlags ?? [])].reverse().find((f) => f.status === "ACTIVE") ?? null;
+}
+
+/** Declined offers that count towards the next red flag (everything after the last flag the DLAO cleared). */
+export function countedDeclines(db: DlasDb, l: PanelLawyerAccount): LawyerRedFlag["declines"] {
+  const cleared = [...(l.redFlags ?? [])].reverse().find((f) => f.status === "CLEARED");
+  const since = cleared?.clearedAt ?? "";
+  const out: LawyerRedFlag["declines"] = [];
+  for (const a of db.applications)
+    for (const s of a.lawyer?.assignments ?? [])
+      if (s.lawyerId === l.lawyerId && s.status === "DECLINED" && (s.respondedAt ?? "") > since)
+        out.push({ applicationId: a.applicationId, caseId: a.caseId, assignmentId: s.assignmentId, at: s.respondedAt ?? s.offeredAt, reason: s.declineReason ?? null });
+  return out.sort((x, y) => x.at.localeCompare(y.at));
+}
+
+/** After a decline: at the rule threshold the lawyer is red-flagged and the DLAO gets a review task (once per flag). */
+function checkRedFlag(db: DlasDb, a: ApplicationRecord, lawyerId: string) {
+  const l = db.lawyers.find((x) => x.lawyerId === lawyerId);
+  if (!l || activeRedFlag(l)) return;
+  const threshold = rulesOf(db).declinesBeforeRedFlag;
+  const declines = countedDeclines(db, l);
+  if (declines.length < threshold) return;
+  const flag: LawyerRedFlag = { flagId: rid("RFL"), reason: "DECLINED_OFFERS", raisedAt: now(), threshold, declines, status: "ACTIVE", clearedAt: null, clearedBy: null, clearedByName: null, clearNote: null };
+  l.redFlags = [...(l.redFlags ?? []), flag];
+  audit(db, l.audit, { actor: "system", role: "system", action: "lawyer.red_flagged", detail: { flagId: flag.flagId, declines: declines.length, threshold } });
+  audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.red_flagged", detail: { lawyerId, flagId: flag.flagId, declines: declines.length, threshold } });
+  openTask(db, a, {
+    type: "LAWYER_RED_FLAG",
+    assignedRole: "DLAO",
+    priority: "HIGH",
+    reason: `Red flag: ${l.name} has declined ${declines.length} case offers (rule ${threshold}). Review the reasons and clear the flag — advisory, the lawyer stays on the panel until you decide.`,
+    dueAt: addHours(now(), 72),
+    context: { lawyerId, flagId: flag.flagId, declines: declines.length, threshold },
+  });
+  smsLawyer(db, a, lawyerId, `DLAS: you have declined ${declines.length} case offers and are red-flagged for review by the legal aid office.`);
+}
+
 /* ---------------- engine: lawyer statistics & top-N shortlist ---------------- */
 
 export type LawyerStats = ShortlistCandidate["stats"];
@@ -342,6 +391,8 @@ export function lawyerStats(db: DlasDb, l: PanelLawyerAccount, a: ApplicationRec
     attendancePct: presentDays + absentDays ? Math.round((presentDays / (presentDays + absentDays)) * 100) : null,
     absentToday: (l.attendance ?? []).some((d) => d.date === dayKey(at) && d.status === "ABSENT"),
     matchesMatter: !!a?.data.matter.category && l.practiceAreas.includes(a.data.matter.category),
+    declines: countedDeclines(db, l).length,
+    redFlagged: !!activeRedFlag(l),
   };
 }
 
@@ -360,7 +411,7 @@ export function scoreLawyer(db: DlasDb, st: LawyerStats): { score: number; break
 
 /** The engine's ranked picks for this case (district panel, minus lawyers who already declined / were removed). */
 export function rankLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): Omit<ShortlistCandidate, "outcome" | "reason" | "offeredAt">[] {
-  const district = a.data.applicant.district;
+  const district = handlingDistrict(a); // follows an accepted DLAO → DLAO transfer
   const tried = new Set((a.lawyer?.assignments ?? []).filter((s) => s.status !== "ACCEPTED" && s.status !== "OFFERED").map((s) => s.lawyerId));
   return db.lawyers
     .filter((l) => (!district || l.district === district) && !tried.has(l.lawyerId))
@@ -369,7 +420,8 @@ export function rankLawyers(db: DlasDb, a: ApplicationRecord, at = Date.now()): 
       const { score, breakdown } = scoreLawyer(db, stats);
       return { lawyerId: l.lawyerId, name: l.name, rank: 0, score, breakdown, stats };
     })
-    .sort((x, y) => y.score - x.score || x.stats.activeCases - y.stats.activeCases)
+    // Red-flagged lawyers go after everyone else (still listed — the DLAO decides).
+    .sort((x, y) => Number(!!x.stats.redFlagged) - Number(!!y.stats.redFlagged) || y.score - x.score || x.stats.activeCases - y.stats.activeCases)
     .map((c, i) => ({ ...c, rank: i + 1 }));
 }
 
@@ -420,6 +472,7 @@ export function useLawyerWork() {
 
 function matterOf(a: ApplicationRecord): LawyerMatter {
   if (!a.lawyer) a.lawyer = { assignments: [], hearings: [], updates: [], access: [], shortlists: [], completion: null };
+  a.lawyer.changeRequests ??= [];
   return a.lawyer;
 }
 
@@ -666,6 +719,88 @@ export const DlaoLawyerService = {
       return m.completion;
     });
   },
+
+  /** DLAO approves a lawyer's payment against the fee schedule. Changing the computed hearing count needs a note. */
+  approvePayment(applicationId: string, assignmentId: string, input: { payableHearings: number; note: string }) {
+    const o = officer();
+    return withCase(applicationId, (db, a) => {
+      const s = a.lawyer?.assignments.find((x) => x.assignmentId === assignmentId);
+      if (!s?.payment) throw new Error("No payment to review for this lawyer");
+      if (s.payment.status !== "DLAO_REVIEW") throw new Error(s.payment.status === "APPROVED" || s.payment.status === "PAID" ? "Payment already approved" : "Complete the representation first");
+      const computed = s.payment.completedStages.filter((x) => x.result === "ATTENDED").length || s.payment.payableHearings;
+      const n = Math.floor(Number(input.payableHearings));
+      if (!Number.isFinite(n) || n < 0 || n > s.payment.completedStages.length) throw new Error(`Payable hearings must be between 0 and ${s.payment.completedStages.length}`);
+      if (n !== computed && input.note.trim().length < 10) throw new Error("You changed the hearing count — write a reason of at least 10 characters");
+      s.payment.status = "APPROVED";
+      s.payment.payableHearings = n;
+      s.payment.approval = { payableHearings: n, computedHearings: computed, note: input.note.trim(), by: o.officerId, byName: o.name, at: now() };
+      s.payment.note = `Approved by ${o.name}: ${n} hearing(s) × district fee (DEMO_RATE)`;
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.payment_approved", detail: { officer: o.name, assignmentId, lawyerId: s.lawyerId, payableHearings: n, computedHearings: computed, adjusted: n !== computed, note: input.note.trim() } });
+      smsLawyer(db, a, s.lawyerId, `DLAS: payment for ${a.caseId} approved — ${n} hearing(s) at the district fee rate.`);
+      return s.payment;
+    });
+  },
+
+  /** SIMULATED payout (no payment gateway in the prototype) — records a demo transfer reference. */
+  payLawyer(applicationId: string, assignmentId: string) {
+    const o = officer();
+    return withCase(applicationId, (db, a) => {
+      const s = a.lawyer?.assignments.find((x) => x.assignmentId === assignmentId);
+      if (!s?.payment) throw new Error("No payment for this lawyer");
+      if (s.payment.status === "PAID") throw new Error("Already paid");
+      if (s.payment.status !== "APPROVED") throw new Error("Approve the payment first");
+      s.payment.status = "PAID";
+      s.payment.disbursement = { ref: rid("SIMPAY"), method: "SIMULATED_TRANSFER", simulated: true, by: o.officerId, byName: o.name, at: now() };
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.payment_disbursed", detail: { officer: o.name, assignmentId, lawyerId: s.lawyerId, payableHearings: s.payment.payableHearings, ref: s.payment.disbursement.ref, simulated: true, note: "SIMULATED — no money moved" } });
+      smsLawyer(db, a, s.lawyerId, `DLAS: payment for ${a.caseId} sent (simulated) — ref ${s.payment.disbursement.ref}.`);
+      return s.payment;
+    });
+  },
+
+  /** Final step on the lawyer path: the DLAO closes the case after every simulated payout is recorded. */
+  closeCase(applicationId: string, reason: string) {
+    const o = officer();
+    if (reason.trim().length < 10) throw new Error("A closing note of at least 10 characters is required");
+    return withCase(applicationId, (db, a) => {
+      const m = a.lawyer;
+      if (!m?.completion) throw new Error("Complete the representation first");
+      if (a.closedAt || m.closure) throw new Error("This case is already closed");
+      const unpaid = m.assignments.filter((s) => s.payment && s.payment.status !== "PAID");
+      if (unpaid.length) throw new Error(`Approve and pay ${unpaid.map((s) => s.lawyerName).join(", ")} before closing`);
+      const from = a.status;
+      const at = now();
+      m.closure = { reason: reason.trim(), by: o.officerId, byName: o.name, at };
+      const testimonial: LawyerClosureTestimonial = {
+        testimonialId: rid("TST"),
+        issuedAt: at,
+        issuedBy: o.officerId,
+        issuedByName: o.name,
+        office: a.routing.office,
+        applicationId: a.applicationId,
+        caseRef: a.caseId ?? a.applicationId,
+        applicantName: a.data.applicant.fullName ?? "—",
+        respondentName: a.data.matter.opposingParty || null,
+        matter: a.data.matter.category,
+        outcome: m.completion.outcome,
+        outcomeReason: m.completion.reason,
+        closureReason: reason.trim(),
+        lawyerNames: [...new Set(m.assignments.filter((s) => s.status === "COMPLETED" || s.status === "WITHDRAWN").map((s) => s.lawyerName))],
+        hearingsRecorded: m.hearings.length,
+        simulated: true,
+      };
+      m.closureTestimonial = testimonial;
+      a.status = "RESOLVED";
+      a.stage = "CLOSURE";
+      a.closedAt = at;
+      closeTasks(db, a, o.officerId, "dlao", () => true);
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "status.changed", detail: { from, to: "RESOLVED" } });
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "application.closed", detail: { officer: o.name, pathway: "LAWYER", outcome: m.completion.outcome, reason: reason.trim(), payments: m.assignments.filter((s) => s.payment).map((s) => ({ lawyerId: s.lawyerId, status: s.payment!.status, payableHearings: s.payment!.payableHearings })) } });
+      audit(db, a.audit, { actor: o.officerId, role: "dlao", action: "lawyer.closure_testimonial_issued", detail: { testimonialId: testimonial.testimonialId, officer: o.name, outcome: testimonial.outcome, simulated: true } });
+      audit(db, a.audit, { actor: "system", role: "system", action: "lawyer.closure_testimonial_sent_to_citizen", detail: { testimonialId: testimonial.testimonialId, applicationId: a.applicationId } });
+      notifyClient(db, a, o.officerId, "dlao", `Update on your reference ${testimonial.caseRef}. A closing record is available on your DLAS page.`, `DLAS legal aid: case ${testimonial.caseRef} is closed (outcome: ${m.completion.outcome.replace(/_/g, " ").toLowerCase()}). Testimonial ${testimonial.testimonialId} is available on your DLAS case page.`);
+      return m.closure;
+    });
+  },
 };
 
 /* ================================================================== *
@@ -784,6 +919,7 @@ export const LawyerService = {
       }
       if (sl && sl.status === "ACTIVE") autoOfferNext(db, a, sl, s.note);
       else openTask(db, a, { type: "LAWYER_ASSIGNMENT", assignedRole: "DLAO", priority: "HIGH", reason: `${me.name} declined: ${reason.trim()} — assign another panel lawyer`, dueAt: addHours(now(), 24) });
+      checkRedFlag(db, a, me.lawyerId);
       return s;
     });
   },
@@ -808,6 +944,8 @@ export const LawyerService = {
       if (!h) throw new Error("Choose the hearing you are reporting on");
       if (h.assignmentId !== s.assignmentId) throw new Error("This hearing belonged to the previous lawyer — you can read it but not report on it");
       if (h.updateId) throw new Error("This hearing already has a report");
+      // PROTOTYPE: a future hearing may be reported early so the full flow can be demonstrated; it is marked, never hidden.
+      const early = Date.now() < new Date(h.at).getTime();
       const u: HearingUpdate = {
         updateId: rid("UPD"),
         hearingId: h.hearingId,
@@ -819,13 +957,14 @@ export const LawyerService = {
         byName: me.name,
         at: now(),
         late: Date.now() > new Date(h.updateDueAt).getTime(),
+        ...(early ? { beforeHearing: true } : {}),
       };
       m.updates.push(u);
       h.updateId = u.updateId;
       h.result = u.attendance === "ATTENDED" ? "ATTENDED" : u.attendance === "NOT_ATTENDED" ? "MISSED" : "NOT_HELD";
-      a.provenance[`lawyer.updates.${u.updateId}`] = { source: "LAWYER_REPORTED", method: "AGENT_FORM", confidence: "STATED", by: me.lawyerId, at: now(), note: "self-reported by the panel lawyer" };
+      a.provenance[`lawyer.updates.${u.updateId}`] = { source: "LAWYER_REPORTED", method: "AGENT_FORM", confidence: "STATED", by: me.lawyerId, at: now(), note: early ? "self-reported by the panel lawyer — PROTOTYPE: reported before the hearing date" : "self-reported by the panel lawyer" };
       closeTasks(db, a, me.lawyerId, "panel_lawyer", (t) => (t.type === "HEARING_UPDATE_DUE" || t.type === "LAWYER_UPDATE_OVERDUE") && (t.context as { hearingId?: string } | undefined)?.hearingId === h.hearingId);
-      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "hearing.update_submitted", detail: { lawyer: me.name, updateId: u.updateId, hearingId: h.hearingId, attendance: u.attendance, result: h.result, outcome: u.outcome, nextDate: u.nextDate, late: u.late } });
+      audit(db, a.audit, { actor: me.lawyerId, role: "panel_lawyer", action: "hearing.update_submitted", detail: { lawyer: me.name, updateId: u.updateId, hearingId: h.hearingId, attendance: u.attendance, result: h.result, outcome: u.outcome, nextDate: u.nextDate, late: u.late, beforeHearing: early } });
       if (a.stage === "SERVICE_DELIVERY") a.stage = "FOLLOW_UP";
       if (u.nextDate) addHearingTo(db, a, me, s, { at: u.nextDate, court: input.nextCourt.trim() || h.court, purpose: "", notifyClient: input.notifyClient });
       checkReassign(db, a, s);
@@ -1017,6 +1156,10 @@ export function lawyerNotificationsFor(db: DlasDb, me: PanelLawyerAccount | unde
         out.push({ id: `wd-${s.assignmentId}`, at: m.access.find((g) => g.assignmentId === s.assignmentId)?.revokedAt ?? s.respondedAt ?? s.offeredAt, tone: "err", title: { bn: `মামলা অন্য আইনজীবীকে দেওয়া হয়েছে: ${cid}`, en: `Case reassigned: ${cid}` }, body: { bn: `আপনার প্রবেশাধিকার শেষ। কারণ: ${s.declineReason ?? "—"}`, en: `Your access has ended. Reason: ${s.declineReason ?? "—"}` }, href: "#cases" });
       if (s.status === "COMPLETED" && m.completion)
         out.push({ id: `done-${s.assignmentId}`, at: m.completion.at, tone: "ok", title: { bn: `মামলা সম্পন্ন: ${cid}`, en: `Case completed: ${cid}` }, body: { bn: `উপস্থিত শুনানি ${s.ledger.hearingsAttended} — পেমেন্ট পর্যালোচনায়।`, en: `${s.ledger.hearingsAttended} attended hearing(s) — sent for payment review.` }, href: "#cases" });
+      if (s.payment?.approval)
+        out.push({ id: `payok-${s.assignmentId}`, at: s.payment.approval.at, tone: "ok", title: { bn: `পেমেন্ট অনুমোদিত: ${cid}`, en: `Payment approved: ${cid}` }, body: { bn: `${s.payment.approval.payableHearings}টি শুনানি × জেলা ফি${s.payment.approval.payableHearings !== s.payment.approval.computedHearings ? ` (সংশোধিত: ${s.payment.approval.note})` : ""}`, en: `${s.payment.approval.payableHearings} hearing(s) × district fee${s.payment.approval.payableHearings !== s.payment.approval.computedHearings ? ` (adjusted: ${s.payment.approval.note})` : ""}` }, href: "#cases" });
+      if (s.payment?.disbursement)
+        out.push({ id: `paid-${s.assignmentId}`, at: s.payment.disbursement.at, tone: "ok", title: { bn: `পেমেন্ট পাঠানো হয়েছে (সিমুলেটেড): ${cid}`, en: `Payment sent (simulated): ${cid}` }, body: { bn: `রেফারেন্স ${s.payment.disbursement.ref} — প্রোটোটাইপে কোনো টাকা লেনদেন হয় না।`, en: `Ref ${s.payment.disbursement.ref} — no money moves in the prototype.` }, href: "#cases" });
       if (s.reassignFlaggedAt && s.status === "ACCEPTED")
         out.push({ id: `rf-${s.assignmentId}`, at: s.reassignFlaggedAt, tone: "err", title: { bn: `${cid}: শুনানি মিসের সীমা পার হয়েছে`, en: `${cid}: missed-hearing limit reached` }, body: { bn: "অফিস অন্য আইনজীবী দিতে পারে।", en: "The office may assign another lawyer." }, href: `#cases/${a.applicationId}` });
       if (s.status !== "ACCEPTED") continue;
@@ -1027,6 +1170,20 @@ export function lawyerNotificationsFor(db: DlasDb, me: PanelLawyerAccount | unde
       }
     }
   }
+  // Red flag for declined offers (and a warning two declines before it).
+  const rf = activeRedFlag(me);
+  const rules = rulesOf(db);
+  if (rf)
+    out.push({ id: `rfl-${rf.flagId}`, at: rf.raisedAt, tone: "err", title: { bn: "লাল পতাকা: অনেক প্রস্তাব প্রত্যাখ্যান", en: "Red flag: too many declined offers" }, body: { bn: `আপনি ${rf.declines.length}টি মামলার প্রস্তাব প্রত্যাখ্যান করেছেন (সীমা ${rf.threshold})। ডিএলএও পর্যালোচনা করবেন; ততদিন ইঞ্জিনের তালিকায় আপনি পরে থাকবেন।`, en: `You declined ${rf.declines.length} case offers (limit ${rf.threshold}). The DLAO will review; until then the engine lists you after other lawyers.` }, href: "#intake" });
+  for (const f of (me.redFlags ?? []).filter((x) => x.status === "CLEARED"))
+    out.push({ id: `rflc-${f.flagId}`, at: f.clearedAt ?? f.raisedAt, tone: "ok", title: { bn: "লাল পতাকা তুলে নেওয়া হয়েছে", en: "Red flag cleared" }, body: { bn: `${f.clearedByName ?? ""}: ${f.clearNote ?? ""}`, en: `${f.clearedByName ?? ""}: ${f.clearNote ?? ""}` }, href: "#notifications" });
+  if (!rf) {
+    const ds = countedDeclines(db, me);
+    const n = ds.length;
+    if (n > 0 && n >= rules.declinesBeforeRedFlag - 2)
+      out.push({ id: `rflw-${n}`, at: ds[n - 1].at, tone: "warn", title: { bn: `সতর্কতা: ${n}/${rules.declinesBeforeRedFlag} প্রস্তাব প্রত্যাখ্যাত`, en: `Warning: ${n} of ${rules.declinesBeforeRedFlag} offers declined` }, body: { bn: `${rules.declinesBeforeRedFlag}টি প্রত্যাখ্যানে আপনাকে লাল পতাকা দেওয়া হবে।`, en: `At ${rules.declinesBeforeRedFlag} declines you will be red-flagged for DLAO review.` }, href: "#intake" });
+  }
+
   // Calls, summons and reminders from the DLAO.
   for (const c of me.contacts ?? []) {
     const about = c.applicationId ? db.applications.find((x) => x.applicationId === c.applicationId) : null;

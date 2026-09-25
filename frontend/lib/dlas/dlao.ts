@@ -22,6 +22,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { mutate, readDb, useDlasDb } from "./store";
 import { DISTRICTS, normalizePhone, officeFor } from "./reference";
 import { validateApplication } from "./validate";
+import { handlingDistrict } from "./case-handling";
 import type {
   ApplicationRecord,
   AuditEntry,
@@ -70,7 +71,7 @@ export type DlaoAuthResult =
   | { ok: false; error: "INVALID_NAME" | "INVALID_PHONE" | "INVALID_DISTRICT" | "PHONE_TAKEN" | "NOT_FOUND" };
 
 export const DlaoAuth = {
-  signUp(input: { name: string; phone: string; officeType: OfficeType; district: string }): DlaoAuthResult {
+  signUp(input: { name: string; phone: string; officeType: OfficeType; district: string; authorityRole?: "LEGAL_AID_OFFICER" | "CHIEF_LEGAL_AID_OFFICER" }): DlaoAuthResult {
     const phone = normalizePhone(input.phone);
     if (input.name.trim().length < 2) return { ok: false, error: "INVALID_NAME" };
     if (!phone) return { ok: false, error: "INVALID_PHONE" };
@@ -84,11 +85,12 @@ export const DlaoAuth = {
         phone,
         officeType: input.officeType,
         district: needsDistrict ? (input.district as DistrictCode) : null,
+        authorityRole: input.authorityRole ?? "LEGAL_AID_OFFICER",
         createdAt: now(),
         lastLoginAt: now(),
         audit: [],
       };
-      audit(db, a.audit, { actor: a.officerId, role: "dlao", action: "officer.signed_up", detail: { officeType: a.officeType, district: a.district } });
+      audit(db, a.audit, { actor: a.officerId, role: a.authorityRole === "CHIEF_LEGAL_AID_OFFICER" ? "clo" : "dlao", action: "officer.signed_up", detail: { officeType: a.officeType, district: a.district, authorityRole: a.authorityRole } });
       db.officers.push(a);
       return a;
     });
@@ -125,6 +127,10 @@ export const DlaoAuth = {
   },
 };
 
+export function officerAuthorityRole(o: Pick<DlaoOfficerAccount, "authorityRole" | "officeType">): "LEGAL_AID_OFFICER" | "CHIEF_LEGAL_AID_OFFICER" {
+  return o.authorityRole ?? (o.officeType === "SCLAC" ? "CHIEF_LEGAL_AID_OFFICER" : "LEGAL_AID_OFFICER");
+}
+
 function subscribe(cb: () => void) {
   window.addEventListener("storage", cb);
   window.addEventListener("dlas:db-changed", cb);
@@ -153,13 +159,18 @@ export function officeCode(o: Pick<DlaoOfficerAccount, "officeType" | "district"
   return o.officeType === "LLAC" ? `LLAC-${o.district}` : officeFor(o.district);
 }
 
+export function officerCanAccessApplication(a: ApplicationRecord, o: DlaoOfficerAccount | undefined): boolean {
+  if (!o) return false;
+  if (o.officeType === "SCLAC") return true;
+  // The handling district: the applicant's district, or the receiving office after an accepted DLAO → DLAO transfer.
+  if (o.officeType === "LLAC") return handlingDistrict(a) === o.district && a.data.matter.category === "LABOUR";
+  return handlingDistrict(a) === o.district;
+}
+
 /** Applications this officer's office is responsible for. SCLAC sees all districts. */
 export function applicationsForOffice(db: DlasDb, o: DlaoOfficerAccount | undefined): ApplicationRecord[] {
   if (!o) return [];
-  if (o.officeType === "SCLAC") return db.applications;
-  // LLAC (labour legal aid cell) takes labour matters of its district; DLAO takes the rest of the district.
-  if (o.officeType === "LLAC") return db.applications.filter((a) => a.data.applicant.district === o.district && a.data.matter.category === "LABOUR");
-  return db.applications.filter((a) => a.data.applicant.district === o.district);
+  return db.applications.filter((a) => officerCanAccessApplication(a, o));
 }
 
 /* ================================================================== *
@@ -249,6 +260,7 @@ function withApp<T>(applicationId: string, fn: (db: DlasDb, a: ApplicationRecord
   return mutate((db) => {
     const a = db.applications.find((x) => x.applicationId === applicationId);
     if (!a) throw new Error(`Unknown application ${applicationId}`);
+    if (!officerCanAccessApplication(a, officer)) throw new Error("This case is outside your office");
     const r = fn(db, a, officer);
     a.version += 1;
     a.updatedAt = now();
@@ -257,7 +269,7 @@ function withApp<T>(applicationId: string, fn: (db: DlasDb, a: ApplicationRecord
 }
 
 function logA(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, action: string, detail?: Record<string, unknown>) {
-  audit(db, a.audit, { actor: o.officerId, role: "dlao", action, detail: { officer: o.name, ...detail } });
+  audit(db, a.audit, { actor: o.officerId, role: officerAuthorityRole(o) === "CHIEF_LEGAL_AID_OFFICER" ? "clo" : "dlao", caseId: a.caseId ?? a.applicationId, action, detail: { officer: o.name, ...detail } });
 }
 
 function openTask(db: DlasDb, a: ApplicationRecord, type: Task["type"], reason: string, hours: number, role: Task["assignedRole"] = "DLAO", context?: Record<string, unknown>): Task {
@@ -337,6 +349,7 @@ const PATHWAY_LABEL: Record<PathwayType, { bn: string; en: string }> = {
   GRAM_ADALAT: { bn: "গ্রাম আদালত", en: "Gram Adalat (village court)" },
   MEDIATION: { bn: "মধ্যস্থতা", en: "Mediation" },
   LAWYER: { bn: "প্যানেল আইনজীবী", en: "Panel lawyer" },
+  REFERRAL: { bn: "অন্য সেবায় রেফারেল", en: "Other referral" },
 };
 export function pathwayLabel(t: PathwayType, lang: "bn" | "en") {
   return PATHWAY_LABEL[t][lang];
@@ -369,6 +382,7 @@ const PATHWAY_TASK: Record<PathwayType, { type: Task["type"]; role: Task["assign
   GRAM_ADALAT: { type: "GRAM_ADALAT_REFERRAL", role: "GRAM_ADALAT", reason: "Refer to the union Gram Adalat and track acknowledgement" },
   MEDIATION: { type: "MEDIATION_SCHEDULING", role: "MEDIATOR", reason: "Schedule mediation (remote / hybrid / in person) and notify parties" },
   LAWYER: { type: "LAWYER_ASSIGNMENT", role: "DLAO", reason: "Assign a panel lawyer from the district panel" },
+  REFERRAL: { type: "EXTERNAL_REFERRAL", role: "DLAO", reason: "Refer to the named service and track acknowledgement" },
 };
 
 /** The facts an officer checks, built from what the record actually holds. */
@@ -376,6 +390,7 @@ export function factChecklist(a: ApplicationRecord): { key: string; label: strin
   const d = a.data;
   const items: { key: string; label: string; value: string | null }[] = [
     { key: "matter.category", label: "Type of problem", value: label(MATTERS, d.matter.category, "en") },
+    { key: "matter.assistanceRole", label: "Legal aid requested for", value: d.matter.assistanceRole === "ALLEGED_PERSON_DEFENCE" ? "Defence of an alleged person" : d.matter.assistanceRole === "CLAIMANT" ? "Applicant / claimant" : null },
     { key: "matter.summary", label: "What happened", value: d.matter.summary },
     { key: "matter.incidentDate", label: "Incident date", value: d.matter.incidentDate },
     { key: "matter.opposingParty", label: "Other party", value: d.matter.opposingParty },
@@ -399,7 +414,7 @@ function setUnderReview(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount,
   }
 }
 
-function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutralBody: string, fullBody: string) {
+function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutralBody: string, fullBody: string, context?: { kind: "DOCUMENT_REQUEST"; docId: string }) {
   const to = normalizePhone(a.data.safeContact.phone) ?? normalizePhone(a.data.applicant.phone);
   if (!to) {
     logA(db, a, o, "notice.not_sent", { reason: "no safe phone on record — applicant is told at the office / via 16699" });
@@ -417,6 +432,7 @@ function notify(db: DlasDb, a: ApplicationRecord, o: DlaoOfficerAccount, neutral
     simulated: true,
     status: allowed ? "DELIVERED" : "SUPPRESSED_UNSAFE",
     at: now(),
+    ...(context ? { context } : {}),
   });
   logA(db, a, o, allowed ? "notice.sms_sent" : "notice.sms_suppressed", { to, neutral: a.data.safeContact.neutralWordingRequired });
 }
@@ -427,7 +443,7 @@ export const DlaoReviewService = {
     if (!reason.trim()) throw new Error("Enter a reason for the correction.");
     return withApp(applicationId, (db, a, o) => {
       if (!a.review) throw new Error("Receive the application first.");
-      if (a.review.decision || a.status === "CLOSED" || a.status === "WITHDRAWN") throw new Error("This application has already been decided or closed.");
+      if (a.review.decision || a.status === "RESOLVED" || a.status === "CLOSED" || a.status === "WITHDRAWN") throw new Error("This application has already been decided or closed.");
       if (!applicationsForOffice(db, o).some((x) => x.applicationId === applicationId)) throw new Error("This application is outside your office.");
       const allowed: Record<string, string[]> = {
         applicant: ["fullName", "phone", "nidNumber", "district", "addressLine"],
@@ -759,6 +775,7 @@ export const DlaoReviewService = {
         o,
         `Update on your reference ${a.applicationId}. Please log in to the portal or visit your UDC.`,
         `DLAS legal aid: please upload your ${name} for application ${a.applicationId} in the web portal (My cases), or bring it to your UDC. Help: 16699.`,
+        { kind: "DOCUMENT_REQUEST", docId: d.docId },
       );
       return a;
     });
@@ -780,36 +797,7 @@ export const DlaoReviewService = {
 
   /** After acceptance: where the case goes next. Officer choice, reason required; recommendation is advisory. */
   choosePathway(applicationId: string, input: { type: PathwayType; reason: string }) {
-    return withApp(applicationId, (db, a, o) => {
-      const r = a.review;
-      if (!r?.decision || r.decision.decision !== "ELIGIBLE" || !a.caseId) throw new Error("Only an accepted case (with a Case ID) can be sent to a pathway");
-      if (r.pathway) throw new Error("Pathway already chosen");
-      if (input.reason.trim().length < 10) throw new Error("A reason of at least 10 characters is required");
-      const rec = recommendPathway(a);
-      r.pathway = {
-        type: input.type,
-        recommended: rec.type,
-        recommendationReasons: rec.reasons,
-        followedRecommendation: rec.type === input.type,
-        reason: input.reason.trim(),
-        by: o.officerId,
-        byName: o.name,
-        at: now(),
-      };
-      a.stage = "SERVICE_DELIVERY";
-      logA(db, a, o, "pathway.chosen", { pathway: input.type, recommended: rec.type, followedRecommendation: rec.type === input.type, reason: input.reason.trim() });
-      const pt = PATHWAY_TASK[input.type];
-      const t = openTask(db, a, pt.type, pt.reason, input.type === "LAWYER" ? 48 : 72, pt.role, { caseId: a.caseId });
-      logA(db, a, o, "task.created", { taskId: t.taskId, type: t.type, assignedRole: t.assignedRole });
-      notify(
-        db,
-        a,
-        o,
-        `Update on your reference ${a.caseId}. The office will contact you at your safe time.`,
-        `DLAS legal aid: case ${a.caseId} is referred to ${PATHWAY_LABEL[input.type].en}. The office will contact you.`,
-      );
-      return a;
-    });
+    return withApp(applicationId, (db, a, o) => commitPathway(db, a, o, input.type, input.reason, recommendPathway(a)));
   },
 
   /** "Record eligibility details and notes" — after acceptance (or on any reviewed record). */
@@ -823,6 +811,52 @@ export const DlaoReviewService = {
     });
   },
 };
+
+/**
+ * Writes the final pathway (review.pathway), opens the downstream task and notifies the
+ * applicant. Used by choosePathway and by the legal-pathway classification (lib/dlas/pathway.ts).
+ */
+export function commitPathway(
+  db: DlasDb,
+  a: ApplicationRecord,
+  o: DlaoOfficerAccount,
+  type: PathwayType,
+  reason: string,
+  rec: { type: PathwayType; reasons: string[] },
+  extra?: { label?: string; taskReason?: string },
+) {
+      const r = a.review;
+      if (!r?.decision || r.decision.decision !== "ELIGIBLE" || !a.caseId) throw new Error("Only an accepted case (with a Case ID) can be sent to a pathway");
+      if (r.pathway) throw new Error("Pathway already chosen");
+      if (reason.trim().length < 10) throw new Error("A reason of at least 10 characters is required");
+      const input = { type, reason };
+      r.pathway = {
+        type: input.type,
+        recommended: rec.type,
+        recommendationReasons: rec.reasons,
+        followedRecommendation: rec.type === input.type,
+        reason: input.reason.trim(),
+        by: o.officerId,
+        byName: o.name,
+        at: now(),
+      };
+      a.stage = "SERVICE_DELIVERY";
+      logA(db, a, o, "pathway.chosen", { pathway: input.type, recommended: rec.type, followedRecommendation: rec.type === input.type, reason: input.reason.trim() });
+      const pt = PATHWAY_TASK[input.type];
+      const t = openTask(db, a, pt.type, extra?.taskReason ?? pt.reason, input.type === "LAWYER" ? 48 : 72, pt.role, { caseId: a.caseId });
+      logA(db, a, o, "task.created", { taskId: t.taskId, type: t.type, assignedRole: t.assignedRole });
+      notify(
+        db,
+        a,
+        o,
+        `Update on your reference ${a.caseId}. The office will contact you at your safe time.`,
+        `DLAS legal aid: case ${a.caseId} is referred to ${extra?.label ?? PATHWAY_LABEL[input.type].en}. The office will contact you.`,
+      );
+      return a;
+}
+
+/** Shared officer helpers for other Step-2 services (lib/dlas/pathway.ts). */
+export { withApp as withOfficerApp, logA as logOfficerAction, openTask as openOfficeTask, notify as notifyApplicant };
 
 /* ================================================================== *
  *  Queue view

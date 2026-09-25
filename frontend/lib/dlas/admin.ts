@@ -1,8 +1,8 @@
 import { mutate } from "./store";
 import { DISTRICTS, MATTERS, normalizePhone } from "./reference";
-import type { AuditEntry, DistrictCode, DlasDb, MatterCategory, OfficeType } from "./schema";
+import type { AuditEntry, DistrictCode, DlasDb, Hearing, MatterCategory, MediationCaseType, MediationTrack, MediatorCertificationStatus, MediatorRecord, MediatorRole, MediatorStatus, OfficeType } from "./schema";
 
-export type ManagedRole = "citizens" | "lawyers" | "officers" | "udcOperators";
+export type ManagedRole = "citizens" | "lawyers" | "officers" | "mediators" | "udcOperators";
 export type ManagedInput = {
   name: string;
   phone: string;
@@ -11,10 +11,30 @@ export type ManagedInput = {
   centre?: string;
   barEnrolmentNo?: string;
   practiceAreas?: string[];
+  mediatorStatus?: string;
+  mediatorRole?: string;
+  qualification?: string;
+  caseTypes?: string[];
+  tracks?: string[];
 };
 
-const idField = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", udcOperators: "operatorId" } as const;
-const prefix = { citizens: "CIT", lawyers: "LAW", officers: "OFC", udcOperators: "UDC" } as const;
+export type AdminHearingInput = {
+  at: string;
+  court: string;
+  purpose: string;
+};
+
+export type AdminMediatorTrainingInput = {
+  status: MediatorCertificationStatus;
+  body: string;
+  certificateNo: string;
+  issuedOn: string;
+  validUntil: string;
+  note: string;
+};
+
+const idField = { citizens: "citizenId", lawyers: "lawyerId", officers: "officerId", mediators: "mediatorId", udcOperators: "operatorId" } as const;
+const prefix = { citizens: "CIT", lawyers: "LAW", officers: "OFC", mediators: "MED", udcOperators: "UDC" } as const;
 const id = (p: string) => `${p}-${Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0")}`;
 
 function log(db: DlasDb, action: string, detail: Record<string, unknown>, accountAudit?: AuditEntry[]) {
@@ -24,6 +44,116 @@ function log(db: DlasDb, action: string, detail: Record<string, unknown>, accoun
 }
 
 export const AdminService = {
+  saveMediatorTraining(mediatorId: string, input: AdminMediatorTrainingInput) {
+    const body = input.body.trim();
+    const certificateNo = input.certificateNo.trim();
+    const note = input.note.trim();
+    const completed = input.status === "CERTIFIED" || input.status === "TRAINING_COMPLETED";
+    if (completed && body.length < 2) throw new Error("Enter the training or certifying body.");
+    if (input.issuedOn && Number.isNaN(Date.parse(input.issuedOn))) throw new Error("Enter a valid issue date.");
+    if (input.validUntil && Number.isNaN(Date.parse(input.validUntil))) throw new Error("Enter a valid expiry date.");
+    if (input.issuedOn && input.validUntil && input.validUntil < input.issuedOn) throw new Error("The expiry date cannot be before the issue date.");
+    if (note.length < 3) throw new Error("Enter a short training note.");
+    return mutate((db) => {
+      const mediator = db.mediators.find((m) => m.mediatorId === mediatorId);
+      if (!mediator) throw new Error("Mediator no longer exists.");
+      const before = { ...mediator.certification };
+      mediator.certification = {
+        status: input.status,
+        body: body || null,
+        certificateNo: certificateNo || null,
+        issuedOn: input.issuedOn || null,
+        validUntil: input.validUntil || null,
+        verifiedBy: null,
+        verifiedByName: null,
+        verifiedAt: null,
+      };
+      const at = new Date().toISOString();
+      if (mediator.status === "ACTIVE") {
+        mediator.status = "PENDING_VERIFICATION";
+        mediator.statusChangedAt = at;
+        mediator.statusReason = "Training or certification changed by DBLA / Admin — verification required";
+      }
+      mediator.updatedAt = at;
+      mediator.adminRecord.push({ entryId: id("MAR"), kind: "TRAINING", at, by: "admin:prototype", byName: "DBLA / Admin", text: note });
+      log(db, "mediator.training_updated", { mediatorId, before, after: mediator.certification, note, verificationReset: true }, mediator.audit);
+      return mediator.certification;
+    });
+  },
+
+  saveHearing(applicationId: string, hearingId: string | null, input: AdminHearingInput) {
+    const hearingAt = new Date(input.at);
+    const court = input.court.trim();
+    const purpose = input.purpose.trim() || null;
+    if (Number.isNaN(hearingAt.getTime())) throw new Error("Enter the hearing date and time.");
+    if (court.length < 2) throw new Error("Enter the court.");
+
+    return mutate((db) => {
+      const application = db.applications.find((a) => a.applicationId === applicationId);
+      if (!application) throw new Error("Application no longer exists.");
+      const matter = (application.lawyer ??= { assignments: [], hearings: [], updates: [], access: [], shortlists: [], completion: null });
+      const at = hearingAt.toISOString();
+      const updateDueAt = new Date(hearingAt.getTime() + (db.lawyerRules?.updateDueHours ?? 48) * 3_600_000).toISOString();
+
+      if (hearingId) {
+        const hearing = matter.hearings.find((h) => h.hearingId === hearingId);
+        if (!hearing) throw new Error("Hearing no longer exists.");
+        const before = { at: hearing.at, court: hearing.court, purpose: hearing.purpose };
+        hearing.at = at;
+        hearing.court = court;
+        hearing.purpose = purpose;
+        if (!hearing.updateId) hearing.updateDueAt = updateDueAt;
+        const task = db.tasks.find((t) => t.applicationId === applicationId && t.status !== "DONE" && t.type === "HEARING_UPDATE_DUE" && t.context?.hearingId === hearingId);
+        if (task && !hearing.updateId) {
+          task.dueAt = updateDueAt;
+          task.reason = `Report on the ${new Date(at).toLocaleString("en-GB")} hearing (${court})`;
+        }
+        log(db, "hearing.admin_updated", { applicationId, hearingId, before, after: { at, court, purpose }, outcomeUnchanged: true }, application.audit);
+        application.updatedAt = new Date().toISOString();
+        return hearing;
+      }
+
+      const assignment = [...matter.assignments].reverse().find((a) => a.status === "ACCEPTED") ?? null;
+      const hearing: Hearing = {
+        hearingId: id("HRG"),
+        assignmentId: assignment?.assignmentId ?? null,
+        result: null,
+        at,
+        court,
+        purpose,
+        addedBy: "admin:prototype",
+        addedAt: new Date().toISOString(),
+        updateDueAt,
+        updateId: null,
+        overdueFlaggedAt: null,
+        clientNotifiedAt: null,
+      };
+      matter.hearings.push(hearing);
+      if (assignment) {
+        const taskId = id("TSK");
+        db.tasks.push({
+          taskId,
+          type: "HEARING_UPDATE_DUE",
+          applicationId,
+          sessionId: application.channel.sessionId,
+          assignedRole: "PANEL_LAWYER",
+          assigneeId: assignment.lawyerId,
+          office: application.routing.office,
+          status: "OPEN",
+          priority: application.routing.recommendedPriority,
+          reason: `Report on the ${new Date(at).toLocaleString("en-GB")} hearing (${court})`,
+          dueAt: updateDueAt,
+          createdAt: new Date().toISOString(),
+          context: { hearingId: hearing.hearingId },
+        });
+        application.taskIds.push(taskId);
+      }
+      log(db, "hearing.admin_added", { applicationId, hearingId: hearing.hearingId, at, court, purpose, assignmentId: hearing.assignmentId }, application.audit);
+      application.updatedAt = new Date().toISOString();
+      return hearing;
+    });
+  },
+
   saveAccount(role: ManagedRole, accountId: string | null, input: ManagedInput) {
     const name = input.name.trim();
     const phone = normalizePhone(input.phone);
@@ -34,7 +164,62 @@ export const AdminService = {
     if (role === "officers" && !["DLAO", "SCLAC", "LLAC"].includes(input.officeType ?? "")) throw new Error("Select an office type.");
     if (role === "udcOperators" && !input.centre?.trim()) throw new Error("Enter a UDC centre.");
     if (role === "lawyers" && !input.barEnrolmentNo?.trim()) throw new Error("Enter the bar enrolment number.");
+    if (role === "mediators" && !input.qualification?.trim()) throw new Error("Enter the mediator's qualification.");
+    if (role === "mediators" && !(input.caseTypes?.length)) throw new Error("Select at least one mediation case type.");
+    if (role === "mediators" && !(input.tracks?.length)) throw new Error("Select at least one mediation track.");
     return mutate((db) => {
+      if (role === "mediators") {
+        const existing = accountId ? db.mediators.find((x) => x.mediatorId === accountId) : undefined;
+        if (accountId && !existing) throw new Error("Mediator no longer exists.");
+        if (db.mediators.some((x) => x.contact.phone === phone && x !== existing)) throw new Error("This phone is already used by a mediator.");
+        const at = new Date().toISOString();
+        const values = {
+          name,
+          role: (input.mediatorRole ?? "PANEL_MEDIATOR") as MediatorRole,
+          status: (input.mediatorStatus ?? "PENDING_VERIFICATION") as MediatorStatus,
+          district: district as DistrictCode,
+          qualification: { kind: "OTHER" as const, detail: input.qualification!.trim() },
+          caseTypes: (input.caseTypes ?? []) as MediationCaseType[],
+          tracks: (input.tracks ?? []) as MediationTrack[],
+          contact: { ...(existing?.contact ?? { email: null, preferredChannel: "PHONE" as const, office: null }), phone },
+          updatedAt: at,
+        };
+        const mediator: MediatorRecord = existing ?? {
+          mediatorId: id("MED"),
+          name,
+          role: values.role,
+          status: values.status,
+          statusReason: "Created by DBLA / Admin",
+          statusChangedAt: at,
+          qualification: values.qualification,
+          certification: { status: "NOT_TRAINED", body: null, certificateNo: null, issuedOn: null, validUntil: null, verifiedBy: null, verifiedByName: null, verifiedAt: null },
+          experience: { years: 0, mediationsConducted: 0, settled: 0, note: null },
+          caseTypes: values.caseTypes,
+          tracks: values.tracks,
+          district: values.district,
+          operationalAreas: [],
+          languages: ["bn"],
+          availability: { status: "AVAILABLE", days: ["SUN", "MON", "TUE", "WED", "THU"], channels: ["PHYSICAL", "VOICE"], maxActiveMatters: 10, unavailableUntil: null, note: null, updatedAt: at },
+          workload: { activeMatters: 0, basis: "RECORDED", updatedAt: at },
+          conflicts: [],
+          adminRecord: [],
+          contact: values.contact,
+          sample: false,
+          createdAt: at,
+          createdBy: "admin:prototype",
+          updatedAt: at,
+          audit: [],
+        };
+        const previousStatus = mediator.status;
+        Object.assign(mediator, values);
+        if (previousStatus !== mediator.status) {
+          mediator.statusChangedAt = at;
+          mediator.statusReason = "Updated by DBLA / Admin";
+        }
+        if (!existing) db.mediators.push(mediator);
+        log(db, existing ? "mediator.account_updated" : "mediator.account_created", { role, accountId: mediator.mediatorId, fields: Object.keys(values) }, mediator.audit);
+        return mediator.mediatorId;
+      }
       const list = db[role] as unknown as Array<{ name: string; phone: string; audit: AuditEntry[]; [key: string]: unknown }>;
       const key = idField[role];
       const existing = accountId ? list.find((x) => x[key] === accountId) : undefined;
@@ -73,6 +258,31 @@ export const AdminService = {
       }
       log(db, existing ? "account.updated" : "account.created", { role, accountId: account[key], fields: Object.keys(values) }, account.audit);
       return account[key] as string;
+    });
+  },
+
+  deleteAccount(role: ManagedRole, accountId: string) {
+    return mutate((db) => {
+      if (role === "mediators") {
+        const index = db.mediators.findIndex((x) => x.mediatorId === accountId);
+        if (index < 0) throw new Error("Mediator no longer exists.");
+        const active = db.applications.some((a) => a.mediation?.assignments.some((x) => x.mediatorId === accountId && !["DECLINED", "EXPIRED", "WITHDRAWN", "COMPLETED"].includes(x.status) && !x.accessRevokedAt));
+        if (active) throw new Error("Remove or complete this mediator's active assignments before deleting the account.");
+        const [account] = db.mediators.splice(index, 1);
+        log(db, "mediator.account_deleted", { role, accountId, name: account.name, historicalRecordsPreserved: true });
+        return;
+      }
+      if (role === "lawyers") {
+        const active = db.applications.some((a) => a.lawyer?.assignments.some((x) => x.lawyerId === accountId && (x.status === "OFFERED" || x.status === "ACCEPTED")));
+        if (active) throw new Error("Withdraw or complete this lawyer's active assignments before deleting the account.");
+      }
+      const list = db[role] as unknown as Array<{ name: string; [key: string]: unknown }>;
+      const key = idField[role];
+      const index = list.findIndex((x) => x[key] === accountId);
+      if (index < 0) throw new Error("Account no longer exists.");
+      const [account] = list.splice(index, 1);
+      if (role === "udcOperators") db.udcCentres = db.udcCentres.filter((x) => x.operatorId !== accountId || x.source !== "REGISTERED_OPERATOR");
+      log(db, "account.deleted", { role, accountId, name: account.name, historicalRecordsPreserved: true, linkedRegisteredCentreRemoved: role === "udcOperators" });
     });
   },
 };

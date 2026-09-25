@@ -224,14 +224,14 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 - `frontend/app/tokens.css` is the active theme source imported by `frontend/app/globals.css`.
 - `frontend/app/themes/black_theme.css` is the preserved snapshot of the original global, role, status, and admin tokens.
 - `frontend/app/themes/red_white.css` preserves the courthouse image theme.
-- frontend/app/themes/black_theme.css is active. blue_white.css and red_white.css are saved alternatives.
+- `frontend/app/themes/blue_white.css` is active. `black_theme.css` and `red_white.css` are saved alternatives.
 - Theme presentation is CSS-only. No theme selector or theme state appears in the product UI.
 - `globals.css` imports the active theme after `tokens.css`. Developers switch among the saved themes by changing that single import path; no component or application state changes are required.
 
 
-### Blue White visual refresh
+### Blue White theme with role-based color system
 
-The saved, inactive CSS-only theme in frontend/app/themes/blue_white.css now uses ocean blue (#1764d9), navy (#142d50), white, and pale blue surfaces. This supersedes the earlier supplied palette. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Black theme is currently selected in globals.css, and saved alternate themes remain available without a theme button.
+The active CSS-only theme in `frontend/app/themes/blue_white.css` implements the role-based color system: Primary Brand Authority `#003366` (Deep Navy Blue) for header bars and strong boundaries; Action Accent `#0076D6` (Accessible Blue) for primary buttons, active tabs, and links; Light Neutral `#F8F9FA` (Off-White / Soft Gray) for background and card containers; Dark Neutral `#1A202C` (Charcoal Black) for high-contrast body copy and form labels; and Muted Neutral `#E2E8F0` (Border Gray) for subtle dividers, borders, and disabled states. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes remain available without a theme button.
 
 ## Co-mediators, defence intake, lawyer-change requests, and notification cleanup
 

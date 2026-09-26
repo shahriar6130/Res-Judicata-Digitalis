@@ -285,3 +285,13 @@
     transition: none;
   }
 }
+
+.card {
+  padding: var(--s-4);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-3);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}

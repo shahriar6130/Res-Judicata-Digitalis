@@ -16,6 +16,9 @@
     height: var(--bottom-nav-height);
     background: var(--bottom-nav-bg);
     border-top: 1px solid var(--bottom-nav-border);
+    box-shadow: 0 -8px 30px var(--notification-glow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch;
@@ -70,7 +73,7 @@
 }
 
 .tabActive .icon {
-  color: var(--yellow);
+  color: var(--color-primary);
 }
 
 .tabActive::before {
@@ -81,7 +84,7 @@
   transform: translateX(-50%);
   width: 24px;
   height: 3px;
-  background: var(--yellow);
+  background: var(--color-primary);
   border-radius: 0 0 2px 2px;
 }
 /* New notifications / documents needed: glow until seen. */
@@ -89,7 +92,9 @@
   position: relative;
   color: var(--action-ink);
   border-radius: 999px;
-  animation: tabGlow 1.8s ease-in-out infinite;
+  animation: none;
+  background: var(--action-soft);
+  box-shadow: 0 0 12px var(--notification-glow);
 }
 
 .badge {

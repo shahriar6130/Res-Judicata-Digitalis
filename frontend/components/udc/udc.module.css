@@ -1084,3 +1084,30 @@
   background: var(--theme-solid-fill, var(--black)); color: var(--yellow);
   display: flex; align-items: center; justify-content: center;
 }
+
+/* Blue/white glass surfaces; operational state colours remain semantic. */
+.page { background: transparent; }
+.pageHeader {
+  padding: var(--s-6);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+.networkBar { border-radius: var(--r-3); box-shadow: var(--glass-shadow-soft); }
+.card,
+.kpis,
+.panel,
+.tableWrap,
+.queueTable {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  overflow: hidden;
+}
+.cardLink { color: var(--color-primary); }

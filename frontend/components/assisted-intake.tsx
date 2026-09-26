@@ -455,6 +455,7 @@ export function AssistedIntake({ mode = "citizen" }: { mode?: "citizen" | "udc" 
                 <CitizenIdentityCheck
                   draft={draft}
                   onDistrict={(v) => setField("district", v)}
+                  onAddress={(v) => setField("applicantAddress", v)}
                   onNid={(v) => setField("nidNumber", v)}
                   verified={phoneVerified}
                 />
@@ -1723,11 +1724,13 @@ function UdcIdentityCheck({
 function CitizenIdentityCheck({
   draft,
   onDistrict,
+  onAddress,
   onNid,
   verified,
 }: {
   draft: IntakeDraft;
   onDistrict: (v: string) => void;
+  onAddress: (v: string) => void;
   onNid: (v: string) => void;
   verified: boolean;
 }) {
@@ -1768,6 +1771,24 @@ function CitizenIdentityCheck({
             </option>
           ))}
         </select>
+      </label>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>
+          {draft.actingFor === "family" || draft.actingFor === "neighbor" || draft.actingFor === "alleged"
+            ? tx("আবেদনকারীর বিস্তারিত ঠিকানা", "Applicant's detailed address")
+            : tx("আপনার বিস্তারিত ঠিকানা", "Your detailed address")}
+        </span>
+        <textarea
+          className={styles.textarea}
+          rows={3}
+          value={draft.applicantAddress}
+          onChange={(e) => onAddress(e.target.value)}
+          placeholder={tx("বাড়ি/হোল্ডিং, রাস্তা, গ্রাম/এলাকা, ডাকঘর ও উপজেলা", "House/holding, road, village/area, post office and upazila")}
+          autoComplete="street-address"
+        />
+        <span className={styles.micLabelMuted}>
+          {tx("নির্বাচিত জেলার ভেতরের যতটুকু বিস্তারিত ঠিকানা জানেন লিখুন।", "Enter as much of the address as you know within the selected district.")}
+        </span>
       </label>
       <label className={styles.field}>
         <span className={styles.fieldLabel}>

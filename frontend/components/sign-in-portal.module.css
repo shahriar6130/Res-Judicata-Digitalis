@@ -148,7 +148,19 @@
   gap: var(--s-12);
   min-height: 100dvh;
   padding: var(--s-12) var(--page-pad) var(--s-6);
-  background: var(--off-white);
+  background:
+    var(--ambient-gradient-corner),
+    var(--color-bg);
+}
+
+.shell {
+  padding: var(--s-8);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-4);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
 }
 
 .shell {
@@ -204,6 +216,10 @@
   font-size: var(--t-label);
   line-height: var(--leading-label);
   color: var(--red);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--r-2);
+  background: var(--color-danger-soft);
 }
 
 .footer {

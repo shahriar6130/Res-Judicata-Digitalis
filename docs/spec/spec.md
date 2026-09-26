@@ -113,7 +113,7 @@ previous keys where possible.
 - UDC login `/udc` (legacy `/portal/udc` also works): sign up with name + mobile + UDC centre + district; log in with the mobile only. New and legacy UDC accounts default to `PENDING`; they can sign in to see the approval state, but only an `APPROVED` account can use `/dashboard/udc`. The district-matched DLO manages these states from `/dashboard/dlo#udcs`, can approve one or all pending operators, and must enter a reason to reject. Cross-district UDC records are excluded and every decision is appended to the operator audit. The operator id/name/centre come from the account (no `udc-001`, no demo operator). UDC demo seed data (Nuching/Rangamati/Bandarban drafts, conflicts, measurements) and the Nuching jury-mode/demo pages were removed; the dashboard, applications list and sidebar show only the operator's own work from `dlas.db.v1` (+ live offline-queue status). The UDC overview starts the same five-step **Lodge a complaint** wizard used by citizens and links to status visits and sync. UDC identity is operator-attested rather than applicant-OTP verified. Evidence is forward-only: the operator can select and pass files into the sealed record, but the UDC interface exposes no evidence preview, content, filename, or quality-review screen. Old UDC intake/consent/document URLs resolve to the shared wizard instead of the former evidence viewer.
 - Citizen "UDC" tab lists UDC centres for the district of the citizen's latest application, from `dlas.db.v1.udcCentres`: a demo directory (2 per district, labelled "demo directory", no names/phones) plus every signed-up UDC operator's centre (listed first).
 - Four doors write ONE canonical JSON record through `IntakeGateway` (`frontend/lib/dlas/`):
-  - Citizen: "Lodge a complaint" = the 5-step intake wizard at `/dashboard/citizen#intake` (`#complaint` is an alias; the separate old complaint form was removed as redundant), via `CitizenDoor`. Step 1 now also asks for the district and verifies the mobile number by OTP (simulated SMS). In step 2, the citizen describes the problem in ordinary language and a labelled, local AI simulation automatically maps it to the existing broad matter category; the description is carried into step 3. **See all issue types** expands 33 detailed, plain-language situations that let the citizen override the recommendation, with every choice mapped back to a valid shared-record category. Step 3 requires a primary opposing party and supports any number of additional opponents through **+ Add another opponent**; each additional name/address row can be removed and persists in `matter.opposingParties` while `matter.opposingParty` remains the primary compatibility value. In step 4, **I don't have the necessary identity document** records `applicant.identityDocumentUnavailable`, suppresses the pending-NID checklist item, and creates an in-progress `LOCAL_IDENTITY_VERIFICATION` task assigned to a local government representative when submitted. The DLAO worklist and identity-review screen show that it was sent for local verification; an officer may record `LOCAL_GOVT_REPRESENTATIVE` as the verification method, and completing identity verification closes the task. Step 5 requires a safe contact time. Family/neighbour filing records the filer as a representative.
+  - Citizen: "Lodge a complaint" = the 5-step intake wizard at `/dashboard/citizen#intake` (`#complaint` is an alias; the separate old complaint form was removed as redundant), via `CitizenDoor`. Step 1 asks for the district, provides a separate multiline detailed-address field (house/holding, road, village/area, post office and upazila), and verifies the mobile number by OTP (simulated SMS); the detailed address persists as `applicant.addressLine`. In step 2, the citizen describes the problem in ordinary language and a labelled, local AI simulation automatically maps it to the existing broad matter category; the description is carried into step 3. **See all issue types** expands 33 detailed, plain-language situations that let the citizen override the recommendation, with every choice mapped back to a valid shared-record category. Step 3 initially shows exactly one required primary opposing party and reveals further opponent blocks only when the citizen selects **+ Add another opponent**; each additional name/address row can be removed and persists in `matter.opposingParties` while `matter.opposingParty` remains the primary compatibility value. In step 4, **I don't have the necessary identity document** records `applicant.identityDocumentUnavailable`, suppresses the pending-NID checklist item, and creates an in-progress `LOCAL_IDENTITY_VERIFICATION` task assigned to a local government representative when submitted. The DLAO worklist and identity-review screen show that it was sent for local verification; an officer may record `LOCAL_GOVT_REPRESENTATIVE` as the verification method, and completing identity verification closes the task. Step 5 requires a safe contact time. Family/neighbour filing records the filer as a representative.
   - UDC: `/dashboard/udc#intake-new` uses the citizen complaint wizard component and its exact five steps, fields, validation, draft persistence, safe-contact choice, consent, and success state, via the UDC mode of `UdcDoor`. The operator account is preserved as provenance and attests in-person identity. Added evidence is marked sensitive, stored in the shared record, and represented to the UDC only by an opaque sealed-transfer status; only an authorised downstream role can open it.
   - Phones: `/device/ivr` (16699, simulated network + speech-to-text) and `/device/ussd` (*16699#, simulated gateway).
     Both phone pages show a bilingual three-step start guide, a current-mode selector, a prominent handset, conversation, and live record. The layout stacks without horizontal scrolling on narrow screens, while the same scripted flow and shared application record remain in use.
@@ -217,7 +217,7 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 - Hash changes update the visible admin workspace without a full page reload.
 - Clicking Overview from a hash section clears the hash and restores the overview.
 - Exactly one sidebar item is active: the hashless Overview item is active only when no section hash is present.
-- Admin colors are scoped through --admin-* tokens. The active government theme uses light green surfaces and black text.
+- Admin colors are scoped through `--admin-*` compatibility tokens that resolve to the shared blue-white glass palette, navy/slate text, and red destructive states.
 - The Admin sidebar, including the সাক্ষ্য wordmark plate, uses the scoped admin palette rather than the shared black wordmark background. Other role sidebars remain unchanged.
 
 ## Theme snapshot and restoration
@@ -230,9 +230,17 @@ show Mediation → Failure → Referral record → Legal Aid Officer → Lawyer 
 - `globals.css` imports the active theme after `tokens.css`. Developers switch among the saved themes by changing that single import path; no component or application state changes are required.
 
 
-### Light government theme
+### Blue-white glass government theme
 
-The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+The active `frontend/app/themes/gov_theme.css` maps the centralized design tokens to a premium
+blue-white macOS-inspired visual system without changing routes, content, forms, validation,
+permissions, or information architecture. The canvas is `#F6F9FC` with subtle radial blue ambience;
+navigation, headers, existing cards, and dialogs use graduated translucent-white glass surfaces.
+Primary actions and active navigation use `#2563EB`; focus uses a visible blue ring. Success is
+green, warning is amber, and errors/destructive/failed/urgent states are always red and retain a
+text or icon label. Only critical states receive the reusable red pulse, and reduced-motion users
+receive a static red treatment. Ordinary notifications never pulse. Existing responsive and
+Bangla/English behavior remains unchanged.
 
 ## Co-mediators, defence intake, lawyer-change requests, and notification cleanup
 
@@ -251,20 +259,11 @@ The active theme is `frontend/app/themes/gov_theme.css`, imported after the base
 
 ### Button and notification contrast
 
-Shared buttons have a minimum 44px height. Outlined actions and notification links use
-deep green on white or pale green; filled notification badges use white labels on deep
-green. Badges inside active green navigation invert to a white surface with deep-green
-labels, and the active navigation marker stays light. Unread rows retain their text label
-and leading rule. Unread notification navigation and badges pulse with a green glow until their
-existing unread state clears. The home reminder and mobile notification icon also glow.
-The animation changes only the halo, preserving label contrast; reduced-motion users
-get a steady navigation highlight. Keyboard focus remains available in both languages. Paired
-colors are defined in `frontend/app/tokens.css`.
-
-Unread notification navigation and the home reminder use an eye-catching 2px glowing
-border with a green outer halo, pulsing every 1.8 seconds. Active green navigation
-uses a light inner edge. The border remains visible throughout the pulse; reduced
-motion keeps a steady glow. The reading surface and text colors stay unchanged.
+Shared buttons keep a minimum 44px height. Outlined actions and normal notification links use blue
+on translucent white; active navigation uses a soft blue surface and static glow. Ordinary unread
+navigation, home reminders, and mobile notification icons do not pulse. Critical red alerts,
+failed operations, urgent states, and destructive warnings may run the short `alertPulse` twice;
+their red border/icon/text label remains visible afterward, and reduced-motion disables the pulse.
 
 ### Hash navigation hydration
 

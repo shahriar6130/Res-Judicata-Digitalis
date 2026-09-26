@@ -701,3 +701,20 @@
     gap: var(--s-1);
   }
 }
+
+/* Citizen UDC information keeps its present grouping with glass depth. */
+.header,
+.previewCard,
+.officeCard,
+.hoursCard,
+.intakeCard,
+.officerCard,
+.servicesCard,
+.contactCard {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}

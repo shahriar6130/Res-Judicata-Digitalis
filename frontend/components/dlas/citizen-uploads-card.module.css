@@ -34,7 +34,7 @@
   border-radius: 999px;
   background: var(--status-pending);
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-pending) 60%, transparent);
-  animation: pulse 1.6s ease-out infinite;
+  animation: none;
 }
 
 @keyframes pulse {

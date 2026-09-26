@@ -436,3 +436,26 @@
 
 .checklistRow { display: flex; align-items: flex-start; gap: var(--s-2); }
 .checklistRow input { min-width: 20px; min-height: 20px; margin-top: 2px; }
+
+/* macOS-like sheets and panels for mediator work. */
+.page { background: transparent; }
+.pageHeader,
+.section,
+.partyCard,
+.clause {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+.pageHeader { padding: var(--s-6); }
+.pillBlock,
+.inconsistency,
+.errorNote,
+.blockBox {
+  color: var(--color-danger-dark);
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+}

@@ -574,3 +574,40 @@
     padding: 4px 0;
   }
 }
+
+/* Referral screens retain dense lists inside a restrained glass frame. */
+.shell { background: transparent; color: var(--color-text); }
+.topbar {
+  position: sticky;
+  top: var(--s-3);
+  z-index: 10;
+  padding: var(--s-3) var(--s-4);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+.brandEyebrow,
+.eyebrow,
+.intro,
+.kpiLabel { color: var(--color-text-secondary); }
+.langBtn,
+.kpi,
+.section,
+.card {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-3);
+}
+.kpi,
+.section { box-shadow: var(--glass-shadow-soft); }
+.langBtnActive,
+.btn:not(.btnSecondary):not(.btnGhost):not(.btnDanger) {
+  color: var(--white);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.banner { color: var(--color-warning); background: var(--color-warning-soft); border-color: var(--color-warning-border); }
+.btnDanger { color: var(--white); background: var(--color-danger); border-color: var(--color-danger); }

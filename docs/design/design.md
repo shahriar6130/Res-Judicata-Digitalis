@@ -8,10 +8,19 @@ S24 and S33 stay thin, while only S23 export—not its B7 report/search—is opt
 ## Direction
 
 The interface combines an editorial legal publication with a restrained operational tool. It uses
-an off-white canvas, black navigation, hairline divisions, large serif headings, and clear reasons
-before actions. The saved Blue White theme permits subtle gradients on featured panels and restrained hover shadows. It does not use unexplained scores or colour as the sole signal.
+a very light blue-white ambient canvas, translucent navigation and grouped surfaces, hairline
+divisions, large serif headings, and clear reasons before actions. Glass is hierarchical rather
+than universal: navigation and headers are strongest, existing panels use calmer translucency,
+dense rows stay flat, and primary actions provide the blue focal point.
 
-The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+The active `frontend/app/themes/gov_theme.css` implements the premium macOS-inspired system through
+central tokens in `frontend/app/tokens.css`: primary blue `#2563EB`, hover blue `#1D4ED8`, canvas
+`#F6F9FC`, navy text `#0F172A`, slate secondary text, translucent white surfaces, subtle blue
+radial ambience, restrained blur, and soft layered shadows. The original legal imagery and all
+page structures remain intact. Success stays green, warnings amber, and every error, failed action,
+destructive warning, or urgent state stays red with a text/icon label. Only critical states receive
+a short red pulse; ordinary unread notifications use a static blue indicator. Focus is a visible
+blue ring, reduced motion disables non-essential animation, and Bangla/English behavior is unchanged.
 Playfair Display and Noto Serif Bengali form the one permitted font stack. Bangla is the default;
 the text toggle changes the entire visible interface to English and persists the choice.
 
@@ -32,10 +41,10 @@ the text toggle changes the entire visible interface to English and persists the
 
 ## Shared dashboard shell
 
-- Desktop uses a sticky 240px black sidebar and a centered content region up to 1280px.
+- Desktop uses a fixed translucent white glass sidebar and a centered content region up to 1280px.
 - The sidebar contains the role navigation and a separate Simulated section.
 - Below 1024px the sidebar becomes a working slide-in drawer with an overlay.
-- Content uses one primary action per view, 1px hairline lists, square 2-4px controls, and generous
+- Content uses one primary action per view, 1px hairline lists, 10-18px controls/surfaces, and generous
   whitespace.
 - Every interactive element has a visible keyboard focus state and citizen/lawyer controls meet the
   44px tap-target requirement.
@@ -134,7 +143,11 @@ the identity-review screen repeats the status and offers **Local government repr
 verification** as the officer's recorded verification method. Completing the officer's identity
 check closes the local-verification task.
 
-The opposing-party block starts with one required party. **+ Add another opponent** appends another
+The identity step keeps district selection and detailed address separate. The detailed-address
+textarea prompts for house/holding, road, village/area, post office, and upazila, so the citizen is
+not forced to compress a usable address into the district selector.
+
+The opposing-party block initially shows exactly one required party. **+ Add another opponent** appends another
 name-and-address block, and each added block has a Remove control. Additional opponents persist in
 the offline draft and in `matter.opposingParties`; the original `matter.opposingParty` remains the
 primary-party compatibility field for existing officer and downstream views.
@@ -269,14 +282,22 @@ hearing or correct its date, court, and purpose in a focused dialog. The edit su
 attendance or outcomes, and every schedule addition or correction is audited.
 ## Admin sidebar
 
-The admin dashboard uses the selected theme's dedicated admin palette across the complete workspace. The active government theme gives the sidebar, সাক্ষ্য wordmark plate, hero, controls, page surface, panels, dialogs, notices, and tables a light green and white palette with black text. The sidebar contains Overview, People, Applications, Policy, Mediation oversight, Audit, and Backup. Its compact workspace heading reads System administration.
+The admin dashboard uses the shared blue-white glass palette across the complete workspace. The
+sidebar, সাক্ষ্য wordmark plate, header, controls, panels, dialogs, notices, and tables use the same
+translucent white surfaces, blue interaction accents, navy/slate text, and semantic red destructive
+states as the rest of the product. The sidebar contains Overview, People, Applications, Policy,
+Mediation oversight, Audit, and Backup. Its compact workspace heading reads System administration.
 
 Under the image theme, the same admin variables resolve to its saved courthouse treatment. Restoring the black theme restores the burgundy administrator palette and original role colors.
 
 
-### Light government theme
+### Blue-white glass government theme
 
-The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+`gov_theme.css` remains the active CSS-only theme and compatibility layer. It maps historical token
+names to the new semantic palette so older components inherit the redesign without a parallel theme
+or component rewrite. Saved themes remain development references; the product exposes no theme
+switch. Mobile reduces blur strength and retains the existing drawer, stacking, touch targets, and
+overflow behavior.
 
 ## Multi-party service actions
 
@@ -290,20 +311,13 @@ and the testimonial is ready. Requested-document notices disappear after upload.
 
 ### Button and notification contrast
 
-Shared buttons have a minimum 44px height. Outlined actions and notification links use
-deep green on white or pale green; filled notification badges use white labels on deep
-green. Badges inside active green navigation invert to a white surface with deep-green
-labels, and the active navigation marker stays light. Unread rows retain their text label
-and leading rule. Unread notification navigation and badges pulse with a green glow until their
-existing unread state clears. The home reminder and mobile notification icon also glow.
-The animation changes only the halo, preserving label contrast; reduced-motion users
-get a steady navigation highlight. Keyboard focus remains available in both languages. Paired
-colors are defined in `frontend/app/tokens.css`.
-
-Unread notification navigation and the home reminder use an eye-catching 2px glowing
-border with a green outer halo, pulsing every 1.8 seconds. Active green navigation
-uses a light inner edge. The border remains visible throughout the pulse; reduced
-motion keeps a steady glow. The reading surface and text colors stay unchanged.
+Shared buttons have a minimum 44px height. Primary actions use blue with white labels; secondary
+actions use translucent white, blue text, and a blue-gray border. Active navigation and ordinary
+unread indicators use a static soft-blue surface/glow with a retained text label. They never pulse.
+Critical alerts, urgent errors, failed operations, and destructive warnings use red borders,
+icons/status dots, explicit semantic text, and a short red `alertPulse`; the red border and label
+remain after animation. Reduced-motion users receive the same static red state without animation.
+Keyboard focus remains a visible blue ring in both languages.
 
 ### Hash navigation hydration
 

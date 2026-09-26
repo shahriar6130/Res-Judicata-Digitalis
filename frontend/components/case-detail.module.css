@@ -1065,3 +1065,26 @@
     display: none;
   }
 }
+
+/* Existing case groups become layered glass surfaces without changing flow. */
+.header,
+.caseIdCard,
+.statusCard,
+.nextActionCard,
+.timelineSection,
+.mediatorCard,
+.communicationCard,
+.documentsCard,
+.infoCard,
+.notFoundCard {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+.header { padding: var(--s-6); border-top: 1px solid var(--glass-border); }
+.nextActionCard { border-left: 4px solid var(--color-primary); }
+.nextActionIcon { color: var(--color-primary); background: var(--color-primary-ultra-soft); }
+.backLink { color: var(--color-primary); border-color: var(--color-primary); }

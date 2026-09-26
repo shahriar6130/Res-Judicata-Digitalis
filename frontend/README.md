@@ -73,8 +73,8 @@ the repository's row-scoped database architecture.
 ```
 app/          routes (sign-in portals + workspaces + dashboard)
 app/tokens.css   all design tokens — colors, fonts, spacing, radius, layout, motion
-app/themes/gov_theme.css    active light government theme (#e6fbd9, #038533, #05a53f)
-app/themes/blue_white.css   saved blue theme
+app/themes/gov_theme.css    active premium blue-white glass theme and compatibility mappings
+app/themes/blue_white.css   saved earlier blue theme
 app/themes/black_theme.css   saved original black theme
 app/themes/red_white.css   saved courthouse image theme overrides
 components/   SignInPortal, RoleDashboard, SimulatorPanel, PortalLinks, Wordmark, LanguageToggle,
@@ -177,8 +177,9 @@ Complex, Intermediate, and Petty/easy sections, with Complex first. The classifi
 structured case facts and displays concise reasons on every row. It only changes worklist ordering;
 the officer still makes every verification, eligibility, pathway, and priority decision.
 
-The complaint wizard supports multiple opponents. The first opponent remains required, **+ Add
-another opponent** adds removable name/address blocks, and the full list persists in
+The complaint wizard keeps the citizen's district and multiline detailed address as separate
+inputs, persisting the latter to `applicant.addressLine`. It supports multiple opponents while
+showing only the required primary opponent initially. **+ Add another opponent** adds removable name/address blocks, and the full list persists in
 `matter.opposingParties` alongside the existing primary `matter.opposingParty` value.
 
 The `/device/ivr` and `/device/ussd` simulators share a guided phone workspace. A mode switch,
@@ -217,8 +218,8 @@ review read and write the local shared record through `lib/dlas/`. The sidebar s
 `/sim/{clock|sms|court|scenario|reset}` control panel; it changes visible demo state without
 claiming a backend mutation. See `components/sidebar.tsx` and `app/dashboard/layout.tsx`.
 
-Nothing hardcodes a color or font family outside `app/tokens.css` and
-`app/layout.tsx`; change the whole look in those two files.
+The active palette, glass strengths, semantic states, focus treatment, and motion values are
+centralized in `app/tokens.css` and `app/themes/gov_theme.css`; components consume those tokens.
 
 ### Citizen representation and case-service updates
 
@@ -234,9 +235,13 @@ Nothing hardcodes a color or font family outside `app/tokens.css` and
   appeal copy. A document-request task and its matching simulated-SMS notification disappear from
   the citizen feed as soon as that requested document is attached.
 
-### Saved theme
+### Active theme
 
-The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+The active `frontend/app/themes/gov_theme.css` maps centralized semantic tokens to the premium
+blue-white macOS-inspired glass interface. It uses a light ambient canvas, translucent white
+navigation and grouped surfaces, blue actions/focus, navy/slate text, and semantic green, amber,
+and red states. Only critical red states pulse; normal unread indicators remain static. Existing
+legal imagery, responsive behavior, and Bangla/English behavior are unchanged.
 
 To switch themes, change the active theme import in `app/globals.css` among `./themes/gov_theme.css`, `./themes/blue_white.css`, `./themes/red_white.css`, and `./themes/black_theme.css`. No component code or product-facing switch is involved.
 
@@ -275,29 +280,22 @@ Every People row has a Delete action with a confirmation dialog. Deletion preser
 ### Admin sidebar
 
 The admin sidebar links to Overview, People, Mediator training, Applications, Policy, Mediation oversight, Audit, and Backup. Hash links update the admin workspace in place; the Overview control clears an existing hash correctly. Admin styling uses scoped `--admin-*` tokens across the sidebar, page background, hero, tabs, cards, tables, forms, dialogs, and interaction states, leaving DLO, lawyer, mediator, UDC, and citizen interfaces unchanged.
-The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admin hero and border tokens, removing the shared black block so the complete Admin workspace presents one light green visual identity.
+The সাক্ষ্য wordmark plate in the Admin sidebar also uses the shared admin compatibility tokens so the complete Admin workspace presents one blue-white glass visual identity.
 
 
-### Light government theme
+### Blue-white glass theme
 
-The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+Historical token names remain as aliases in `gov_theme.css`, allowing every existing route and role
+surface to inherit the new design without creating a parallel component system. Mobile reduces
+blur strength; reduced-motion disables the reveal and critical-pulse animations.
 
 ### Button and notification contrast
 
-Shared buttons have a minimum 44px height. Outlined actions and notification links use
-deep green on white or pale green; filled notification badges use white labels on deep
-green. Badges inside active green navigation invert to a white surface with deep-green
-labels, and the active navigation marker stays light. Unread rows retain their text label
-and leading rule. Unread notification navigation and badges pulse with a green glow until their
-existing unread state clears. The home reminder and mobile notification icon also glow.
-The animation changes only the halo, preserving label contrast; reduced-motion users
-get a steady navigation highlight. Keyboard focus remains available in both languages. Paired
-colors are defined in `frontend/app/tokens.css`.
-
-Unread notification navigation and the home reminder use an eye-catching 2px glowing
-border with a green outer halo, pulsing every 1.8 seconds. Active green navigation
-uses a light inner edge. The border remains visible throughout the pulse; reduced
-motion keeps a steady glow. The reading surface and text colors stay unchanged.
+Shared buttons keep a minimum 44px height. Primary actions use blue with white text; outlined
+actions and normal notifications use blue on translucent white. Ordinary unread navigation,
+home reminders, and mobile icons use a static blue indicator without animation. Critical alerts,
+failed operations, urgent states, and destructive warnings use red plus a text/icon label and a
+short red pulse. Reduced-motion retains the static red treatment without animation.
 
 ### Hash navigation hydration
 

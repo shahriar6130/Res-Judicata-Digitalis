@@ -48,6 +48,7 @@ export interface CitizenDraftLike {
   proxyName: string;
   proxyPhone: string;
   district?: string;
+  applicantAddress?: string;
   nidNumber?: string;
   identityDocumentUnavailable?: boolean;
   matter: string | null;
@@ -102,8 +103,8 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
   const method: ContactMethod = rep && !applicantPhone ? "VIA_REPRESENTATIVE" : "CALL";
   return {
     applicant: rep
-      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable }
-      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable },
+      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district), addressLine: d.applicantAddress?.trim() || null, nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable }
+      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district), addressLine: d.applicantAddress?.trim() || null, nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable },
     filedBy: rep
       ? { kind: "REPRESENTATIVE", name: d.name.trim() || null, phone: normalizePhone(d.phone), relation: mapRelation(d.proxyRel, d.actingFor), operatorId: null, centre: null }
       : { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
@@ -369,6 +370,7 @@ export const UdcDoor = {
           phone: applicantPhone,
           phoneOwnedByApplicant: applicantPhone ? (!rep || !!statedApplicantPhone) : null,
           district: mapLegacyDistrict(d.district ?? operator.district),
+          addressLine: d.applicantAddress?.trim() || null,
           nidNumber: d.nidNumber?.trim() || null,
           identityDocumentUnavailable: !!d.identityDocumentUnavailable,
           preferredLanguage: "bn",

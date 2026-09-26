@@ -24,6 +24,11 @@
   flex-shrink: 0;
   overflow: hidden;
   font-family: var(--font-serif);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--sidebar-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(145%);
 }
 
 /* Dark citizen surface ------------------------------------------------ */
@@ -453,6 +458,52 @@
   background: var(--sidebar-bg);
   color: var(--sidebar-fg);
   border-right: 1px solid var(--sidebar-border);
+}
+
+/* Blue glass navigation overrides shared by every role. */
+.dark .navItemActive,
+.dark .navItemSub.navItemActive,
+.dark .channelItemActive,
+.legacy .legacySectionActive,
+.legacy .legacySubLinkActive,
+.legacy .legacyLinkActive {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  border: 1px solid var(--color-primary-border-soft);
+  box-shadow: var(--active-shadow);
+}
+
+.dark .navItemActive::before,
+.dark .navItemSub.navItemActive::before,
+.dark .channelItemActive::before,
+.legacy .legacySectionActive::before,
+.legacy .legacySubLinkActive::before,
+.legacy .legacyLinkActive::before {
+  background: var(--color-primary);
+}
+
+.dark .navItemProminent,
+.dark .navItemProminent.navItemActive {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  border: 1px solid var(--color-primary-border);
+  box-shadow: var(--primary-shadow);
+}
+
+.dark .profilePanel,
+.legacy .legacyProfilePanel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+
+.dark .kebabMenu,
+.legacy .legacyKebabMenu {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(140%);
 }
 
 .legacy .brand {
@@ -1073,13 +1124,13 @@
 /* Counts remain readable on both the light navigation and active green item. */
 .navItemGlow {
   position: relative;
-  box-shadow: var(--notification-border-peak);
-  animation: navGlow 1.8s ease-in-out infinite;
+  box-shadow: var(--notification-border-rest);
+  animation: none;
 }
 
 .dark .navBadgeGlow,
 .legacy .navBadgeGlow {
-  animation: badgePulse 1.8s ease-out infinite;
+  animation: none;
   background: var(--badge-bg);
   color: var(--badge-fg);
 }

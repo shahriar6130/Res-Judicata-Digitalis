@@ -344,3 +344,35 @@
   background: #e6f4e6;
   color: #1d5c1d;
 }
+
+/* Shared legal workspace, expressed through the active glass tokens. */
+.shell { background: transparent; color: var(--color-text); }
+.topbar {
+  position: sticky;
+  top: var(--s-3);
+  z-index: 10;
+  margin: var(--s-3);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-4);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+.brandEyebrow,
+.intro,
+.kpiLabel,
+.sectionSub,
+.kvLabel { color: var(--color-text-secondary); }
+.langBtn,
+.kpi,
+.section {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border);
+  border-radius: var(--r-3);
+}
+.kpi,
+.section { box-shadow: var(--glass-shadow-soft); }
+.langBtnActive { color: var(--white); background: var(--color-primary); border-color: var(--color-primary); }
+.notice { background: var(--color-warning-soft); border-color: var(--color-warning-border); }
+.noticeDanger { color: var(--color-danger-dark); background: var(--color-danger-soft); border-color: var(--color-danger-border); }

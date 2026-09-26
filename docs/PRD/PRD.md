@@ -1175,12 +1175,18 @@ The admin sidebar shall provide working navigation to every implemented admin wo
 
 ## Visual theme
 
-The product uses the CSS-only `blue_white.css` theme, implementing the role-based color system: Primary Brand Authority `#003366` (Deep Navy Blue), Action Accent `#0076D6` (Accessible Blue), Light Neutral `#F8F9FA` (Off-White / Soft Gray), Dark Neutral `#1A202C` (Charcoal Black), and Muted Neutral `#E2E8F0` (Border Gray). `black_theme.css` and `red_white.css` remain saved alternatives. No theme switch is shown in the product interface.
+The product uses the CSS-only `gov_theme.css` compatibility theme over centralized tokens. It implements a premium blue-white glass system with primary `#2563EB`, hover `#1D4ED8`, canvas `#F6F9FC`, navy text `#0F172A`, translucent white surfaces, and semantic green/amber/red states. Saved themes remain development references; no theme switch is shown in the product interface.
 
 
-### Blue White theme with role-based color system
+### Blue-white macOS-inspired glass system
 
-The active CSS-only theme in `frontend/app/themes/blue_white.css` uses deep navy (`#003366`) for navigation, headers, and boundaries, accessible blue (`#0076D6`) for hero panels, primary buttons, and links, off-white / soft gray (`#F8F9FA`) for page backgrounds and containers, charcoal black (`#1A202C`) for high-contrast typography, and border gray (`#E2E8F0`) for dividers and borders. Featured admin, lawyer, and UDC panels use a subtle blue gradient; controls have softer corners, blue focus states, and gentle hover shadows. Pages and dialogs fade in briefly only when reduced motion is not requested. Errors and destructive actions retain red. Blue White theme is currently selected in `globals.css`, and saved alternate themes remain available without a theme button.
+The active CSS-only theme in `frontend/app/themes/gov_theme.css` uses a subtle ambient background,
+translucent navigation and grouped surfaces, 14–20px surface radii, blue primary controls, blue
+keyboard focus, and light layered shadows. Dense tables and lists retain their existing information
+density and separators rather than becoming isolated cards. Errors, failed operations, destructive
+warnings, and urgent states use red plus text/icon semantics; only critical states pulse, and
+reduced-motion disables that animation. The implementation preserves all routes, content,
+permissions, workflows, responsive behavior, and Bangla/English behavior.
 
 ## Case-level service refinements
 

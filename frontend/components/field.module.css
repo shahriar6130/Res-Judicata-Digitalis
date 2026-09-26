@@ -12,7 +12,7 @@
 
 .input {
   padding: var(--control-pad-y) var(--control-pad-x);
-  background: var(--white);
+  background: var(--control-bg);
   border: var(--control-border);
   border-radius: var(--control-radius);
   font-size: var(--t-body);
@@ -29,9 +29,9 @@
 }
 
 .input:focus-visible {
-  outline: var(--focus-width) solid var(--black);
-  outline-offset: 2px;
-  border-color: var(--black);
+  outline: 0;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring-shadow);
 }
 
 .invalid {

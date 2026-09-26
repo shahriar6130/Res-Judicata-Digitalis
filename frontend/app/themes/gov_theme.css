@@ -1,210 +1,271 @@
-/* Light government theme: black ink, white space, and green accents.
- * Strong green supports white button labels; bright green is decorative.
- * Status meaning must always include a text label or icon.
+/* Premium blue/white glass theme.
+ *
+ * This remains the single active government theme. Legacy token names are
+ * compatibility aliases so existing components inherit the new visual
+ * language without changing routes, markup, or behavior.
  */
+
 :root {
   color-scheme: light;
-  --gov-light: #e6fbd9;
-  --gov-green: #038533;
-  --gov-bright: #05a53f;
-  --gov-green-hover: #02712b;
-  --gov-canvas: #f8fcf6;
-  --gov-muted: #40523e;
-  --gov-border: #72896a;
-  --black: #000000;
-  --ink: var(--black);
-  --white: #ffffff;
-  --off-white: var(--gov-canvas);
-  --gray: var(--gov-muted);
-  --line: var(--gov-border);
-  --overlay: rgba(20, 35, 25, 0.65);
-  --primary-action: var(--gov-green);
-  --primary-action-hover: var(--gov-green-hover);
-  --selection-bg: var(--gov-light);
-  --selection-fg: var(--black);
-  --focus-color: var(--black);
-  --red: var(--gov-green);
-  --yellow: var(--gov-green);
-  --green: var(--gov-green);
-  --color-link-normal: var(--gov-green-hover);
-  --color-link-dark: var(--gov-green-hover);
-  --sidebar-bg: var(--gov-light);
-  --sidebar-fg: var(--black);
-  --sidebar-muted: var(--gov-muted);
-  --sidebar-border: var(--gov-border);
-  --sidebar-hover-bg: var(--white);
-  --sidebar-active-bg: var(--gov-green);
-  --sidebar-active-fg: var(--white);
-  --sidebar-accent: var(--gov-green);
-  --sidebar-dark-bg: var(--gov-light);
-  --sidebar-dark-fg: var(--black);
-  --sidebar-dark-muted: var(--gov-muted);
-  --sidebar-dark-border: var(--gov-border);
-  --sidebar-dark-hover: var(--white);
-  --sidebar-dark-active-bg: var(--gov-green);
-  --sidebar-dark-active-fg: var(--white);
-  --sidebar-dark-accent: var(--gov-green);
-  --status-active: var(--gov-green);
-  --status-review: var(--gov-green);
-  --status-needs-action: var(--gov-green);
-  --status-resolved: var(--gov-muted);
-  --status-pending: var(--gov-green);
-  --surface-card: #ffffff;
-  --surface-card-border: var(--gov-border);
-  --surface-card-lodge: var(--gov-green);
+
+  --gov-light: var(--color-primary-soft);
+  --gov-green: var(--color-primary);
+  --gov-bright: #3b82f6;
+  --gov-green-hover: var(--color-primary-hover);
+  --gov-canvas: var(--color-bg);
+  --gov-muted: var(--color-text-secondary);
+  --gov-border: var(--color-border);
+
+  --black: var(--color-text);
+  --ink: var(--color-text);
+  --white: var(--color-surface-solid);
+  --off-white: var(--color-bg);
+  --gray: var(--color-text-secondary);
+  --line: var(--color-border);
+  --overlay: rgba(15, 23, 42, 0.34);
+  --red: var(--color-danger);
+  --yellow: var(--color-warning);
+  --green: var(--color-success);
+  --primary-action: var(--color-primary);
+  --primary-action-hover: var(--color-primary-hover);
+  --selection-bg: var(--color-primary-soft);
+  --selection-fg: var(--color-text);
+  --focus-color: var(--color-primary);
+  --color-link-normal: var(--color-primary);
+  --color-link-dark: var(--color-primary-hover);
+
+  --action-ink: var(--color-primary);
+  --action-soft: var(--color-primary-ultra-soft);
+  --badge-bg: var(--color-primary);
+  --badge-fg: var(--white);
+  --badge-on-dark-bg: var(--white);
+  --badge-on-dark-fg: var(--color-primary-hover);
+  --notification-glow: rgba(37, 99, 235, 0.12);
+  --notification-glow-strong: rgba(37, 99, 235, 0.18);
+  --notification-border: rgba(37, 99, 235, 0.28);
+  --notification-border-bright: rgba(37, 99, 235, 0.42);
+  --notification-border-rest: inset 0 0 0 1px var(--notification-edge, var(--notification-border)), 0 5px 18px var(--notification-glow);
+  --notification-border-peak: inset 0 0 0 1px var(--notification-edge, var(--notification-border-bright)), 0 7px 24px var(--notification-glow-strong);
+  --notification-glow-clear: rgba(37, 99, 235, 0);
+
+  --sidebar-bg: rgba(255, 255, 255, 0.72);
+  --sidebar-fg: var(--color-text);
+  --sidebar-muted: var(--color-text-muted);
+  --sidebar-border: var(--color-border);
+  --sidebar-hover-bg: rgba(219, 234, 254, 0.58);
+  --sidebar-active-bg: rgba(37, 99, 235, 0.10);
+  --sidebar-active-fg: var(--color-primary);
+  --sidebar-accent: var(--color-primary);
+  --sidebar-dark-bg: rgba(255, 255, 255, 0.72);
+  --sidebar-dark-fg: var(--color-text);
+  --sidebar-dark-muted: var(--color-text-muted);
+  --sidebar-dark-border: var(--color-border);
+  --sidebar-dark-hover: rgba(219, 234, 254, 0.58);
+  --sidebar-dark-active-bg: rgba(37, 99, 235, 0.10);
+  --sidebar-dark-active-fg: var(--color-primary);
+  --sidebar-dark-accent: var(--color-primary);
+
+  --status-active: var(--color-success);
+  --status-review: var(--color-warning);
+  --status-needs-action: var(--color-danger);
+  --status-resolved: var(--color-text-muted);
+  --status-pending: var(--color-warning);
+  --dlo-positive-ink: #15803d;
+  --dlo-danger-ink: var(--color-danger-dark);
+  --dlo-warning-ink: #b45309;
+  --dlo-disabled-ink: #94a3b8;
+  --udc-warning-ink: #b45309;
+  --udc-danger-ink: var(--color-danger-dark);
+
+  --surface-card: var(--glass-bg-strong);
+  --surface-card-border: var(--color-border);
+  --surface-card-lodge: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   --surface-card-lodge-fg: var(--white);
   --surface-card-lodge-accent: var(--white);
-  --on-black: #ffffff;
-  --on-black-muted: var(--white);
-  --line-on-black: var(--gov-green);
-  --lawmark-opacity: 1;
-  --grid-line: rgba(3, 133, 51, .12);
-  --accent-citizen: var(--gov-green);
-  --accent-dlo: var(--gov-green);
-  --accent-lawyer: var(--gov-green);
-  --accent-udc: var(--gov-green);
-  --accent-admin: var(--gov-light);
-  --dlo-muted: var(--gov-muted);
-  --dlo-line: var(--gov-border);
-  --dlo-hero-muted: var(--gov-muted);
-  --dlo-positive-ink: var(--gov-green);
-  --dlo-danger-ink: var(--gov-green);
-  --dlo-warning-ink: var(--gov-green);
-  --dlo-disabled-ink: var(--gov-muted);
-  --dlo-chart-purple: var(--gov-light);
-  --dlo-chart-blue: var(--gov-green);
-  --dlo-chart-rose: var(--gov-green);
-  --dlo-chart-olive: var(--gov-green);
-  --dlo-chart-muted: var(--gov-muted);
-  --udc-warning-ink: var(--gov-green);
-  --udc-danger-ink: var(--gov-green);
-  --admin-sidebar-bg: var(--gov-light);
-  --admin-sidebar-fg: var(--black);
-  --admin-sidebar-muted: var(--gov-muted);
-  --admin-sidebar-border: var(--gov-border);
-  --admin-sidebar-hover: var(--white);
-  --admin-sidebar-active-bg: var(--gov-green);
-  --admin-sidebar-active-fg: var(--white);
-  --admin-page-bg: var(--gov-canvas);
-  --admin-panel-bg: #ffffff;
-  --admin-soft-bg: var(--gov-light);
-  --admin-hero-bg: var(--gov-light);
-  --admin-hero-muted: var(--gov-muted);
-  --admin-ink: var(--black);
-  --admin-muted: var(--gov-muted);
-  --admin-line: var(--gov-border);
-  --admin-accent: var(--gov-green);
-  --admin-accent-hover: var(--gov-green-hover);
-  --admin-danger: var(--gov-green);
-  --gavel-head: var(--gov-bright);
-  --gavel-top: #ffffff;
-  --gavel-band: var(--gov-green);
-  --gavel-shadow: var(--gov-light);
-  --gavel-handle: var(--gov-green);
-  --bottom-nav-bg: #ffffff;
-  --bottom-nav-border: var(--gov-border);
-  --control-radius: 6px;
-  --motion-base: 200ms;
-  --ease: cubic-bezier(.2, .8, .2, 1);
-  --theme-hero-start: var(--gov-light);
-  --theme-hero-end: var(--gov-light);
-  --theme-hero-fill: var(--gov-light);
-  --theme-shadow: 0 4px 12px rgba(0, 0, 0, .08);
-  --portal-slider-overlay: linear-gradient(90deg, var(--gov-light), var(--gov-light));
-  --theme-hero-fg: var(--black);
-  --theme-hero-muted: var(--gov-muted);
-  --theme-solid-fill: var(--gov-green);
-  --theme-nav-active-ink: var(--white);
+  --bottom-nav-bg: var(--glass-bg-strong);
+  --bottom-nav-border: var(--color-border);
+  --control-border: 1px solid rgba(148, 163, 184, 0.30);
+  --theme-shadow: var(--glass-shadow-soft);
+  --theme-hero-start: var(--color-primary);
+  --theme-hero-end: var(--color-primary-hover);
+  --theme-hero-fill: linear-gradient(135deg, var(--theme-hero-start), var(--theme-hero-end));
+  --theme-hero-fg: var(--white);
+  --theme-hero-muted: rgba(255, 255, 255, 0.82);
+  --theme-solid-fill: var(--color-primary);
+  --theme-nav-active-ink: var(--color-primary);
   --theme-nav-on-accent: var(--white);
-  --theme-nav-active-border: var(--gov-green);
-  --theme-art-fill: var(--gov-light);
-  --theme-art-fg: var(--black);
-  --theme-art-muted: var(--gov-muted);
+  --theme-nav-active-border: rgba(37, 99, 235, 0.14);
+  --theme-art-fill: var(--color-primary-ultra-soft);
+  --theme-art-fg: var(--color-text);
+  --theme-art-muted: var(--color-text-secondary);
   --theme-art-filter: none;
   --theme-photo-fg: var(--white);
-  --theme-photo-muted: var(--white);
-  --theme-accent-ink: var(--gov-green-hover);
-  --theme-feature-action-bg: var(--gov-green);
+  --theme-photo-muted: rgba(255, 255, 255, 0.82);
+  --theme-accent-ink: var(--color-primary-hover);
+  --theme-feature-action-bg: var(--color-primary);
   --theme-feature-action-fg: var(--white);
-  --theme-art-overlay: linear-gradient(180deg, rgba(0, 0, 0, .65) 0%, rgba(0, 0, 0, .12) 25%, rgba(0, 0, 0, .2) 80%, rgba(0, 0, 0, .7) 100%);
-  --focus-width: 3px;
-  --brand-primary: var(--gov-green);
-  --brand-accent: var(--gov-bright);
-  --brand-light-neutral: var(--gov-canvas);
-  --brand-dark-neutral: var(--black);
-  --brand-muted-neutral: var(--gov-border);
-  --color-gov-green: var(--gov-green);
-  --color-gov-green-light: var(--gov-light);
-  --color-gov-green-dark: var(--gov-green);
-  --color-gov-red: var(--gov-green);
-  --color-gov-red-light: var(--gov-light);
-  --color-gov-link: var(--gov-green);
-  --color-gov-link-dark: var(--black);
-  --color-gov-warning: var(--gov-green);
-  --color-gov-border: var(--gov-border);
+  --theme-art-overlay: linear-gradient(180deg, rgba(15, 23, 42, .48) 0%, rgba(37, 99, 235, .06) 45%, rgba(15, 23, 42, .58) 100%);
+
+  --accent-citizen: var(--color-primary);
+  --accent-dlo: var(--color-primary);
+  --accent-lawyer: var(--color-primary);
+  --accent-udc: var(--color-primary);
+  --accent-admin: var(--color-primary);
+  --dlo-muted: var(--color-text-secondary);
+  --dlo-line: var(--color-border);
+  --dlo-hero-muted: #cbd5e1;
+  --dlo-chart-purple: #6366f1;
+  --dlo-chart-blue: var(--color-primary);
+  --dlo-chart-rose: #e11d48;
+  --dlo-chart-olive: #65a30d;
+  --dlo-chart-muted: #94a3b8;
+
+  --admin-sidebar-bg: var(--sidebar-bg);
+  --admin-sidebar-fg: var(--sidebar-fg);
+  --admin-sidebar-muted: var(--sidebar-muted);
+  --admin-sidebar-border: var(--sidebar-border);
+  --admin-sidebar-hover: var(--sidebar-hover-bg);
+  --admin-sidebar-active-bg: var(--sidebar-active-bg);
+  --admin-sidebar-active-fg: var(--sidebar-active-fg);
+  --admin-page-bg: var(--color-bg);
+  --admin-panel-bg: var(--color-surface-solid);
+  --admin-soft-bg: var(--color-primary-ultra-soft);
+  --admin-hero-bg: var(--color-primary);
+  --admin-hero-muted: var(--color-primary-soft);
+  --admin-ink: var(--color-text);
+  --admin-muted: var(--color-text-secondary);
+  --admin-line: var(--color-border);
+  --admin-accent: var(--color-primary);
+  --admin-accent-hover: var(--color-primary-hover);
+  --admin-danger: var(--color-danger-dark);
+
+  --on-black: var(--white);
+  --on-black-muted: rgba(255, 255, 255, 0.82);
+  --line-on-black: rgba(255, 255, 255, 0.34);
+  --lawmark-opacity: .82;
+  --grid-line: rgba(255, 255, 255, .1);
+  --gavel-head: #60a5fa;
+  --gavel-top: var(--white);
+  --gavel-band: var(--color-primary-hover);
+  --gavel-shadow: #1e3a8a;
+  --gavel-handle: #3b82f6;
+
+  --brand-primary: var(--color-primary-hover);
+  --brand-accent: var(--color-primary);
+  --brand-light-neutral: var(--color-bg);
+  --brand-dark-neutral: var(--color-text);
+  --brand-muted-neutral: var(--color-border);
+  --color-gov-green: var(--color-primary);
+  --color-gov-green-light: var(--color-primary-soft);
+  --color-gov-green-dark: var(--color-primary-hover);
+  --color-gov-red: var(--color-danger);
+  --color-gov-red-light: var(--color-danger-soft);
+  --color-gov-link: var(--color-primary);
+  --color-gov-link-dark: var(--color-primary-hover);
+  --color-gov-warning: var(--color-warning);
+  --color-gov-border: var(--color-border);
 }
 
-/* Green header rule carrying the national government identity */
 body {
-  border-top: var(--s-1) solid var(--primary-action);
-  background-color: var(--off-white);
-  color: var(--ink);
+  border-top: 0;
+  color: var(--color-text);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(59, 130, 246, .10), transparent 32%),
+    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, .08), transparent 30%),
+    radial-gradient(circle at 55% 90%, rgba(191, 219, 254, .14), transparent 34%),
+    var(--color-bg);
+  background-attachment: fixed;
 }
 
-/* Text links remain distinguishable without relying on hue alone. */
 a:not([class]) {
+  color: var(--color-primary);
   text-decoration: underline;
+  text-decoration-thickness: 1px;
   text-underline-offset: .2em;
-  color: var(--color-link-normal);
 }
 
-a:not([class]):hover {
-  color: var(--color-link-dark);
+a:not([class]):hover { color: var(--color-primary-hover); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--color-primary); }
+
+:root body input:not([type="checkbox"]):not([type="radio"]),
+:root body select,
+:root body textarea {
+  border-color: rgba(148, 163, 184, .30);
+  border-radius: var(--control-radius);
+  background-color: rgba(255, 255, 255, .72);
+  color: var(--color-text);
 }
 
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--primary-action);
+:root body input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+:root body select:focus-visible,
+:root body textarea:focus-visible {
+  border-color: var(--color-primary);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
 }
 
-/* Semantic selectors */
-:root body main > header {
-  border-bottom: 2px solid var(--line);
-  background: var(--surface-card);
-}
-:root body main > section {
-  border-radius: var(--r-4);
-}
 :root body button,
 :root body a,
 :root body input,
 :root body select,
 :root body textarea {
-  transition: background-color var(--motion-base) var(--ease),
-    border-color var(--motion-base) var(--ease),
-    color var(--motion-base) var(--ease),
-    box-shadow var(--motion-base) var(--ease);
+  transition: background-color var(--motion-base) var(--ease), border-color var(--motion-base) var(--ease), color var(--motion-base) var(--ease), box-shadow var(--motion-base) var(--ease), transform var(--motion-base) var(--ease), opacity var(--motion-base) var(--ease);
 }
-:root body input:focus-visible,
-:root body select:focus-visible,
-:root body textarea:focus-visible {
-  border-color: var(--primary-action);
+
+:root body [role="dialog"],
+:root body [role="alertdialog"] {
+  background-color: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: var(--glass-shadow-strong);
 }
+
+:root body [role="alertdialog"],
+:root body [class*="bannerErr"],
+:root body [class*="safetyBanner"],
+:root body [class*="failure"],
+:root body [class*="criticalAlert"] {
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-dark);
+  background-color: rgba(254, 242, 242, .82);
+}
+
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(220, 38, 38, .12), 0 0 22px rgba(220, 38, 38, .18); }
+}
+
+@keyframes glassReveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  :root body main {
-    animation: gov-theme-reveal 350ms var(--ease) both;
-  }
-  :root body [role="dialog"],
-  :root body [role="alertdialog"] {
-    animation: gov-theme-reveal 200ms var(--ease) both;
-  }
+  :root body main { animation: glassReveal 300ms var(--ease) both; }
+  :root body [role="dialog"] { animation: glassReveal 200ms var(--ease) both; }
+  :root body [role="alertdialog"],
+  :root body [class*="bannerErr"],
+  :root body [class*="safetyBanner"],
+  :root body [class*="failure"],
+  :root body [class*="escalated"],
+  :root body [class*="criticalAlert"] { animation: alertPulse 1.6s var(--ease) 2; }
   @media (hover: hover) {
-    :root body button:enabled:hover {
-      box-shadow: var(--theme-shadow);
-    }
+    :root body button:enabled:hover { box-shadow: var(--glass-shadow-soft); }
   }
 }
-@keyframes gov-theme-reveal {
-  from { opacity: 0; }
-  to { opacity: 1; }
+
+@media (max-width: 640px) {
+  :root { --glass-blur: 12px; --glass-blur-strong: 16px; }
+  body { background-attachment: scroll; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root body [role="alertdialog"],
+  :root body [class*="bannerErr"],
+  :root body [class*="safetyBanner"],
+  :root body [class*="failure"],
+  :root body [class*="escalated"],
+  :root body [class*="criticalAlert"] { animation: none; }
 }

@@ -6,6 +6,49 @@
  * ------------------------------------------------------------------ */
 
 :root {
+  /* Premium blue/white product palette. Keep these semantic names as the
+     source of truth; legacy aliases below exist for older components. */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #dbeafe;
+  --color-primary-ultra-soft: #eff6ff;
+  --color-primary-border: rgba(37, 99, 235, 0.24);
+  --color-primary-border-soft: rgba(37, 99, 235, 0.12);
+  --color-bg: #f6f9fc;
+  --color-surface: rgba(255, 255, 255, 0.70);
+  --color-surface-solid: #ffffff;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-border: rgba(148, 163, 184, 0.22);
+  --color-border-strong: rgba(100, 116, 139, 0.32);
+  --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
+  --color-danger-soft: #fef2f2;
+  --color-danger-border: rgba(220, 38, 38, 0.25);
+  --color-danger-shadow: rgba(220, 38, 38, 0.16);
+  --color-success: #16a34a;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-warning-border: rgba(217, 119, 6, 0.28);
+  --control-bg: rgba(255, 255, 255, 0.72);
+  --focus-ring-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  --primary-shadow-soft: 0 6px 16px rgba(37, 99, 235, 0.18);
+  --primary-shadow: 0 9px 22px rgba(37, 99, 235, 0.24);
+  --active-shadow: 0 7px 20px rgba(37, 99, 235, 0.08);
+  --sidebar-shadow: 10px 0 36px rgba(15, 23, 42, 0.07);
+  --ambient-gradient-corner: radial-gradient(circle at 90% 8%, rgba(59, 130, 246, 0.09), transparent 30%);
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-soft: rgba(255, 255, 255, 0.48);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-shadow: 0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --glass-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.055), 0 1px 4px rgba(15, 23, 42, 0.035);
+  --glass-shadow-strong: 0 24px 80px rgba(15, 23, 42, 0.18), 0 4px 16px rgba(15, 23, 42, 0.08);
+  --glass-blur: 20px;
+  --glass-blur-strong: 24px;
+
   /* Color */
   --black: #000000;
   --white: #ffffff;
@@ -92,6 +135,7 @@
   --s-2: 8px;
   --s-3: 12px;
   --s-4: 16px;
+  --s-5: 20px;
   --s-6: 24px;
   --s-8: 32px;
   --s-12: 48px;
@@ -101,9 +145,9 @@
   /* Radius */
   --r-0: 0;
   --r-1: 2px;
-  --r-2: 4px;
-  --r-3: 6px;
-  --r-4: 8px;
+  --r-2: 10px;
+  --r-3: 14px;
+  --r-4: 18px;
 
   /* Layout */
   --page-max: 1280px;
@@ -214,7 +258,7 @@
   /* Controls */
   --control-pad-y: 12px;
   --control-pad-x: 14px;
-  --control-radius: var(--r-2);
+  --control-radius: 11px;
   --control-border: 1px solid var(--line);
 
   /* Focus */
@@ -224,7 +268,7 @@
   /* Motion */
   --motion-fast: 150ms;
   --motion-base: 200ms;
-  --ease: ease;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* Bottom nav (mobile citizen) */
   --bottom-nav-height: 64px;

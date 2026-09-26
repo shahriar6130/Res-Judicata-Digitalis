@@ -14,23 +14,28 @@
   transition:
     background-color var(--motion-base) var(--ease),
     border-color var(--motion-base) var(--ease),
-    color var(--motion-base) var(--ease);
+    color var(--motion-base) var(--ease),
+    box-shadow var(--motion-base) var(--ease),
+    transform var(--motion-base) var(--ease);
 }
 
 .primary {
-  background: var(--primary-action);
+  background: linear-gradient(135deg, var(--primary-action), var(--primary-action-hover));
   border-color: var(--primary-action);
   color: var(--white);
+  box-shadow: var(--primary-shadow-soft);
 }
 
 .primary:hover {
   background: var(--primary-action-hover);
   border-color: var(--primary-action-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--primary-shadow);
 }
 
 .secondary {
-  background: var(--white);
-  border-color: var(--action-ink);
+  background: var(--glass-bg-strong);
+  border-color: var(--color-border-strong);
   color: var(--action-ink);
 }
 
@@ -42,6 +47,7 @@
   background: var(--red);
   border-color: var(--red);
   color: var(--white);
+  box-shadow: 0 6px 16px var(--color-danger-shadow);
 }
 
 .destructive:hover {

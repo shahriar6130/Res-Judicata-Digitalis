@@ -183,6 +183,8 @@ export interface ApplicationData {
     phone: string | null; // 01XXXXXXXXX
     phoneOwnedByApplicant: boolean | null; // false => UDC/shop/relative number
     nidNumber: string | null; // 10, 13 or 17 digits — verified by the DLAO in Step 2
+    /** Applicant requested identity verification because no necessary identity document is available. */
+    identityDocumentUnavailable?: boolean;
     gender: Gender | null;
     district: DistrictCode | null;
     addressLine: string | null;
@@ -212,6 +214,8 @@ export interface ApplicationData {
     } | null;
     incidentDate: string | null; // YYYY-MM-DD
     opposingParty: string | null;
+    /** Structured list for intakes with more than one opposing party; first entry mirrors opposingParty. */
+    opposingParties?: { name: string; address: string | null }[];
   };
   urgency: {
     selfReportedUrgent: boolean;
@@ -426,7 +430,7 @@ export interface DlaoReview {
   identity: {
     state: StepState;
     outcome: IdentityOutcome | null;
-    method: "PHONE_CALL" | "OFFICE_VISIT" | "UDC_VIDEO" | "DOCUMENT_CHECK" | null;
+    method: "PHONE_CALL" | "OFFICE_VISIT" | "UDC_VIDEO" | "DOCUMENT_CHECK" | "LOCAL_GOVT_REPRESENTATIVE" | null;
     note: string | null;
     corrections: { path: string; from: string | null; to: string }[];
     attempts: number;
@@ -798,6 +802,7 @@ export type TaskType =
   | "COMPLETE_MISSING_INFO"
   | "DOCUMENT_FOLLOW_UP"
   | "DOCUMENT_REVIEW"
+  | "LOCAL_IDENTITY_VERIFICATION"
   | "HUMAN_CALLBACK"
   | "GRAM_ADALAT_REFERRAL"
   | "MEDIATION_SCHEDULING"
@@ -830,7 +835,7 @@ export interface Task {
   type: TaskType;
   applicationId: string | null;
   sessionId: string | null;
-  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR" | "MEDIATOR" | "GRAM_ADALAT" | "PANEL_LAWYER";
+  assignedRole: "DLAO" | "HELPLINE_AGENT" | "UDC_OPERATOR" | "MEDIATOR" | "GRAM_ADALAT" | "PANEL_LAWYER" | "LOCAL_GOVT_REPRESENTATIVE";
   assigneeId?: string | null; // e.g. LAW-XXXXXX when the task belongs to one person
   office: string | null;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
@@ -983,6 +988,7 @@ export function emptyApplicationData(): ApplicationData {
       phone: null,
       phoneOwnedByApplicant: null,
       nidNumber: null,
+      identityDocumentUnavailable: false,
       gender: null,
       district: null,
       addressLine: null,
@@ -999,6 +1005,7 @@ export function emptyApplicationData(): ApplicationData {
       translation: null,
       incidentDate: null,
       opposingParty: null,
+      opposingParties: [],
     },
     urgency: { selfReportedUrgent: false, flags: [] },
     safeContact: {

@@ -36,6 +36,13 @@ export function validateApplication(
   } else {
     warnings.push({ path: "applicant.nidNumber", code: "NID_NOT_PROVIDED", message: "No NID number — the DLAO will verify identity another way" });
   }
+  if (a.identityDocumentUnavailable) {
+    warnings.push({
+      path: "applicant.identityDocumentUnavailable",
+      code: "LOCAL_IDENTITY_VERIFICATION_SENT",
+      message: "Applicant has no necessary identity document — local government representative verification requested",
+    });
+  }
   need(
     "applicant.district",
     !!a.district && DISTRICTS.some((d) => d.code === a.district),

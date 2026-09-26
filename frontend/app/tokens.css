@@ -22,6 +22,21 @@
   --selection-bg: var(--black);
   --selection-fg: var(--white);
 
+  /* Paired control/notification colors: never infer foreground from accent. */
+  --action-ink: #02712b;
+  --action-soft: #e6fbd9;
+  --badge-bg: #02712b;
+  --badge-fg: var(--white);
+  --badge-on-dark-bg: var(--white);
+  --badge-on-dark-fg: #02712b;
+  --notification-glow: rgba(3, 133, 51, 0.18);
+  --notification-glow-strong: rgba(3, 166, 62, 0.55);
+  --notification-border: #038533;
+  --notification-border-bright: #05a53f;
+  --notification-border-rest: inset 0 0 0 2px var(--notification-edge, var(--notification-border)), 0 0 8px var(--notification-glow);
+  --notification-border-peak: inset 0 0 0 2px var(--notification-edge, var(--notification-border-bright)), 0 0 0 2px var(--notification-glow-strong), 0 0 18px 4px var(--notification-glow-strong);
+  --notification-glow-clear: rgba(3, 133, 51, 0);
+
   /* Brand color tokens per specification */
   --brand-primary: #003366;       /* Primary (Brand Authority) - Deep Navy Blue */
   --brand-accent: #0076D6;        /* Action Accent - Accessible Blue */

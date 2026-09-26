@@ -284,6 +284,67 @@
   line-height: var(--leading-small);
 }
 
+.opponentCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--white);
+}
+
+.opponentCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.opponentCardHead strong {
+  color: var(--ink);
+  font-size: var(--t-body);
+}
+
+.opponentRemove,
+.addOpponentButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.opponentRemove {
+  min-height: 36px;
+  padding: var(--s-1) var(--s-3);
+}
+
+.addOpponentButton {
+  align-self: flex-start;
+  padding: var(--s-3) var(--s-5);
+  border-color: var(--ink);
+}
+
+.addOpponentButton span {
+  font-size: var(--t-sub);
+  line-height: 1;
+}
+
+.opponentRemove:focus-visible,
+.addOpponentButton:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
+}
+
 /* Form fields ---------------------------------------------------- */
 
 .field {
@@ -617,6 +678,212 @@
   border-color: var(--black);
 }
 
+/* AI-assisted category (Step 2) ---------------------------------- */
+
+.inputHint {
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+
+.aiSuggestion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+}
+
+.aiSuggestionReady {
+  border-color: var(--green);
+}
+
+.aiSuggestionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.aiBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--white);
+  font-size: var(--t-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+}
+
+.textButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.textButton:focus-visible,
+.issueToggle:focus-visible,
+.issueOption:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
+}
+
+.aiResult {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.aiResultCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--white);
+}
+
+.aiResultLabel,
+.aiResultTitle,
+.aiResultMeta,
+.aiWaiting,
+.issuePanelIntro {
+  margin: 0;
+}
+
+.aiResultLabel,
+.aiResultMeta,
+.aiWaiting,
+.issuePanelIntro {
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+
+.aiResultTitle {
+  margin-top: var(--s-1);
+  color: var(--black);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+}
+
+.aiResultMeta {
+  margin-top: var(--s-1);
+}
+
+.issueToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.issueToggle span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.issueToggle strong {
+  font-size: var(--t-body);
+}
+
+.issueToggle small {
+  color: var(--gray);
+  font-size: var(--t-small);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.issuePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+}
+
+.issueGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.issueOption {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-1) var(--s-3);
+  min-height: 74px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.issueOption span {
+  font-size: var(--t-body);
+  font-weight: var(--weight-semibold);
+}
+
+.issueOption small {
+  grid-column: 1;
+  color: var(--gray);
+  font-size: var(--t-small);
+}
+
+.issueOption svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--green);
+}
+
+.issueOptionActive {
+  border-color: var(--black);
+  box-shadow: inset 0 0 0 1px var(--black);
+}
+
+@media (max-width: 720px) {
+  .issueGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Drop zone (Step 4) -------------------------------------------- */
 
 .dropZone {
@@ -726,6 +993,80 @@
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--r-3);
+}
+
+.identityHelpBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-5);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: var(--off-white);
+}
+
+.identityHelpBoxActive {
+  border-color: var(--green);
+}
+
+.identityHelpTitle,
+.identityHelpBody {
+  margin: 0;
+}
+
+.identityHelpTitle {
+  color: var(--black);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+  font-weight: var(--weight-semibold);
+}
+
+.identityHelpBody {
+  margin-top: var(--s-1);
+  max-width: 58ch;
+  color: var(--gray);
+  font-size: var(--t-small);
+  line-height: var(--leading-small);
+}
+
+.identityHelpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  padding: var(--s-3) var(--s-5);
+  flex: 0 0 auto;
+  border: 1px solid var(--ink);
+  border-radius: var(--r-2);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.identityHelpButtonActive {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.identityHelpButton:focus-visible {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 720px) {
+  .identityHelpBox {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .identityHelpButton {
+    width: 100%;
+  }
 }
 
 .docIcon {

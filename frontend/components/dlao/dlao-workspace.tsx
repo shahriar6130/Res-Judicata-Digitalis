@@ -51,6 +51,8 @@ import {
   isRedFlagged,
   groupOf,
   openDuplicateFor,
+  classifyIncomingComplexity,
+  type IncomingComplexityResult,
 } from "@/lib/dlas";
 import styles from "@/components/dlas/dlas.module.css";
 import { DocViewButton } from "@/components/dlas/doc-viewer";
@@ -291,6 +293,13 @@ function Queue({ bucket }: { bucket: QueueView }) {
   }[bucket];
   const isOverview = bucket === "overview";
   const activeCount = q.NEW.length + q.IN_REVIEW.length;
+  const showComplexityGroups = bucket === "overview" || bucket === "new";
+  const complexityGroups = (["COMPLEX", "INTERMEDIATE", "PETTY"] as const).map((level) => ({
+    level,
+    rows: rows
+      .map((application) => ({ application, complexity: classifyIncomingComplexity(application) }))
+      .filter((item) => item.complexity.level === level),
+  }));
   return (
     <>
       <header className={isOverview ? ui.queueHero : ui.queuePlainHead}>
@@ -330,52 +339,97 @@ function Queue({ bucket }: { bucket: QueueView }) {
         <div>
           <p className={ui.sectionKicker}>{tx("লাইভ তালিকা", "LIVE WORKLIST")}</p>
           <h2 className={ui.queueSectionTitle}>
-            {isOverview ? tx("নতুন আবেদন", "New applications") : tx("আবেদনসমূহ", "Applications")}
+            {showComplexityGroups ? tx("AI সাজানো নতুন আবেদন", "AI-sorted incoming cases") : tx("আবেদনসমূহ", "Applications")}
           </h2>
+          {showComplexityGroups ? <p className={ui.complexityNote}>{tx("সিমুলেটেড ও পরামর্শমূলক—জটিল ও গুরুত্বপূর্ণ কাজ আগে দেখানো হয়েছে; কর্মকর্তা সিদ্ধান্ত নেবেন।", "Simulated and advisory—complex and important work appears first; the officer decides.")}</p> : null}
         </div>
         <span className={ui.sectionCount}>{rows.length} {tx("টি", "items")}</span>
       </div>
 
       {rows.length === 0 ? (
         <p className={ui.queueEmpty}>{tx("এই তালিকায় কোনো আবেদন নেই।", "No applications in this list.")}</p>
-      ) : (
-        <div className={ui.worklist}>
-          {rows.map((a) => {
+      ) : showComplexityGroups ? (
+        <div className={ui.complexityGroups}>
+          {complexityGroups.map((group) => {
+            const copy = group.level === "COMPLEX"
+              ? { title: tx("জটিল মামলা", "Complex cases"), sub: tx("আগে দেখুন—একাধিক ঝুঁকি, সংবেদনশীলতা বা যাচাইয়ের প্রয়োজন", "Review first—multiple risks, sensitivity, or verification needs") }
+              : group.level === "INTERMEDIATE"
+                ? { title: tx("মাঝারি মামলা", "Intermediate cases"), sub: tx("অতিরিক্ত তথ্য বা কিছু সমন্বয় প্রয়োজন হতে পারে", "May need additional information or coordination") }
+                : { title: tx("ছোট / সহজ মামলা", "Petty / easy cases"), sub: tx("নিয়মিত যাচাইয়ের একক বিষয়", "Single issues for routine verification") };
             return (
-              <article className={ui.workItem} key={a.applicationId}>
-                <div className={ui.workItemHead}>
-                  <div className={ui.workItemIdentity}>
-                    <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
-                    <a className={ui.workItemId} href={`#app/${a.applicationId}`}>{a.applicationId}</a>
-                    {a.caseId ? <span className={ui.workCaseId}>{a.caseId}</span> : null}
-                    <TransferTag a={a} />
+              <section className={`${ui.complexityGroup} ${group.level === "COMPLEX" ? ui.complexityGroupComplex : group.level === "INTERMEDIATE" ? ui.complexityGroupIntermediate : ui.complexityGroupPetty}`} key={group.level} aria-labelledby={`incoming-${group.level.toLowerCase()}`}>
+                <header className={ui.complexityGroupHead}>
+                  <div>
+                    <span className={ui.aiSimulationBadge}>{tx("AI সিমুলেশন", "AI simulation")}</span>
+                    <h3 id={`incoming-${group.level.toLowerCase()}`}>{copy.title}</h3>
+                    <p>{copy.sub}</p>
                   </div>
-                  <a className={ui.queueOpen} href={`#app/${a.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
-                </div>
-                <dl className={ui.workFacts}>
-                  <WorkFact name={tx("আবেদনকারী", "Applicant")}>
-                    {a.data.applicant.fullName ?? "—"}
-                    {a.data.filedBy.kind !== "SELF" ? <span className={ui.workSub}>{pretty(a.data.filedBy.kind)}</span> : null}
-                  </WorkFact>
-                  <WorkFact name={tx("সমস্যা", "Matter")}>{label(MATTERS, a.data.matter.category, lang)}</WorkFact>
-                  <WorkFact name={tx("মাধ্যম", "Channel")}>{a.channel.code}</WorkFact>
-                  <WorkFact name={tx("অপেক্ষা", "Waiting")}>{daysSince(a.submittedAt)} {tx("দিন", "d")}</WorkFact>
-                  <WorkFact name={tx("প্রস্তাবিত অগ্রাধিকার", "Suggested priority")}>
-                    <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
-                    {isRedFlagged(a) ? <Tag tone="err">⚑ {incidentLabel(incidentOf(a).category, incidentOf(a).subcategory, lang)}</Tag> : null}
-                  </WorkFact>
-                  <WorkFact name={tx("যাচাই", "Verification")}><VerifiedBadge a={a} /></WorkFact>
-                  <WorkFact name={tx("স্টাফ প্রি-চেক", "Staff pre-check")}><StaffCheckTag a={a} /></WorkFact>
-                  <WorkFact name={tx("ধাপ", "Stage")}>
-                    {STAGE_LABEL[subStage(a)]?.[lang] ?? subStage(a)}
-                  </WorkFact>
-                </dl>
-              </article>
+                  <span className={ui.complexityCount}>{group.rows.length}</span>
+                </header>
+                {group.rows.length ? (
+                  <div className={ui.worklist}>
+                    {group.rows.map(({ application, complexity }) => <QueueWorkItem key={application.applicationId} a={application} complexity={complexity} />)}
+                  </div>
+                ) : <p className={ui.complexityEmpty}>{tx("এই বিভাগে এখন কোনো আবেদন নেই।", "No applications in this section.")}</p>}
+              </section>
             );
           })}
         </div>
+      ) : (
+        <div className={ui.worklist}>
+          {rows.map((a) => <QueueWorkItem key={a.applicationId} a={a} />)}
+        </div>
       )}
     </>
+  );
+}
+
+function QueueWorkItem({ a, complexity }: { a: ApplicationRecord; complexity?: IncomingComplexityResult }) {
+  const { lang } = useI18n();
+  const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const localIdentityComplete = a.review?.identity.state === "COMPLETED";
+  return (
+    <article className={ui.workItem}>
+      <div className={ui.workItemHead}>
+        <div className={ui.workItemIdentity}>
+          <span className={ui.workItemEyebrow}>{tx("আবেদন", "Application")}</span>
+          <a className={ui.workItemId} href={`#app/${a.applicationId}`}>{a.applicationId}</a>
+          {a.caseId ? <span className={ui.workCaseId}>{a.caseId}</span> : null}
+          <TransferTag a={a} />
+        </div>
+        <a className={ui.queueOpen} href={`#app/${a.applicationId}`}>{tx("আবেদন খুলুন", "Open application")} <span aria-hidden="true">→</span></a>
+      </div>
+      {complexity ? (
+        <div className={ui.complexityEvidence}>
+          <strong>{tx("AI সিমুলেশনের কারণ", "AI simulation reasons")}</strong>
+          <span>{complexity.reasons.slice(0, 3).map((reason) => reason[lang]).join(" · ")}</span>
+          <small>{tx("শুধু কাজ সাজানোর জন্য; আইনি সিদ্ধান্ত নয়", "For work ordering only; not a legal decision")}</small>
+        </div>
+      ) : null}
+      <dl className={ui.workFacts}>
+        <WorkFact name={tx("আবেদনকারী", "Applicant")}>
+          {a.data.applicant.fullName ?? "—"}
+          {a.data.filedBy.kind !== "SELF" ? <span className={ui.workSub}>{pretty(a.data.filedBy.kind)}</span> : null}
+        </WorkFact>
+        <WorkFact name={tx("সমস্যা", "Matter")}>{label(MATTERS, a.data.matter.category, lang)}</WorkFact>
+        <WorkFact name={tx("মাধ্যম", "Channel")}>{a.channel.code}</WorkFact>
+        <WorkFact name={tx("অপেক্ষা", "Waiting")}>{daysSince(a.submittedAt)} {tx("দিন", "d")}</WorkFact>
+        <WorkFact name={tx("প্রস্তাবিত অগ্রাধিকার", "Suggested priority")}>
+          <Tag tone={a.routing.recommendedPriority === "NORMAL" ? "neutral" : "err"}>{a.routing.recommendedPriority}</Tag>
+          {isRedFlagged(a) ? <Tag tone="err">⚑ {incidentLabel(incidentOf(a).category, incidentOf(a).subcategory, lang)}</Tag> : null}
+        </WorkFact>
+        <WorkFact name={tx("যাচাই", "Verification")}><VerifiedBadge a={a} /></WorkFact>
+        {a.data.applicant.identityDocumentUnavailable ? (
+          <WorkFact name={tx("স্থানীয় পরিচয় যাচাই", "Local identity verification")}>
+            <Tag tone={localIdentityComplete ? "ok" : "warn"}>
+              {localIdentityComplete ? tx("সম্পন্ন", "Completed") : tx("সরকারি স্থানীয় প্রতিনিধির কাছে পাঠানো হয়েছে", "Sent to local government representative")}
+            </Tag>
+          </WorkFact>
+        ) : null}
+        <WorkFact name={tx("স্টাফ প্রি-চেক", "Staff pre-check")}><StaffCheckTag a={a} /></WorkFact>
+        <WorkFact name={tx("ধাপ", "Stage")}>{STAGE_LABEL[subStage(a)]?.[lang] ?? subStage(a)}</WorkFact>
+      </dl>
+    </article>
   );
 }
 
@@ -708,6 +762,7 @@ function ReceivedStep({ a, run, onNext }: StepProps) {
 
 function IdentityStep({ a, run, onNext }: StepProps) {
   const { lang } = useI18n();
+  const db = useDlasDb();
   const tx = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const r = a.review!;
   const decided = !!r.decision;
@@ -723,6 +778,7 @@ function IdentityStep({ a, run, onNext }: StepProps) {
   const [nidFix, setNidFix] = useState(nidNumber ?? "");
   const reg = r.identity.nid.simulatedRegistryCheck;
   const nidRecorded = r.identity.nid.status;
+  const localIdentityTask = db.tasks.find((task) => task.applicationId === a.applicationId && task.type === "LOCAL_IDENTITY_VERIFICATION");
 
   return (
     <>
@@ -730,6 +786,16 @@ function IdentityStep({ a, run, onNext }: StepProps) {
       {a.data.filedBy.kind === "REPRESENTATIVE" ? (
         <Banner tone="warn" icon="!">
           {tx(`প্রতিনিধি (${a.data.filedBy.name ?? "—"}) আবেদন করেছেন — আবেদনকারীর সাথে সরাসরি নিশ্চিত করুন।`, `Filed by a representative (${a.data.filedBy.name ?? "—"}) — confirm directly with the applicant; the representative's word is not the applicant's confirmation.`)}
+        </Banner>
+      ) : null}
+      {a.data.applicant.identityDocumentUnavailable ? (
+        <Banner tone={localIdentityTask?.status === "DONE" ? "ok" : "warn"} icon={localIdentityTask?.status === "DONE" ? "✓" : "↗"}>
+          <strong>{tx("স্থানীয় সরকারি প্রতিনিধির মাধ্যমে পরিচয় যাচাই", "Identity verification through a local government representative")}</strong>
+          <div>
+            {localIdentityTask?.status === "DONE"
+              ? tx("স্থানীয় যাচাই সম্পন্ন হয়েছে। কর্মকর্তার রেকর্ড করা ফলাফল দেখুন।", "Local verification is complete. Review the result recorded by the officer.")
+              : tx("আবেদনকারীর প্রয়োজনীয় পরিচয়পত্র নেই। পরিচয় যাচাইয়ের অনুরোধ স্থানীয় সরকারি প্রতিনিধির কাছে পাঠানো হয়েছে এবং উত্তর অপেক্ষমাণ।", "The applicant does not have the necessary identity document. A verification request has been sent to a local government representative and is awaiting a response.")}
+          </div>
         </Banner>
       ) : null}
 
@@ -815,6 +881,7 @@ function IdentityStep({ a, run, onNext }: StepProps) {
                 <option value="OFFICE_VISIT">{tx("অফিসে সাক্ষাৎ", "Office visit")}</option>
                 <option value="UDC_VIDEO">{tx("ইউডিসি ভিডিও", "UDC video")}</option>
                 <option value="DOCUMENT_CHECK">{tx("নথি দেখে", "Document check")}</option>
+                <option value="LOCAL_GOVT_REPRESENTATIVE">{tx("স্থানীয় সরকারি প্রতিনিধির যাচাই", "Local government representative verification")}</option>
               </select>
             </label>
             <label className={styles.field}>

@@ -213,7 +213,19 @@ UDC submit never blocks on gaps (applicant may have travelled far): missing fiel
 All district/matter/safe-time lists come from `lib/dlas/reference.ts` (keypad digit = list index + 1), so IVR "2", USSD "2" and the citizen/UDC "Joypurhat" option all store `"JOYPURHAT"`.
 All doors call one validator: `lib/dlas/validate.ts`.
 
-Required for a valid submit (every door): `identity.verified`, `applicant.fullName`, `applicant.phone` (optional when a representative files — contact then goes through them), `applicant.district`, `matter.category`, `matter.summary` (≥10 chars), `safeContact.method`, `safeContact.safeTime`, `safeContact.phone` (if CALL/SMS), `consent.dataProcessing`, `consent.method`. Representative: `filedBy.name/relation/phone`. UDC: `filedBy.operatorId`, `freeServiceNoticeAcknowledged`, `consent.readBackConfirmed`.
+Required for a valid submit (every door): `identity.verified`, `applicant.fullName`, `applicant.phone` (optional when a representative files — contact then goes through them), `applicant.district`, `matter.category`, `matter.summary` (≥10 chars), `safeContact.method`, `safeContact.safeTime`, `safeContact.phone` (if CALL/SMS), `consent.dataProcessing`, `consent.method`. Representative: `filedBy.name/relation/phone`. UDC: `filedBy.operatorId`, `freeServiceNoticeAcknowledged`, `consent.readBackConfirmed`. When `applicant.identityDocumentUnavailable = true`, checklist generation omits an unattached NID placeholder and submission creates an in-progress `LOCAL_IDENTITY_VERIFICATION` task assigned to `LOCAL_GOVT_REPRESENTATIVE`, with context status `SENT_TO_LOCAL_GOVT_REPRESENTATIVE`. DLAO completion of identity verification closes this task; `LOCAL_GOVT_REPRESENTATIVE` is an allowed recorded verification method.
+
+Web/UDC complaint intake also writes `matter.opposingParties[] {name, address}`. The first entry is
+mirrored into the legacy `matter.opposingParty` string so existing matching, mediation and officer
+views remain compatible.
+
+Incoming DLAO presentation calls `classifyIncomingComplexity(application)` from
+`lib/dlas/incoming-complexity.ts`. Result: `{level PETTY | INTERMEDIATE | COMPLEX, score, reasons[],
+engine SIMULATED_COMPLEXITY_V1, simulated: true, advisoryOnly: true}`. Complex appears first, then
+Intermediate and Petty. Inputs are limited to existing structured urgency/red flags, matter type,
+child/urgency flags, local identity verification, filing party, pending-document count, narrative
+length, and incident-match count. This output is derived at read time and does not mutate priority,
+eligibility, pathway, tasks, or outcome.
 
 ---
 

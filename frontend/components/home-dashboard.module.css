@@ -127,7 +127,7 @@
   gap: 4px;
   font-size: var(--t-body);
   font-weight: var(--weight-semibold);
-  color: inherit;
+  color: var(--action-ink);
   border-bottom: 1px solid currentColor;
   padding-bottom: 2px;
 }
@@ -258,12 +258,13 @@
   text-align: left;
   padding: var(--s-4) var(--s-6);
   border-radius: var(--r-4);
-  border: 1px solid rgba(198, 106, 0, 0.45);
-  background: #fff8e8;
+  border: 1px solid var(--action-ink);
+  background: var(--action-soft);
   color: var(--ink);
   font: inherit;
   font-family: var(--font-sans, inherit);
   cursor: pointer;
+  box-shadow: var(--notification-border-peak);
   animation: alertGlow 1.8s ease-in-out infinite;
 }
 
@@ -274,7 +275,7 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--status-pending);
+  background: var(--badge-bg);
   color: var(--white);
 }
 
@@ -293,10 +294,11 @@
 
 .alertSub {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--gray);
 }
 
 .alertCta {
+  color: var(--action-ink);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -307,10 +309,10 @@
 @keyframes alertGlow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(244, 196, 48, 0);
+    box-shadow: var(--notification-border-rest);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(244, 196, 48, 0.35), 0 0 22px rgba(244, 196, 48, 0.35);
+    box-shadow: var(--notification-border-peak);
   }
 }
 

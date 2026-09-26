@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /* ------------------------------------------------------------------ *
  *  Generalised hash navigation hook.
@@ -36,17 +36,34 @@ export type HashRouter = {
   current: string;
 };
 
+function subscribeToHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+function getHashSnapshot() {
+  return window.location.hash.replace(/^#/, "");
+}
+
+// URL fragments are not sent to the server. React uses this same snapshot
+// during hydration, then reads the browser hash after hydration completes.
+function getServerHashSnapshot() {
+  return "";
+}
+
 export function useHashRoute(): HashRouter {
   const pendingRef = useRef<string | null>(null);
   const [commitTick, setCommitTick] = useState(0);
-  const [current, setCurrent] = useState<string>(() =>
-    typeof window === "undefined" ? "" : window.location.hash.replace(/^#/, ""),
+  const current = useSyncExternalStore(
+    subscribeToHash,
+    getHashSnapshot,
+    getServerHashSnapshot,
   );
 
   // Commit effect — performs the actual `window.location.hash` write.
   useEffect(() => {
     const desired = pendingRef.current;
-    if (!desired) return;
+    if (desired === null) return;
     pendingRef.current = null;
     const normalised = desired.replace(/^#/, "");
     const now = window.location.hash.replace(/^#/, "");
@@ -56,17 +73,6 @@ export function useHashRoute(): HashRouter {
       window.location.hash = normalised;
     }
   }, [commitTick]);
-
-  // Track the current hash so callers can render reactively without
-  // reading window.location directly.
-  useEffect(() => {
-    function sync() {
-      setCurrent(window.location.hash.replace(/^#/, ""));
-    }
-    sync();
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
-  }, []);
 
   const navigate = useCallback((hash: string) => {
     pendingRef.current = hash;

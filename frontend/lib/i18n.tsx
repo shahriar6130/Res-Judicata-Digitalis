@@ -1967,17 +1967,17 @@ export const messages: Messages = {
       "ধাপে ধাপে আপনার তথ্য দিন, প্রয়োজনীয় কাগজপত্র সংযুক্ত করুন। ইন্টারনেট না থাকলেও সংরক্ষিত থাকবে; নেটওয়ার্ক ফিরে এলে কর্তৃপক্ষের সার্ভারে পাঠানো হবে।",
     intakeStepOf: "এর মধ্যে",
     intakeProgress1: "পরিচয়",
-    intakeProgress2: "মামলার ধরন",
+    intakeProgress2: "AI সহায়তা",
     intakeProgress3: "পক্ষ ও বিবরণ",
     intakeProgress4: "কাগজপত্র",
     intakeProgress5: "যোগাযোগ ও সম্মতি",
     intakeStep1Headline: "আবেদনকারীর পরিচয়",
     intakeStep1Sub:
       "আপনার নাম ও মোবাইল নম্বর দিন। অন্যের হয়ে আবেদন করলে সেটিও জানাতে পারবেন।",
-    intakeStep2Headline: "মামলার ধরন",
-    intakeStep2Question: "আপনার বিষয়টি কোন ধরনের?",
+    intakeStep2Headline: "AI সহায়তায় ধরন বাছাই",
+    intakeStep2Question: "নিজের ভাষায় বলুন—সহকারী ধরনটি বেছে নেবে",
     intakeStep2Sub:
-      "একটি বিভাগ বেছে নিন। ধরন পরিবর্তন হলে অফিস পরে সহায়তা করবে।",
+      "আইনের বিভাগ জানার দরকার নেই। চাইলে বিস্তারিত তালিকা থেকে নিজেও বেছে নিতে পারবেন।",
     intakeStep3Headline: "আপনার বিবরণ",
     intakeStep3Sub:
       "বিরোধী পক্ষের নাম ও ঠিকানা দিন এবং ঘটনার সংক্ষিপ্ত বিবরণ লিখুন বা বলুন।",
@@ -3277,17 +3277,17 @@ export const messages: Messages = {
       "Step through your details, attach the documents you have. If the network drops, your progress stays on this device — it will push to the case system the moment you are back online.",
     intakeStepOf: "of",
     intakeProgress1: "Identity",
-    intakeProgress2: "Matter",
+    intakeProgress2: "AI assistance",
     intakeProgress3: "Parties & story",
     intakeProgress4: "Documents",
     intakeProgress5: "Contact & consent",
     intakeStep1Headline: "Applicant identity",
     intakeStep1Sub:
       "Share your name and mobile number. You can also indicate if you are applying on behalf of someone.",
-    intakeStep2Headline: "Type of matter",
-    intakeStep2Question: "What kind of case is this?",
+    intakeStep2Headline: "AI-assisted category",
+    intakeStep2Question: "Describe it in your own words and the assistant will choose",
     intakeStep2Sub:
-      "Pick one category. The office can refine it with you later if needed.",
+      "You do not need to know the legal category. You can also choose from the detailed list yourself.",
     intakeStep3Headline: "Your story",
     intakeStep3Sub:
       "Add the opposing party's name and address, and write or speak a short description of what happened.",

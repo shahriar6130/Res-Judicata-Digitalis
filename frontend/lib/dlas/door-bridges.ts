@@ -49,9 +49,11 @@ export interface CitizenDraftLike {
   proxyPhone: string;
   district?: string;
   nidNumber?: string;
+  identityDocumentUnavailable?: boolean;
   matter: string | null;
   partyName: string;
   partyAddress: string;
+  additionalOpponents?: { name: string; address: string }[];
   description: string;
   urgent?: boolean;
   urgencyFlags?: string[];
@@ -100,8 +102,8 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
   const method: ContactMethod = rep && !applicantPhone ? "VIA_REPRESENTATIVE" : "CALL";
   return {
     applicant: rep
-      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null }
-      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null },
+      ? { fullName: d.proxyName.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: applicantPhone ? true : null, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable }
+      : { fullName: d.name.trim() || null, phone: applicantPhone, phoneOwnedByApplicant: true, district: mapLegacyDistrict(district), nidNumber: d.nidNumber?.trim() || null, identityDocumentUnavailable: !!d.identityDocumentUnavailable },
     filedBy: rep
       ? { kind: "REPRESENTATIVE", name: d.name.trim() || null, phone: normalizePhone(d.phone), relation: mapRelation(d.proxyRel, d.actingFor), operatorId: null, centre: null }
       : { kind: "SELF", name: null, phone: null, relation: null, operatorId: null, centre: null },
@@ -110,6 +112,10 @@ export function mapCitizenDraft(d: CitizenDraftLike, district: string | null): D
       assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
       summary: d.description.trim() || null,
       opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+      opposingParties: [
+        { name: d.partyName.trim(), address: d.partyAddress.trim() || null },
+        ...(d.additionalOpponents ?? []).map((party) => ({ name: party.name.trim(), address: party.address.trim() || null })),
+      ].filter((party) => party.name),
     },
     urgency: {
       selfReportedUrgent: !!d.urgent,
@@ -364,6 +370,7 @@ export const UdcDoor = {
           phoneOwnedByApplicant: applicantPhone ? (!rep || !!statedApplicantPhone) : null,
           district: mapLegacyDistrict(d.district ?? operator.district),
           nidNumber: d.nidNumber?.trim() || null,
+          identityDocumentUnavailable: !!d.identityDocumentUnavailable,
           preferredLanguage: "bn",
         },
         filedBy: {
@@ -379,6 +386,10 @@ export const UdcDoor = {
           assistanceRole: d.actingFor === "alleged" ? "ALLEGED_PERSON_DEFENCE" : "CLAIMANT",
           summary: d.description.trim() || null,
           opposingParty: [d.partyName.trim(), d.partyAddress.trim()].filter(Boolean).join(", ") || null,
+          opposingParties: [
+            { name: d.partyName.trim(), address: d.partyAddress.trim() || null },
+            ...(d.additionalOpponents ?? []).map((party) => ({ name: party.name.trim(), address: party.address.trim() || null })),
+          ].filter((party) => party.name),
         },
         urgency: {
           selfReportedUrgent: !!d.urgent,

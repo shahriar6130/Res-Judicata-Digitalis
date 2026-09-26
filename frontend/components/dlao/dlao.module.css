@@ -112,6 +112,58 @@
 .sectionKicker { color: var(--dlo-muted); margin: 0 0 var(--s-1); }
 .queueSectionTitle { font-family: var(--font-serif); font-size: var(--t-section); font-weight: var(--weight-semibold); line-height: var(--leading-section); margin: 0; }
 .sectionCount { font-size: var(--t-label); color: var(--dlo-muted); white-space: nowrap; }
+.complexityNote { max-width: 720px; margin: var(--s-2) 0 0; color: var(--dlo-muted); font-size: var(--t-small); }
+.complexityGroups { display: flex; flex-direction: column; gap: var(--s-8); }
+.complexityGroup { border-top: 3px solid var(--dlo-line); }
+.complexityGroupComplex { border-top-color: var(--red); }
+.complexityGroupIntermediate { border-top-color: var(--status-pending); }
+.complexityGroupPetty { border-top-color: var(--green); }
+.complexityGroupHead {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+}
+.complexityGroupHead h3 { margin: var(--s-2) 0 var(--s-1); font-size: var(--t-sub); }
+.complexityGroupHead p { margin: 0; color: var(--dlo-muted); font-size: var(--t-small); }
+.aiSimulationBadge {
+  display: inline-flex;
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--dlo-line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--dlo-muted);
+  font-size: var(--t-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.complexityCount {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--dlo-line);
+  border-radius: 999px;
+  background: var(--white);
+  font-family: var(--font-serif);
+  font-size: var(--t-sub);
+}
+.complexityEmpty { margin: 0; padding: var(--s-4); border-top: 1px solid var(--dlo-line); color: var(--dlo-muted); font-size: var(--t-small); }
+.complexityEvidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-3);
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--theme-solid-fill, var(--ink));
+  background: var(--white);
+  font-size: var(--t-small);
+}
+.complexityEvidence strong { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; }
+.complexityEvidence small { width: 100%; color: var(--dlo-muted); }
 .worklist { border-top: 1px solid var(--dlo-line); }
 .workItem {
   padding: var(--s-6) 0;

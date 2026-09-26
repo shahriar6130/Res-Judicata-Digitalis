@@ -159,6 +159,28 @@ Overview, application work and support destinations. Connection diagnostics are 
 expandable strip, and the global header provides the language toggle. The `/udc` sign-in page uses
 the existing mobile login and operator registration flow with UDC-specific art and copy.
 
+In step 2 of the shared complaint wizard, the applicant writes a short description instead of
+choosing among broad legal labels. `lib/intake-category-simulation.ts` provides a deterministic,
+clearly labelled AI simulation that recommends the stored broad category. **See all issue types**
+opens 33 specific Bangla/English choices for manual override. The description remains prefilled in
+step 3, and both the recommendation and every override map to the existing intake category codes.
+
+The shared document step also lets an applicant declare that the necessary identity document is
+unavailable. This persists as `identityDocumentUnavailable`, removes an unfulfilled NID checklist
+item, and creates a `LOCAL_IDENTITY_VERIFICATION` task on submission. The task is marked as sent to
+a local government representative and is visible in both the DLAO worklist and identity-review
+screen. The DLAO can record that verification method, and a successful identity check closes the
+task.
+
+Incoming DLAO applications are grouped by the advisory `SIMULATED_COMPLEXITY_V1` classifier into
+Complex, Intermediate, and Petty/easy sections, with Complex first. The classifier reads existing
+structured case facts and displays concise reasons on every row. It only changes worklist ordering;
+the officer still makes every verification, eligibility, pathway, and priority decision.
+
+The complaint wizard supports multiple opponents. The first opponent remains required, **+ Add
+another opponent** adds removable name/address blocks, and the full list persists in
+`matter.opposingParties` alongside the existing primary `matter.opposingParty` value.
+
 The `/device/ivr` and `/device/ussd` simulators share a guided phone workspace. A mode switch,
 three-step introduction, handset, conversation, and live-record panel make the active task clearer.
 The panels stack on narrow screens. Both modes still write to the shared intake record, and
@@ -259,3 +281,28 @@ The সাক্ষ্য wordmark plate in the Admin sidebar also uses the admi
 ### Light government theme
 
 The active theme is `frontend/app/themes/gov_theme.css`, imported after the base tokens in `globals.css`. White and pale green (`#e6fbd9`) form the page, navigation, and featured-panel surfaces; black is reading text, not a large background. The original Lady Justice/login photographs stay visible at full image opacity beneath a translucent vignette, with white text scoped to the image pane. Primary buttons, featured calls to action, and active navigation use `#038533` with white labels; links and outlined controls use the deeper `#02712b` for contrast on pale green; `#05a53f` is reserved for decorative accents. White button labels on `#038533` have a 4.77:1 contrast ratio, while black on `#e6fbd9` has 19.17:1. Muted copy uses a readable green-gray, control boundaries remain visible, and keyboard focus uses a black outline. Status labels and icons carry meaning alongside the green palette; color alone must not distinguish statuses. Bangla and English behavior is unchanged. Saved blue, black, and courthouse themes remain available through the CSS import, with no product theme switch.
+
+### Button and notification contrast
+
+Shared buttons have a minimum 44px height. Outlined actions and notification links use
+deep green on white or pale green; filled notification badges use white labels on deep
+green. Badges inside active green navigation invert to a white surface with deep-green
+labels, and the active navigation marker stays light. Unread rows retain their text label
+and leading rule. Unread notification navigation and badges pulse with a green glow until their
+existing unread state clears. The home reminder and mobile notification icon also glow.
+The animation changes only the halo, preserving label contrast; reduced-motion users
+get a steady navigation highlight. Keyboard focus remains available in both languages. Paired
+colors are defined in `frontend/app/tokens.css`.
+
+Unread notification navigation and the home reminder use an eye-catching 2px glowing
+border with a green outer halo, pulsing every 1.8 seconds. Active green navigation
+uses a light inner edge. The border remains visible throughout the pulse; reduced
+motion keeps a steady glow. The reading surface and text colors stay unchanged.
+
+### Hash navigation hydration
+
+The shared `useHashRoute` hook uses an empty server snapshot during hydration, then
+reads the browser fragment through `useSyncExternalStore`. Direct loads and refreshes
+of `#notifications` or nested case links therefore hydrate consistently before the
+sidebar and mobile navigation highlight the requested section. Hash changes, browser
+Back/Forward, repeated navigation, and clearing the fragment remain supported.

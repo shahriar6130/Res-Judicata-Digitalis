@@ -103,6 +103,8 @@ export type IntakeDocument = {
   dataUrl: string;
 };
 
+export type IntakeOpponent = { name: string; address: string };
+
 export type IntakeDraft = {
   /** Citizen account that owns this draft (lib/dlas/citizen-auth). A draft
    *  never carries over to a different logged-in account. */
@@ -122,10 +124,15 @@ export type IntakeDraft = {
 
   /* --- Step 2: Matter --- */
   matter: MatterCategory | null;
+  /** Whether the simulated assistant or the citizen made the current selection. */
+  matterSelectionSource: "ai" | "user";
+  /** Plain-language issue id used to restore the detailed selection after refresh. */
+  matterIssueId: string | null;
 
   /* --- Step 3: Parties + narrative --- */
   partyName: string;
   partyAddress: string;
+  additionalOpponents: IntakeOpponent[];
   description: string;
   /** The citizen says it is urgent (and why) — shown to the DLAO in the "Urgent cases" tab; priority stays the officer's decision. */
   urgent?: boolean;
@@ -133,6 +140,8 @@ export type IntakeDraft = {
 
   /* --- Step 4: Documents --- */
   documents: IntakeDocument[];
+  /** Applicant says they do not have the identity document needed for verification. */
+  identityDocumentUnavailable: boolean;
 
   /* --- Step 5: Contact + consent --- */
   contactSlot: ContactSlot | null;
@@ -190,10 +199,14 @@ export function emptyDraft(): IntakeDraft {
     district: "",
     nidNumber: "",
     matter: null,
+    matterSelectionSource: "ai",
+    matterIssueId: null,
     partyName: "",
     partyAddress: "",
+    additionalOpponents: [],
     description: "",
     documents: [],
+    identityDocumentUnavailable: false,
     contactSlot: null,
     contactDay: "",
     contactTime: "",

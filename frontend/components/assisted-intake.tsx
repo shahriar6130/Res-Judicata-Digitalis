@@ -13,6 +13,7 @@ import {
 import {
   Calendar,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -46,12 +47,13 @@ import {
 import styles from "./assisted-intake.module.css";
 import Link from "next/link";
 import { CitizenAuth, CitizenDoor, DAYS, DISTRICTS, normalizePhone, UdcAuth, UdcDoor, useDlasDb } from "@/lib/dlas";
+import { INTAKE_ISSUE_TYPES, simulateIntakeCategory } from "@/lib/intake-category-simulation";
 
 /* ------------------------------------------------------------------ *
  *  Assisted Intake — 5-step wizard for starting a new case.
  *
  *  Step 1 — Identity           (name + mobile, voice-enabled)
- *  Step 2 — Matter             (6 selectable cards)
+ *  Step 2 — AI-assisted matter category (plain-language override list)
  *  Step 3 — Parties + Story    (opposing party + voice/text description)
  *  Step 4 — Documents          (drag/drop box + file picker)
  *  Step 5 — Safe contact time  + consent + submit
@@ -81,17 +83,6 @@ type StepErrors = Partial<
   >
 >;
 
-const MATTER_KEYS: readonly MatterCategory[] = [
-  "family",
-  "land",
-  "civil",
-  "criminal",
-  "sexual_harassment",
-  "security",
-  "labour",
-  "other",
-];
-
 const SLOT_KEYS: readonly ContactSlot[] = ["anytime", "custom"];
 
 function matterTitleKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
@@ -104,32 +95,6 @@ function matterTitleKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
     case "security": return "intakeMatterSecurity";
     case "labour": return "intakeMatterLabour";
     case "other": return "intakeMatterOther";
-  }
-}
-
-function matterEyebrowKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
-  switch (k) {
-    case "family": return "intakeMatterFamilyEyebrow";
-    case "land": return "intakeMatterLandEyebrow";
-    case "civil": return "intakeMatterCivilEyebrow";
-    case "criminal": return "intakeMatterCriminalEyebrow";
-    case "sexual_harassment": return "intakeMatterSexualHarassmentEyebrow";
-    case "security": return "intakeMatterSecurityEyebrow";
-    case "labour": return "intakeMatterLabourEyebrow";
-    case "other": return "intakeMatterOtherEyebrow";
-  }
-}
-
-function matterSubKey(k: MatterCategory): import("@/lib/i18n").MessageKey {
-  switch (k) {
-    case "family": return "intakeMatterFamilySub";
-    case "land": return "intakeMatterLandSub";
-    case "civil": return "intakeMatterCivilSub";
-    case "criminal": return "intakeMatterCriminalSub";
-    case "sexual_harassment": return "intakeMatterSexualHarassmentSub";
-    case "security": return "intakeMatterSecuritySub";
-    case "labour": return "intakeMatterLabourSub";
-    case "other": return "intakeMatterOtherSub";
   }
 }
 
@@ -500,7 +465,21 @@ export function AssistedIntake({ mode = "citizen" }: { mode?: "citizen" | "udc" 
           {step === 2 ? (
             <Step2Matter
               draft={draft}
-              onMatter={(m) => setField("matter", m)}
+              choiceSource={draft.matterSelectionSource}
+              selectedIssueId={draft.matterIssueId}
+              onDescription={(description) => {
+                const suggestion = simulateIntakeCategory(description);
+                setDraft((current) => current.matterSelectionSource === "user"
+                  ? { ...current, description }
+                  : { ...current, description, matter: suggestion?.matter ?? null, matterIssueId: suggestion?.issue.id ?? null });
+              }}
+              onSelectIssue={(issue) => {
+                setDraft((current) => ({ ...current, matter: issue.matter, matterIssueId: issue.id, matterSelectionSource: "user" }));
+              }}
+              onUseAi={() => {
+                const suggestion = simulateIntakeCategory(draft.description);
+                setDraft((current) => ({ ...current, matter: suggestion?.matter ?? null, matterIssueId: suggestion?.issue.id ?? null, matterSelectionSource: "ai" }));
+              }}
               errors={errors}
             />
           ) : null}
@@ -519,6 +498,7 @@ export function AssistedIntake({ mode = "citizen" }: { mode?: "citizen" | "udc" 
             <Step4Documents
               draft={draft}
               forwardOnly={mode === "udc"}
+              onIdentityDocumentUnavailable={(value) => setField("identityDocumentUnavailable", value)}
               onAdd={(doc) =>
                 setField("documents", [...draft.documents, doc])
               }
@@ -847,60 +827,130 @@ function Step1Identity({
 }
 
 /* ------------------------------------------------------------------ *
- *  Step 2 — Matter (6 category cards).
+ *  Step 2 — simulated AI recommendation with a plain-language picker.
  * ------------------------------------------------------------------ */
 
 function Step2Matter({
   draft,
-  onMatter,
+  choiceSource,
+  selectedIssueId,
+  onDescription,
+  onSelectIssue,
+  onUseAi,
   errors,
 }: {
   draft: IntakeDraft;
-  onMatter: (m: MatterCategory) => void;
+  choiceSource: "ai" | "user";
+  selectedIssueId: string | null;
+  onDescription: (value: string) => void;
+  onSelectIssue: (issue: (typeof INTAKE_ISSUE_TYPES)[number]) => void;
+  onUseAi: () => void;
   errors: StepErrors;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [showAll, setShowAll] = useState(false);
+  const suggestion = simulateIntakeCategory(draft.description);
+  const selectedIssue = INTAKE_ISSUE_TYPES.find((issue) => issue.id === selectedIssueId) ?? null;
+  const issueLabel = selectedIssue?.label[lang] ?? suggestion?.issue.label[lang] ?? null;
+  const matterLabel = draft.matter ? t(matterTitleKey(draft.matter)) : null;
+
   return (
     <section className={styles.stepCard} aria-labelledby="ai-s2-title">
       <span className={styles.stepBadge}>০২ · {t("intakeStep2Headline")}</span>
       <h2 id="ai-s2-title" className={styles.stepTitle}>
-        {t("intakeStep2Headline")}
+        {lang === "bn" ? "আপনার সমস্যাটি আমাদের বলুন" : "Tell us about your problem"}
       </h2>
-      <p className={styles.stepQuestion}>{t("intakeStep2Question")}</p>
-      <p className={styles.stepSubtitle}>{t("intakeStep2Sub")}</p>
+      <p className={styles.stepSubtitle}>
+        {lang === "bn"
+          ? "আইনের ধারা বা মামলার ধরন জানার দরকার নেই। নিজের ভাষায় সংক্ষেপে লিখুন—সহকারী আপনার জন্য ধরনটি বেছে নেবে।"
+          : "You do not need to know the legal category. Describe it briefly in your own words and the assistant will choose one for you."}
+      </p>
 
-      <div
-        className={styles.matterGrid}
-        role="radiogroup"
-        aria-label={t("intakeStep2Question")}
-      >
-        {MATTER_KEYS.map((key) => {
-          const active = draft.matter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              className={`${styles.matterCard} ${active ? styles.matterCardActive : ""}`}
-              onClick={() => onMatter(key)}
-            >
-              <p className={styles.matterEyebrow}>
-                {t(matterEyebrowKey(key))}
-              </p>
-              <p className={styles.matterTitle}>
-                {t(matterTitleKey(key))}
-              </p>
-              <p className={styles.matterSub}>
-                {t(matterSubKey(key))}
-              </p>
-              <span className={styles.matterCheck} aria-hidden>
-                <Check size={14} />
-              </span>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>
+          {lang === "bn" ? "কী ঘটেছে?" : "What happened?"}
+        </span>
+        <textarea
+          className={styles.textarea}
+          rows={4}
+          value={draft.description}
+          onChange={(event) => onDescription(event.target.value)}
+          placeholder={lang === "bn" ? "যেমন: আমার তিন মাসের বেতন দেয়নি" : "For example: My salary has not been paid for three months"}
+        />
+        <span className={styles.inputHint}>
+          {lang === "bn" ? "কমপক্ষে একটি ছোট বাক্য লিখুন। পরের ধাপে এটি সম্পাদনা করতে পারবেন।" : "Write at least one short sentence. You can edit it in the next step."}
+        </span>
+      </label>
+
+      <div className={`${styles.aiSuggestion} ${draft.matter ? styles.aiSuggestionReady : ""}`} aria-live="polite">
+        <div className={styles.aiSuggestionHead}>
+          <span className={styles.aiBadge}>{lang === "bn" ? "AI সিমুলেশন" : "AI simulation"}</span>
+          {choiceSource === "user" ? (
+            <button type="button" className={styles.textButton} onClick={onUseAi}>
+              {lang === "bn" ? "AI-কে আবার বেছে নিতে দিন" : "Let AI choose again"}
             </button>
-          );
-        })}
+          ) : null}
+        </div>
+        {draft.matter ? (
+          <div className={styles.aiResult}>
+            <span className={styles.aiResultCheck} aria-hidden><Check size={18} /></span>
+            <div>
+              <p className={styles.aiResultLabel}>
+                {choiceSource === "user"
+                  ? (lang === "bn" ? "আপনি বেছে নিয়েছেন" : "You selected")
+                  : (lang === "bn" ? "সহকারী যে ধরনটি বেছে নিয়েছে" : "The assistant selected")}
+              </p>
+              <p className={styles.aiResultTitle}>{issueLabel ?? matterLabel}</p>
+              {issueLabel && matterLabel ? <p className={styles.aiResultMeta}>{matterLabel}</p> : null}
+            </div>
+          </div>
+        ) : (
+          <p className={styles.aiWaiting}>
+            {lang === "bn" ? "আপনার বর্ণনা পড়ে এখানে একটি ধরন দেখানো হবে।" : "A recommended issue type will appear here after reading your description."}
+          </p>
+        )}
       </div>
+
+      <button
+        type="button"
+        className={styles.issueToggle}
+        aria-expanded={showAll}
+        aria-controls="intake-issue-list"
+        onClick={() => setShowAll((open) => !open)}
+      >
+        <span>
+          <strong>{lang === "bn" ? "সব সমস্যার ধরন দেখুন" : "See all issue types"}</strong>
+          <small>{lang === "bn" ? `${INTAKE_ISSUE_TYPES.length}টি সহজ বিকল্প থেকে নিজে বেছে নিন` : `Choose yourself from ${INTAKE_ISSUE_TYPES.length} plain-language options`}</small>
+        </span>
+        <ChevronDown size={20} className={showAll ? styles.chevronOpen : ""} />
+      </button>
+
+      {showAll ? (
+        <div id="intake-issue-list" className={styles.issuePanel}>
+          <p className={styles.issuePanelIntro}>
+            {lang === "bn" ? "আপনার অবস্থার সবচেয়ে কাছের একটি বেছে নিন। অফিস পরে প্রয়োজনে সংশোধন করতে পারবে।" : "Choose the closest match. The office can refine it later if needed."}
+          </p>
+          <div className={styles.issueGrid} role="radiogroup" aria-label={lang === "bn" ? "বিস্তারিত সমস্যার ধরন" : "Detailed issue type"}>
+            {INTAKE_ISSUE_TYPES.map((issue) => {
+              const active = choiceSource === "user" && selectedIssueId === issue.id;
+              return (
+                <button
+                  key={issue.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  className={`${styles.issueOption} ${active ? styles.issueOptionActive : ""}`}
+                  onClick={() => onSelectIssue(issue)}
+                >
+                  <span>{issue.label[lang]}</span>
+                  <small>{t(matterTitleKey(issue.matter))}</small>
+                  {active ? <Check size={16} /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       {errors.matter ? (
         <span className={styles.fieldError} role="alert">
           {errors.matter}
@@ -927,7 +977,7 @@ function Step3Parties({
   onDescVoice: () => void;
   errors: StepErrors;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   return (
     <section className={styles.stepCard} aria-labelledby="ai-s3-title">
       <span className={styles.stepBadge}>০৩ · {t("intakeStep3Headline")}</span>
@@ -966,6 +1016,47 @@ function Step3Parties({
             placeholder={t("intakePartyAddressPlaceholder")}
           />
         </label>
+        {draft.additionalOpponents.map((opponent, index) => (
+          <div className={styles.opponentCard} key={index}>
+            <div className={styles.opponentCardHead}>
+              <strong>{lang === "bn" ? `অতিরিক্ত বিপক্ষ ${index + 2}` : `Additional opponent ${index + 2}`}</strong>
+              <button
+                type="button"
+                className={styles.opponentRemove}
+                onClick={() => onChange("additionalOpponents", draft.additionalOpponents.filter((_, itemIndex) => itemIndex !== index))}
+              >
+                <X size={16} /> {lang === "bn" ? "সরান" : "Remove"}
+              </button>
+            </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>{t("intakePartyNameLabel")}</span>
+              <input
+                className={styles.textInput}
+                type="text"
+                value={opponent.name}
+                onChange={(event) => onChange("additionalOpponents", draft.additionalOpponents.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))}
+                placeholder={t("intakePartyNamePlaceholder")}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>{t("intakePartyAddressLabel")}</span>
+              <input
+                className={styles.textInput}
+                type="text"
+                value={opponent.address}
+                onChange={(event) => onChange("additionalOpponents", draft.additionalOpponents.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item))}
+                placeholder={t("intakePartyAddressPlaceholder")}
+              />
+            </label>
+          </div>
+        ))}
+        <button
+          type="button"
+          className={styles.addOpponentButton}
+          onClick={() => onChange("additionalOpponents", [...draft.additionalOpponents, { name: "", address: "" }])}
+        >
+          <span aria-hidden>+</span> {lang === "bn" ? "আরেকজন বিপক্ষ যোগ করুন" : "Add another opponent"}
+        </button>
       </div>
 
       <div className={styles.subBlock}>
@@ -1036,11 +1127,13 @@ function Step4Documents({
   draft,
   onAdd,
   onRemove,
+  onIdentityDocumentUnavailable,
   forwardOnly = false,
 }: {
   draft: IntakeDraft;
   onAdd: (doc: IntakeDocument) => void;
   onRemove: (id: string) => void;
+  onIdentityDocumentUnavailable: (value: boolean) => void;
   forwardOnly?: boolean;
 }) {
   const { t, lang } = useI18n();
@@ -1189,6 +1282,30 @@ function Step4Documents({
           ))}
         </ul>
       )}
+
+      <div className={`${styles.identityHelpBox} ${draft.identityDocumentUnavailable ? styles.identityHelpBoxActive : ""}`}>
+        <div>
+          <p className={styles.identityHelpTitle}>
+            {lang === "bn" ? "পরিচয়পত্র নেই?" : "No identity document?"}
+          </p>
+          <p className={styles.identityHelpBody}>
+            {lang === "bn"
+              ? "আবেদন থামবে না। পরিচয় যাচাইয়ের জন্য সিস্টেম আপনার এলাকার সরকারি প্রতিনিধির কাছে অনুরোধ পাঠাবে এবং জেলা লিগ্যাল এইড অফিস অগ্রগতি দেখবে।"
+              : "Your application can continue. The system will send an identity-verification request to a local government representative, and the District Legal Aid Office will track it."}
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`${styles.identityHelpButton} ${draft.identityDocumentUnavailable ? styles.identityHelpButtonActive : ""}`}
+          aria-pressed={draft.identityDocumentUnavailable}
+          onClick={() => onIdentityDocumentUnavailable(!draft.identityDocumentUnavailable)}
+        >
+          {draft.identityDocumentUnavailable ? <Check size={18} /> : null}
+          {draft.identityDocumentUnavailable
+            ? (lang === "bn" ? "স্থানীয় যাচাই অনুরোধ করা হয়েছে" : "Local verification requested")
+            : (lang === "bn" ? "আমার প্রয়োজনীয় পরিচয়পত্র নেই" : "I don't have the necessary identity document")}
+        </button>
+      </div>
     </section>
   );
 }

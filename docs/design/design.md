@@ -86,6 +86,15 @@ The worklist uses stacked, hairline-separated records instead of a wide table. D
 fewer columns as the viewport narrows, so the page needs no horizontal scrolling; opening an
 application keeps the existing review workspace.
 
+Incoming applications are divided into three visible, always-present sections: **Complex cases**,
+**Intermediate cases**, and **Petty / easy cases**. A clearly labelled AI simulation orders these
+sections with Complex first. Each case shows up to three concise reasons based on shared-record
+facts such as urgency/red flags, sensitive matter type, child involvement, local identity
+verification, representative filing, pending documents, and multiple incident signals. The UI
+states that this grouping only orders work and does not make a legal decision. Complex uses the
+danger token, Intermediate the pending token, and Petty/easy the success token; text labels and
+section headings carry the meaning without relying on colour.
+
 The DLO sidebar also opens `#udcs`, a district-scoped UDC approval worklist. It shows pending,
 approved, and rejected totals plus the registered operator, centre, mobile, registration date, and
 last login. The officer may approve one operator, approve every pending operator in the district,
@@ -104,6 +113,31 @@ case and application references, parties, matter, participating lawyers, hearing
 outcome and reasons, issuing officer, office, and issue time. The notification opens that case page.
 Each application and follow-up record also has a labelled, outlined **Open application** control,
 so the application ID is not the only way to enter the review.
+
+### Citizen complaint intake
+
+Step 2 of **Lodge a complaint** does not lead with legal categories. The citizen writes a short
+account in ordinary Bangla or English, and a clearly labelled **AI simulation** selects one broad
+matter category for the routing record. The recommendation appears as a single calm confirmation
+surface rather than a grid of legal terms. The citizen can expand **See all issue types** to choose
+from 33 specific, plain-language situations; that choice replaces the simulated recommendation.
+The chosen item still maps to the existing broad category behind the scenes, and the office may
+refine it later. The short account carries into step 3 for editing, so it is never requested twice.
+The expandable list uses two columns on wider screens and one column on small screens, with radio
+semantics, visible keyboard focus, and token-based colour and typography.
+
+The document step also includes **I don't have the necessary identity document**. Selecting it
+keeps the application moving and confirms that a local-government identity-verification request
+will be sent. The selected state persists with the draft and remains reversible. In the DLAO
+worklist, the application carries a visible **Sent to local government representative** status;
+the identity-review screen repeats the status and offers **Local government representative
+verification** as the officer's recorded verification method. Completing the officer's identity
+check closes the local-verification task.
+
+The opposing-party block starts with one required party. **+ Add another opponent** appends another
+name-and-address block, and each added block has a Remove control. Additional opponents persist in
+the offline draft and in `matter.opposingParties`; the original `matter.opposingParty` remains the
+primary-party compatibility field for existing officer and downstream views.
 
 ### Panel lawyer
 
@@ -253,3 +287,28 @@ pill treatment. On owned lawyer cases, the lawyer-change control is a calm actio
 plain states: request available, waiting for DLAO, and approved/update soon. DLAO review uses the
 existing warning/task and action patterns. Completion notices say only that mediation is complete
 and the testimonial is ready. Requested-document notices disappear after upload.
+
+### Button and notification contrast
+
+Shared buttons have a minimum 44px height. Outlined actions and notification links use
+deep green on white or pale green; filled notification badges use white labels on deep
+green. Badges inside active green navigation invert to a white surface with deep-green
+labels, and the active navigation marker stays light. Unread rows retain their text label
+and leading rule. Unread notification navigation and badges pulse with a green glow until their
+existing unread state clears. The home reminder and mobile notification icon also glow.
+The animation changes only the halo, preserving label contrast; reduced-motion users
+get a steady navigation highlight. Keyboard focus remains available in both languages. Paired
+colors are defined in `frontend/app/tokens.css`.
+
+Unread notification navigation and the home reminder use an eye-catching 2px glowing
+border with a green outer halo, pulsing every 1.8 seconds. Active green navigation
+uses a light inner edge. The border remains visible throughout the pulse; reduced
+motion keeps a steady glow. The reading surface and text colors stay unchanged.
+
+### Hash navigation hydration
+
+The shared `useHashRoute` hook uses an empty server snapshot during hydration, then
+reads the browser fragment through `useSyncExternalStore`. Direct loads and refreshes
+of `#notifications` or nested case links therefore hydrate consistently before the
+sidebar and mobile navigation highlight the requested section. Hash changes, browser
+Back/Forward, repeated navigation, and clearing the fragment remain supported.

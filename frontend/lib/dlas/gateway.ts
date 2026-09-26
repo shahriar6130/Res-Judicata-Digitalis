@@ -412,7 +412,13 @@ export const IntakeGateway = {
     const s = IntakeGateway.getSession(sessionId);
     const cat = s?.draft.matter.category;
     if (!s || !cat) return;
+    if (s.draft.applicant.identityDocumentUnavailable) {
+      for (const doc of s.draft.documents.filter((item) => item.type === "NID" && item.status !== "ATTACHED")) {
+        IntakeGateway.removeDocument(sessionId, doc.docId, tag.by);
+      }
+    }
     for (const type of REQUIRED_DOCS[cat]) {
+      if (type === "NID" && s.draft.applicant.identityDocumentUnavailable) continue;
       if (s.draft.documents.some((d) => d.type === type)) continue;
       IntakeGateway.attachDocument(
         sessionId,
@@ -573,6 +579,23 @@ export const IntakeGateway = {
       const pendingDocs = d.documents.filter((x) => x.status !== "ATTACHED");
       if (pendingDocs.length) {
         tasks.push({ ...mkTask("DOCUMENT_FOLLOW_UP", `${pendingDocs.length} document(s) pending`, 168, "NORMAL"), context: { docs: pendingDocs.map((x) => x.type) } });
+      }
+      if (d.applicant.identityDocumentUnavailable) {
+        tasks.push({
+          ...mkTask(
+            "LOCAL_IDENTITY_VERIFICATION",
+            "Applicant has no necessary identity document — sent to a local government representative for identity verification",
+            72,
+            "HIGH",
+            "LOCAL_GOVT_REPRESENTATIVE",
+          ),
+          status: "IN_PROGRESS",
+          context: {
+            verificationStatus: "SENT_TO_LOCAL_GOVT_REPRESENTATIVE",
+            district: d.applicant.district,
+            requestedAt: t,
+          },
+        });
       }
       if (d.filedBy.kind === "REPRESENTATIVE") {
         tasks.push({

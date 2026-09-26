@@ -567,7 +567,7 @@ export const DlaoReviewService = {
       r.identity.state = ok ? "COMPLETED" : "BLOCKED";
       logA(db, a, o, "identity.verified", { outcome: input.outcome, method: input.method, nid: input.nid, attempt: r.identity.attempts, corrections: r.identity.corrections.length });
       if (ok) {
-        closeTasks(db, a, ["HUMAN_CALLBACK"], o);
+        closeTasks(db, a, ["HUMAN_CALLBACK", "LOCAL_IDENTITY_VERIFICATION"], o);
         if (r.facts.state === "NOT_STARTED") r.facts.state = "IN_PROGRESS";
       } else {
         const t = openTask(db, a, "HUMAN_CALLBACK", input.outcome === "DISPUTED" ? "Identity disputed — reach the applicant on the safe channel" : "Applicant could not be reached safely — try again at the safe time", 48, "HELPLINE_AGENT", { outcome: input.outcome });

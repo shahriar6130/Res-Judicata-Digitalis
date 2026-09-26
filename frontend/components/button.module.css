@@ -8,7 +8,8 @@
   border-radius: var(--control-radius);
   font-size: var(--t-button);
   font-weight: var(--weight-medium);
-  line-height: 1;
+  line-height: var(--leading-label);
+  min-height: 44px;
   cursor: pointer;
   transition:
     background-color var(--motion-base) var(--ease),
@@ -29,12 +30,12 @@
 
 .secondary {
   background: var(--white);
-  border-color: var(--theme-accent-ink, var(--black));
-  color: var(--theme-accent-ink, var(--black));
+  border-color: var(--action-ink);
+  color: var(--action-ink);
 }
 
 .secondary:hover {
-  background: var(--off-white);
+  background: var(--action-soft);
 }
 
 .destructive {

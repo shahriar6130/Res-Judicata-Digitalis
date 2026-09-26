@@ -31,6 +31,7 @@ export { useOfficeControl, officeControl, classifyCase, isUrgent, type ControlRo
 export { MediationAccessLog, officerMediationRecord, useOfficerMediationRecord, useDistrictMediationMonitor, auditRow, officerAccessRole, type AuditRow, type DistrictMediationRow } from "./mediation-oversight";
 export { MediatorAuth, MediationWorkspaceService, CloSettlementService, SettlementVerificationService, MediationFailureReviewService, CourtAuthorityService, useCurrentMediator, useMediatorCase, useMyMediations, useCloSettlements, useCloSettlement, useCloDistrictActivity, useMediationFailureRecords, useMediationFailureRecord, activeAssignmentFor, workspaceStatus, transportOf, connectivityLimited, finalOutcome, SETTLEMENT_LISTS, FINAL_OUTCOMES, type MediatorAuthResult, type MediatorCaseView, type WorkspaceStatus, type SettlementFollowUpInput } from "./mediation-workspace";
 export { INCIDENT_TAXONOMY, RED_CATEGORIES, INCIDENT_RULES_VERSION, classifyIncident, incidentOf, incidentLabel, isRedFlagged } from "./incident-taxonomy";
+export { classifyIncomingComplexity, type IncomingComplexityLevel, type IncomingComplexityResult } from "./incoming-complexity";
 export { IncidentFlagService, useIncident } from "./incident-flag";
 export { draftSettlementPoints, SETTLEMENT_DRAFT_VERSION, type SettlementDraft } from "./settlement-draft";
 export { SettlementAppealService, sweepSettlementAppeals, useSettlementAppealSweep, appealOf, appealWindowOpen, APPEAL_WINDOW_DAYS } from "./settlement-appeal";
